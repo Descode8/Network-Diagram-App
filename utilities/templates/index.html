@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WittyAI Tiered Network Diagram</title>
+    <style>
+        svg {
+            width: 100vw;
+            height: 100vh;
+            background-color: #ffffff;
+        }
+
+        text {
+            font-size: 14px; 
+            font-family: 'Century Gothic Bold', 'Century Gothic', Arial, sans-serif;
+        }
+
+        .tooltip {
+            font-family: 'Century Gothic Bold', 'Century Gothic', Arial, sans-serif;
+            position: absolute;
+            text-align: center;
+            padding: 4px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 11px;
+            visibility: hidden;
+            transition: visibility 0.2s ease, opacity 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+    <svg></svg>
+
+    <!-- Tooltip Div -->
+    <div class="tooltip" id="tooltip"></div>
+    
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        // Set the width and height of the SVG
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+    
+        // Select the SVG element to draw the graph
+        const svg = d3.select("svg");
+    
+        // Select the tooltip div for displaying node descriptions on hover
+        const tooltip = d3.select("#tooltip");
+    
+        // Define a color scale for different tiers in the network
+        const color = d3.scaleOrdinal()
+            .domain(['Data', 'Business Tier', 'Presentation Tier']) // Define tiers
+            .range(['#bc945b', '#458bca', '#263d7a']); // Assign colors to tiers
+    
+        // Set the initial root node name
+        let rootNode = 'WittyAI'; 
+        let parentMap = {}; // Store parent-child relationships for navigation
+    
+        // Fetch graph data from the backend
+        async function fetchGraphData() {
+            const response = await fetch("/", { headers: { "Accept": "application/json" } });
+            const data = await response.json(); // Parse response to JSON
+            buildParentMap(data); // Build the parent-child map
+            return data;
+        }
+    
+        // Build the parent-child relationship map recursively
+        function buildParentMap(data, parent = null) {
+            parentMap[data.name] = parent; // Store the parent of each node
+            if (data.children) {
+                data.children.forEach(child => buildParentMap(child, data.name));
+            }
+        }
+    
+        // Initialize the graph by setting up nodes, links, and forces
+        async function initializeGraph() {
+            const data = await fetchGraphData(); // Fetch graph data from backend
+            let nodes = extractVisibleNodes(data, rootNode, 3); // Get initial nodes
+    
+            // Append a <g> (group) element to the SVG to hold the graph
+            const g = svg.append("g");
+    
+            // Create a D3 force simulation to manage node/link interactions
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink().id(d => d.name).distance(150).strength(1)) 
+                // Links force: manages the distance between connected nodes
+
+                .force("charge", d3.forceManyBody().strength(-500)) 
+                // Charge force: repels nodes to prevent them from clustering
+
+                .force("center", d3.forceCenter(width / 2, height / 2)) 
+                // Center force: ensures the graph stays centered within the SVG
+
+                .force("collision", d3.forceCollide().radius(d => d.name === rootNode ? 6 : 5).strength(1)) 
+                // Collision force: prevents nodes from overlapping
+
+                .alphaDecay(0.01) // Control the simulation's energy decay rate
+                .velocityDecay(0.5) // Controls how quickly the nodes slow down
+
+                .on("tick", ticked); // Update positions with each tick of the simulation
+
+            // Create group elements for links between nodes
+            let link = g.append("g")
+                .attr("class", "links")
+                .selectAll("line");
+            
+            // Create group elements for the nodes
+            let node = g.append("g")
+                .attr("class", "nodes")
+                .selectAll("g");
+    
+            // Function to update the graph with new nodes and links
+            function update() {
+                const linksData = getLinks(nodes); // Retrieve links between nodes
+    
+                // Bind the link data to line elements
+                link = link.data(linksData, d => `${d.source.name}-${d.target.name}`);
+                link.exit().remove(); // Remove any unused link elements
+    
+                // Create new line elements for links and style them
+                link = link.enter().append("line")
+                    .attr("stroke-width", 1)
+                    .attr("stroke", "#888a8d")
+                    .merge(link); // Merge with existing links
+    
+                // Bind the node data to <g> (group) elements
+                node = node.data(nodes, d => d.name);
+                node.exit().remove(); // Remove unused nodes
+    
+                // Create new nodes and set up drag behavior
+                const newNodes = node.enter().append("g")
+                    .call(d3.drag()
+                        .on("start", dragstarted) // Handle drag start
+                        .on("drag", dragged) // Handle dragging
+                        .on("end", dragended)); // Handle drag end
+    
+                // Append circle elements to represent nodes
+                newNodes.append("circle")
+                    .attr("r", d => d.name === rootNode ? 6 : 5) // Radius depends on if it's the root node
+                    .on("mouseover", showTooltip)  // Show tooltip on hover
+                    .on("mousemove", moveTooltip)  // Move tooltip with cursor
+                    .on("mouseout", hideTooltip)   // Hide tooltip when not hovering
+                    .on("click", (event, d) => handleNodeClick(d)); // Handle node click
+    
+                // Append text elements to display node names
+                newNodes.append("text")
+                    .attr("dy", 3)
+                    .attr("x", d => d.x < width / 2 ? -10 : 20) // Position text based on node location
+                    .style("text-anchor", d => d.x < width / 2 ? "end" : "start") // Align text
+                    .text(d => d.name); // Display node name
+    
+                node = newNodes.merge(node); // Merge new nodes with existing ones
+    
+                // Update the circle fill color based on the node type
+                node.select('circle')
+                    .attr('fill', d => (d.name === rootNode ? '#000000' : color(d.tier)))
+                    .attr('r', d => d.name === rootNode ? 6 : 5); // Adjust radius for the root node
+    
+                // Restart the simulation with updated nodes and links
+                simulation.nodes(nodes);
+                simulation.force("link").links(linksData);
+                simulation.alpha(1).restart(); // Restart simulation with full energy
+            }
+    
+            // Show the tooltip with node description
+            function showTooltip(event, d) {
+                tooltip.style("visibility", "visible")
+                    .style("opacity", 1)
+                    .text(d.description); // Display node description
+            }
+    
+            // Move the tooltip with the mouse cursor
+            function moveTooltip(event) {
+                tooltip.style("top", (event.pageY + 10) + "px")
+                    .style("left", (event.pageX + 10) + "px");
+            }
+    
+            // Hide the tooltip when the mouse leaves the node
+            function hideTooltip() {
+                tooltip.style("visibility", "hidden").style("opacity", 0);
+            }
+    
+            // Handle click events on nodes to set new root node
+            function handleNodeClick(d) {
+                if (d.name === rootNode && parentMap[d.name]) {
+                    rootNode = parentMap[d.name]; // Go to parent node if clicked on root
+                } else if (d.children && d.children.length > 0) {
+                    rootNode = d.name; // Set clicked node as new root if it has children
+                }
+    
+                nodes = extractVisibleNodes(data, rootNode); // Get new nodes
+                update(); // Update graph
+            }
+    
+            // Extract nodes visible under the current root node
+            function extractVisibleNodes(data, parent, level = 2) {
+                if (data.name === parent) {
+                    return [data, ...(data.children || [])];
+                }
+                if (level > 0) {
+                    for (const child of data.children || []) {
+                        const found = extractVisibleNodes(child, parent, level - 1);
+                        if (found.length) return found;
+                    }
+                }
+                return [];
+            }
+            
+    
+            // Get the links (edges) between nodes
+            function getLinks(nodes) {
+                const links = [];
+                nodes.forEach(parent => {
+                    if (parent.children) {
+                        parent.children.forEach(child => {
+                            if (nodes.includes(child)) {
+                                links.push({ source: parent, target: child });
+                            }
+                        });
+                    }
+                });
+                return links;
+            }
+    
+            // Update positions of nodes and links on each tick of the simulation
+            function ticked() {
+                link.attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+    
+                node.attr("transform", d => `translate(${d.x},${d.y})`);
+            }
+    
+            // Start the drag interaction
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.05).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+    
+            // Handle dragging of nodes
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+    
+            // End the drag interaction
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+    
+            update(); // Initial render
+        }
+    
+        initializeGraph(); // Start the graph    
+    </script>
+</body>
+</html>
