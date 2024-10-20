@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template, request
 from utilities.routes_utils import fetch_graph_data
 import os
 
-# Explicitly set the template folder path to 'utilities/templates'
+# Set the template folder path to 'utilities/templates'
 app = Flask(__name__, template_folder=os.path.join('utilities', 'templates'))
 
 @app.route("/", methods=["GET"])
@@ -14,7 +14,7 @@ def index():
         data = fetch_graph_data()
         return jsonify(data)
     else:
-        return render_template('index.html')  # Now it will look in 'utilities/templates/index.html'
+        return render_template('index.html')
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
