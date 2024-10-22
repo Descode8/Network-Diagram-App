@@ -32,14 +32,22 @@ def fetch_graph_data(excel_file='utilities/data/network_diagram.xlsx'):
         dependency_name = row[dependency_name_col]
         dependency_type = row[dependency_type_col]
 
-        # Add CI node if not already added
+        # For CI nodes
         if ci_name != 'None' and ci_name not in node_ids:
-            nodes.append({'id': ci_name, 'type': ci_type})
+            nodes.append({
+                'id': ci_name, 
+                'type': ci_type, 
+                'description': row['CI_Descrip']  # Add CI description
+            })
             node_ids.add(ci_name)
 
-        # Add Dependency node if not already added
+        # For Dependency nodes
         if dependency_name != 'None' and dependency_name not in node_ids:
-            nodes.append({'id': dependency_name, 'type': dependency_type})
+            nodes.append({
+                'id': dependency_name, 
+                'type': dependency_type, 
+                'description': row['Dependency_Descrip']  # Add Dependency description
+            })
             node_ids.add(dependency_name)
 
         # Create a link between CI and its dependency
