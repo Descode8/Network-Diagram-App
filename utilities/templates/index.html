@@ -13,6 +13,7 @@
             width: 100vw;
             height: 100vh;
             background-color: #ffffff;
+            cursor: move; /* Indicate that the SVG area is draggable */
         }
 
         .tooltip {
@@ -53,285 +54,439 @@
 </head>
 <body>
     <svg></svg> 
-<!-- 
-The <svg> element is the canvas where D3.js will render the graph. 
-SVG (Scalable Vector Graphics) is resolution-independent, making it ideal for visualizations.
--->
+    <!-- 
+    The <svg> element is the canvas where D3.js will render the graph. 
+    SVG (Scalable Vector Graphics) is resolution-independent, making it ideal for visualizations.
+    -->
 
-<div class="tooltip" id="tooltip"></div> 
-<!-- 
-Tooltip element to display additional information about nodes on hover.
--->
+    <div class="tooltip" id="tooltip"></div> 
+    <!-- 
+    Tooltip element to display additional information about nodes on hover.
+    -->
 
-<!-- Import D3.js library from the official CDN -->
-<script src="https://d3js.org/d3.v6.min.js"></script>
+    <!-- Import D3.js library from the official CDN -->
+    <script src="https://d3js.org/d3.v6.min.js"></script>
 
-<script>
-    /***************************************************************
-     * VARIABLE DECLARATIONS AND INITIAL SETUP
-     ***************************************************************/
+    <script>
+        /***************************************************************
+         * VARIABLE DECLARATIONS AND INITIAL SETUP
+         ***************************************************************/
 
-    // Root node for the visualization; this is the main point from which other nodes connect
-    const rootNode = 'UPMIS';
+        // Root node for the visualization; this is the main point from which other nodes connect
+        const rootNode = 'UPMIS';
 
-    // Select the <svg> element and the tooltip element using D3.js
-    const svg = d3.select("svg");
-    const tooltip = d3.select("#tooltip");
+        // Select the <svg> element and the tooltip element using D3.js
+        const svg = d3.select("svg");
+        const tooltip = d3.select("#tooltip");
 
-    // Get the width and height of the window to use for SVG dimensions
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+        // Get the width and height of the window to use for SVG dimensions
+        let width = window.innerWidth;
+        let height = window.innerHeight;
 
-    /**
-     * Create a color scale for different node types. 
-     * This assigns specific colors to categories of nodes (like Application, Technology, etc.)
-     * 
-     * D3 offers many scales you can explore:
-     *  - d3.scaleOrdinal: For categorical data (used here)
-     *  - d3.scaleLinear: For continuous numeric data
-     *  - d3.scaleSequential: For gradients based on numeric values
-     */
-    const colorScale = d3.scaleOrdinal()
-        .domain(['Application', 'Technology', 'People', 'Software', 'Server']) // Node categories
-        .range(['#231f20', '#bc945b', '#458bca', '#3253a8', '#888a8d']); // Corresponding colors
+        // Create a group <g> element where all the graph elements (nodes and links) will reside
+        // Apply a transform to this group when zooming and panning
+        const g = svg.append("g");
 
-    // Create a group <g> element where all the graph elements (nodes and links) will reside
-    const g = svg.append("g");
+        // A Map to store node colors by their ID for quick reference
+        const nodeColorMap = new Map();
 
-    // A Map to store node colors by their ID for quick reference
-    const nodeColorMap = new Map();
+        // Declare the simulation outside to make it accessible across functions
+        let simulation;
 
-    // Declare the simulation outside to make it accessible across functions
-    let simulation;
-
-    /***************************************************************
-     * FETCHING DATA FROM THE BACKEND
-     ***************************************************************/
-
-    /**
-     * Fetch graph data from the backend API. 
-     * This function is asynchronous to handle the fetch request and wait for the response.
-     */
-    async function fetchGraphData() {
-        const response = await fetch("/", {
-            headers: { "Accept": "application/json" } // Expecting JSON data from the server
-        });
-
-        // If the request fails, log an error and exit
-        if (!response.ok) {
-            console.error("Failed to fetch graph data:", response.statusText);
-            return;
-        }
-
-        // Parse the response into JSON
-        const graphData = await response.json();
-        console.log("Fetched Data:", graphData); // Log the data to inspect its structure
-
-        // Assign colors to the nodes
-        assignColors(graphData);
-
-        // Render the graph visualization
-        renderGraph(graphData);
-    }
-
-    /***************************************************************
-     * ASSIGNING COLORS TO NODES BASED ON THEIR TYPE
-     ***************************************************************/
-
-    /**
-     * This function assigns colors to nodes using a color scale based on the node's type.
-     * You can modify the color scale or add more categories dynamically.
-     */
-    function assignColors(data) {
-        data.nodes.forEach(node => {
-            if (node.id === rootNode) {
-                nodeColorMap.set(node.id, '#231f20'); // Root node (UPMIS) is black
-            } else {
-                const color = colorScale(node.type); // Get color from scale based on type
-                nodeColorMap.set(node.id, color);
-            }
-        });
-    }
+        /***************************************************************
+         * ADD ZOOM AND PAN FUNCTIONALITY
+         ***************************************************************/
 
         /**
-    * Helper function to check if a node is a parent node.
-    * A node is considered a parent if it is the source of at least one link.
-    *
-    * @param {Object} node - The node object to check.
-    * @param {Object} graphData - The entire graph data containing nodes and links.
-    * @returns {boolean} - Returns true if the node is a parent; otherwise, false.
-    */
-    function isParentNode(node, graphData) {
-        // A node is a parent if it is the source of at least one link
-        return graphData.links.some(link => link.source.id === node.id);
-    }
-
-    /**
-    * Renders the graph using D3.js by setting up nodes, links, and force simulation.
-    * This function ensures that nodes and links are displayed correctly with appropriate
-    * interactivity, such as dragging and tooltip handling.
-    *
-    * @param {Object} graphData - The graph data containing nodes and links.
-    */
-    function renderGraph(graphData) {
-        /***************************************************************
-        * CREATE A MAP TO REFERENCE NODE OBJECTS BY THEIR ID
-        ***************************************************************/
-        const nodeById = new Map(graphData.nodes.map(node => [node.id, node]));
-
-        // Replace source and target IDs in links with actual node objects
-        graphData.links.forEach(link => {
-            link.source = nodeById.get(link.source); // Link's source node object
-            link.target = nodeById.get(link.target); // Link's target node object
-        });
-
-        /***************************************************************
-        * INITIALIZE THE FORCE SIMULATION
-        * The simulation applies physics-like behavior to nodes, such as
-        * repelling or attracting forces and centering the graph.
-        ***************************************************************/
-        simulation = d3.forceSimulation(graphData.nodes) // Initialize force simulation
-            .force("link", d3.forceLink(graphData.links).distance(70)) // Control link length
-            .force("charge", d3.forceManyBody().strength(-100)) // Repulsion between nodes
-            .force("center", d3.forceCenter(width / 2, height / 2)) // Center the graph
-            .on("tick", ticked); // On each tick, update the positions of nodes and links
-
-        /***************************************************************
-        * CREATE LINKS BETWEEN NODES
-        * Links are represented as lines connecting nodes. We use conditional
-        * coloring to match the link color with the child node type, if applicable.
-        ***************************************************************/
-        const link = g.append("g") // Append group element for links
-            .selectAll("line") // Select all lines for links
-            .data(graphData.links) // Bind link data to the elements
-            .enter().append("line") // Append a line for each link
-            .attr("stroke-width", 1) // Set the thickness of the link lines
-            .attr("stroke", "#231f20"); // Set the line color to black
-
-        /***************************************************************
-        * CREATE NODES AND ASSIGN CSS CLASSES BASED ON TYPE
-        * Each node consists of a circle and a text label. We use CSS classes
-        * ('parent-node' or 'child-node') to style nodes dynamically.
-        ***************************************************************/
-        const node = g.append("g") // Append group element for nodes
-            .selectAll("g") // Select all group elements for nodes
-            .data(graphData.nodes) // Bind node data to the elements
-            .enter().append("g") // Append a group for each node
-            .call(d3.drag() // Enable dragging functionality
-                .on("start", dragstarted) // Handle drag start event
-                .on("drag", dragged) // Handle dragging event
-                .on("end", dragended)); // Handle drag end event
-
-        /***************************************************************
-        * APPEND CIRCLES FOR NODES
-        * Circles visually represent each node, and we fill them with colors
-        * based on the node's ID. Tooltips are shown on hover.
-        ***************************************************************/
-        node.append("circle") // Append a circle for each node
-            .attr("r", d => {
-                if (d.id === rootNode) return 6; // Root node is the largest
-                if (isParentNode(d, graphData)) return 5; // Parent nodes are bigger
-                return 3; // Child nodes retain the default size
-            })
-            .attr("fill", d => nodeColorMap.get(d.id)) // Set circle color based on node ID
-            .on("mouseover", (event, d) => showTooltip(event, d)) // Show tooltip on hover
-            .on("mousemove", moveTooltip) // Move tooltip with mouse
-            .on("mouseout", hideTooltip); // Hide tooltip when mouse leaves
-
-        /***************************************************************
-        * APPEND TEXT LABELS FOR NODES
-        * Text labels display the node IDs. They are styled using CSS classes
-        * to differentiate between parent and child nodes.
-        ***************************************************************/
-        // Append text labels for each node
-        node.append("text")
-        .attr("dx", 5) // Horizontal offset for text
-        .attr("dy", 1) // Vertical alignment
-        .text(d => d.id) // Display the node ID
-        .attr("class", d => {
-            // Assign 'root-node' if it's the root node, otherwise assign parent/child class
-            if (d.id === rootNode) return 'root-node'; 
-            return isParentNode(d, graphData) ? 'parent-node' : 'child-node';
-        });
-
-        /***************************************************************
-        * SIMULATION TICK FUNCTION: UPDATE POSITIONS OF NODES AND LINKS
-        * This function runs on every tick of the simulation, ensuring that
-        * the positions of nodes and links are updated continuously.
-        ***************************************************************/
-        function ticked() {
-            // Constrain node positions within the browser window boundaries
-            node.attr("transform", d => {
-                d.x = Math.max(5, Math.min(width - 5, d.x)); // Ensure x stays within [5, width - 5]
-                d.y = Math.max(5, Math.min(height - 5, d.y)); // Ensure y stays within [5, height - 5]
-                return `translate(${d.x},${d.y})`;
+         * Initialize zoom behavior and attach it to the SVG element.
+         * The zoom behavior will modify the 'transform' attribute of the graph group 'g'.
+         */
+        const zoom = d3.zoom()
+            .scaleExtent([0.8, 2]) // Set the minimum and maximum zoom scale
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
             });
-        
-            // Update the link positions
-            link
-                .attr("x1", d => d.source.x)
-                .attr("y1", d => d.source.y)
-                .attr("x2", d => d.target.x)
-                .attr("y2", d => d.target.y);
-        }        
-    }
 
-    /***************************************************************
-    * TOOLTIP FUNCTIONS TO DISPLAY NODE INFORMATION
-    ***************************************************************/
+        svg.call(zoom); // Attach zoom behavior to the SVG element
 
-    // Display the tooltip when hovering over a node
-    function showTooltip(event, d) {
-        // Use the node's description if available
-        const description = d.description ? `${d.description}` : 'No description available';
-        tooltip.style("visibility", "visible").text(description);
-    }    
+        /***************************************************************
+         * FETCHING DATA FROM THE BACKEND
+         ***************************************************************/
 
-    // Move the tooltip with the mouse
-    function moveTooltip(event) {
-        tooltip.style("top", (event.pageY + 10) + "px")
-            .style("left", (event.pageX + 10) + "px");
-    }
+        /**
+         * Fetch graph data from the backend API. 
+         * This function is asynchronous to handle the fetch request and wait for the response.
+         */
+        async function fetchGraphData() {
+            const response = await fetch("/", {
+                headers: { "Accept": "application/json" } // Expecting JSON data from the server
+            });
 
-    // Hide the tooltip when the mouse leaves the node
-    function hideTooltip() {
-        tooltip.style("visibility", "hidden");
-    }
+            // If the request fails, log an error and exit
+            if (!response.ok) {
+                console.error("Failed to fetch graph data:", response.statusText);
+                return;
+            }
 
-    /***************************************************************
-    * DRAG FUNCTIONS TO ENABLE INTERACTIVE NODE MOVEMENT
-    ***************************************************************/
+            // Parse the response into JSON
+            const graphData = await response.json();
+            console.log("Fetched Data:", graphData); // Log the data to inspect its structure
 
-    // Handle the start of a drag event
-    function dragstarted(event) {
-        if (!event.active) simulation.alphaTarget(0.3).restart(); // Restart simulation
-        event.subject.fx = event.subject.x; // Fix x position
-        event.subject.fy = event.subject.y; // Fix y position
-    }
+            // Assign colors to the nodes
+            assignColors(graphData);
 
-    // Update the node's position during dragging
-    function dragged(event) {
-        event.subject.fx = event.x; // Set new x position
-        event.subject.fy = event.y; // Set new y position
-    }
+            // Render the graph visualization
+            renderGraph(graphData);
+        }
 
-    // Release the node's position at the end of the drag
-    function dragended(event) {
-        if (!event.active) simulation.alphaTarget(0); // Stop the simulation after drag
-        event.subject.fx = null; // Release fixed x position, allowing it to move freely
-        event.subject.fy = null; // Release fixed y position, restoring natural movement
-    }
+        /***************************************************************
+         * ASSIGNING COLORS TO NODES BASED ON THEIR TYPE
+         ***************************************************************/
 
+        /**
+         * Assigns colors to nodes using a color scale based on the node's type.
+         * The color scale is created dynamically based on the unique types in the data.
+         *
+         * @param {Object} data - The graph data containing nodes and links.
+         */
+        function assignColors(data) {
+            // Extract unique node types from the data
+            const types = [...new Set(data.nodes.map(node => node.type))];
 
-    /***************************************************************
-     * INITIALIZING AND FETCHING GRAPH DATA ON PAGE LOAD
-     ***************************************************************/
+            // Create a color scale with a unique color for each type
+            const colorScale = d3.scaleOrdinal()
+                .domain(types)
+                .range(d3.schemeCategory10); // You can choose a different color scheme if you prefer
 
-    /**
-     * Call `fetchGraphData` when the page loads to initialize the graph.
-     * This will retrieve the graph data from the backend and render it in the SVG element.
-     */
-    fetchGraphData(); // Start fetching and rendering the graph
+            // Assign colors to nodes based on their type
+            data.nodes.forEach(node => {
+                if (node.id === rootNode) {
+                    nodeColorMap.set(node.id, '#231f20'); // Root node (UPMIS) is black
+                } else {
+                    const color = colorScale(node.type); // Get color from scale based on type
+                    nodeColorMap.set(node.id, color);
+                }
+            });
+        }
+
+        /***************************************************************
+         * HELPER FUNCTION TO CHECK IF A NODE IS A PARENT NODE
+         ***************************************************************/
+
+        /**
+         * Helper function to check if a node is a parent node.
+         * A node is considered a parent if it is the source of at least one link.
+         *
+         * @param {Object} node - The node object to check.
+         * @param {Object} graphData - The entire graph data containing nodes and links.
+         * @returns {boolean} - Returns true if the node is a parent; otherwise, false.
+         */
+        function isParentNode(node, graphData) {
+            // A node is a parent if it is the source of at least one link
+            return graphData.links.some(link => link.source.id === node.id);
+        }
+
+        /***************************************************************
+         * RENDERING THE GRAPH VISUALIZATION
+         ***************************************************************/
+
+        /**
+         * Renders the graph using D3.js by setting up nodes, links, and force simulation.
+         * This function ensures that nodes and links are displayed correctly with appropriate
+         * interactivity, such as dragging and tooltip handling.
+         *
+         * @param {Object} graphData - The graph data containing nodes and links.
+         */
+        function renderGraph(graphData) {
+            /***************************************************************
+            * CREATE A MAP TO REFERENCE NODE OBJECTS BY THEIR ID
+            ***************************************************************/
+            const nodeById = new Map(graphData.nodes.map(node => [node.id, node]));
+
+            // Replace source and target IDs in links with actual node objects
+            graphData.links.forEach(link => {
+                link.source = nodeById.get(link.source);
+                link.target = nodeById.get(link.target);
+            });
+
+            /***************************************************************
+            * DYNAMICALLY ASSIGN CLUSTER CENTERS FOR NODE TYPES
+            ***************************************************************/
+
+            // Extract unique node types from the data (excluding the root node type)
+            const types = [...new Set(graphData.nodes
+                .filter(node => node.id !== rootNode)
+                .map(node => node.type))];
+
+            // Assign cluster centers to types, evenly spaced around a circle centered on the root node
+            const clusterCenters = {};
+            const numTypes = types.length;
+            const clusterRadius = Math.min(width, height) / 3; // Radius of the circle for clusters
+
+            types.forEach((type, index) => {
+                const angle = (index / numTypes) * 2 * Math.PI;
+                clusterCenters[type] = {
+                    x: width / 2 + clusterRadius * Math.cos(angle),
+                    y: height / 2 + clusterRadius * Math.sin(angle)
+                };
+            });
+
+            /***************************************************************
+            * CREATE LINKS BETWEEN NODES
+            * Links are represented as lines connecting nodes.
+            ***************************************************************/
+            const link = g.append("g") // Append group element for links
+                .attr("class", "links")
+                .selectAll("line") // Select all lines for links
+                .data(graphData.links) // Bind link data to the elements
+                .enter().append("line") // Append a line for each link
+                .attr("stroke-width", 1) // Set the thickness of the link lines
+                .attr("stroke", "#999"); // Set the line color
+
+            /***************************************************************
+            * CREATE NODES AND ASSIGN CSS CLASSES BASED ON TYPE
+            * Each node consists of a circle and a text label.
+            ***************************************************************/
+            const node = g.append("g") // Append group element for nodes
+                .attr("class", "nodes")
+                .selectAll("g") // Select all group elements for nodes
+                .data(graphData.nodes) // Bind node data to the elements
+                .enter().append("g") // Append a group for each node
+                .call(d3.drag() // Enable dragging functionality on nodes
+                    .on("start", dragstarted) // Handle drag start event
+                    .on("drag", dragged) // Handle dragging event
+                    .on("end", dragended)); // Handle drag end event
+
+            /***************************************************************
+            * APPEND CIRCLES FOR NODES
+            * Circles visually represent each node, filled with colors based on type.
+            ***************************************************************/
+            node.append("circle") // Append a circle for each node
+                .attr("r", d => {
+                    if (d.id === rootNode) return 5; // Root node is larger
+                    return 3; // Other nodes have a standard size
+                })
+                .attr("fill", d => nodeColorMap.get(d.id)) // Set circle color based on node ID
+                .on("mouseover", (event, d) => showTooltip(event, d)) // Show tooltip on hover
+                .on("mousemove", moveTooltip) // Move tooltip with mouse
+                .on("mouseout", hideTooltip); // Hide tooltip when mouse leaves
+
+            /***************************************************************
+            * APPEND TEXT LABELS FOR NODES
+            * Text labels display the node IDs.
+            ***************************************************************/
+            node.append("text")
+                .attr("dx", 12) // Horizontal offset for text
+                .attr("dy", 4) // Vertical alignment
+                .text(d => d.id) // Display the node ID
+                .attr("class", d => {
+                    // Assign 'root-node' if it's the root node, otherwise assign child class
+                    if (d.id === rootNode) return 'root-node'; 
+                    return 'child-node';
+                });
+
+            /***************************************************************
+            * INITIALIZE THE FORCE SIMULATION
+            * The simulation applies physics-like behavior to nodes, such as
+            * repelling or attracting forces and centering the graph.
+            ***************************************************************/
+            simulation = d3.forceSimulation(graphData.nodes)
+                .force("link", d3.forceLink(graphData.links)
+                    .distance(250)        // Distance between connected nodes
+                    .strength(1))         // Link strength
+                .force("charge", d3.forceManyBody()
+                    .strength(-30)       // Repulsion between nodes
+                    .distanceMax(200))   // Limit the distance over which nodes repel each other
+                .force("center", d3.forceCenter(width / 2, height / 2)) // Center the graph
+                .force("collision", d3.forceCollide()
+                    .radius(15)          // Set collision radius to prevent overlapping
+                    .strength(0.3))      // Adjust strength to smooth out interactions
+                .force("cluster", clusteringForce()) // Custom clustering force
+                .force("clusterCollide", clusterCollideForce()) // Custom force to repel clusters
+                .alphaDecay(0.03)        // Control the cooling rate for smoother animation
+                .on("tick", ticked);
+
+            /***************************************************************
+            * SIMULATION TICK FUNCTION: UPDATE POSITIONS OF NODES AND LINKS
+            * This function runs on every tick of the simulation, ensuring that
+            * the positions of nodes and links are updated continuously.
+            ***************************************************************/
+            /**
+             * Updates the positions of nodes and links on each simulation tick.
+             */
+            function ticked() {
+                node.attr("transform", d => {
+                    d.x = Math.max(15, Math.min(width - 15, d.x));
+                    d.y = Math.max(15, Math.min(height - 15, d.y));
+                    return `translate(${d.x},${d.y})`;
+                });
+
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+            }        
+
+            /***************************************************************
+            * CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS
+            ***************************************************************/
+            /**
+             * Creates a custom force that attracts nodes to the cluster centers based on their type.
+             * Nodes of the same type will cluster together around their assigned cluster center.
+             */
+            function clusteringForce() {
+                return function(alpha) {
+                    graphData.nodes.forEach(function(d) {
+                        if (d.id !== rootNode) {
+                            const cluster = clusterCenters[d.type];
+                            d.vx -= (d.x - cluster.x) * alpha * 0.1;
+                            d.vy -= (d.y - cluster.y) * alpha * 0.1;
+                        }
+                    });
+                };
+            }
+
+            /***************************************************************
+            * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER
+            ***************************************************************/
+            /**
+             * Creates a custom force that repels clusters from each other to prevent overlap.
+             * This helps to space clusters evenly around the central node.
+             */
+            function clusterCollideForce() {
+                const padding = 50; // Minimum distance between cluster centers
+                return function() {
+                    types.forEach((typeA, i) => {
+                        const clusterA = clusterCenters[typeA];
+                        types.slice(i + 1).forEach(typeB => {
+                            const clusterB = clusterCenters[typeB];
+                            let dx = clusterB.x - clusterA.x;
+                            let dy = clusterB.y - clusterA.y;
+                            let distance = Math.sqrt(dx * dx + dy * dy);
+                            let minDistance = padding;
+
+                            if (distance < minDistance) {
+                                let moveX = dx / distance * (minDistance - distance) / 2;
+                                let moveY = dy / distance * (minDistance - distance) / 2;
+
+                                clusterA.x -= moveX;
+                                clusterA.y -= moveY;
+                                clusterB.x += moveX;
+                                clusterB.y += moveY;
+                            }
+                        });
+                    });
+                };
+            }
+
+            /***************************************************************
+            * RESPONSIVENESS: CENTER GRAPH ON WINDOW RESIZE
+            ***************************************************************/
+
+            /**
+             * Update the simulation and SVG dimensions when the window is resized.
+             */
+            window.addEventListener("resize", () => {
+                width = window.innerWidth;
+                height = window.innerHeight;
+
+                // Update the SVG size
+                svg.attr("width", width).attr("height", height);
+
+                // Update the force center to keep the graph centered
+                simulation.force("center", d3.forceCenter(width / 2, height / 2));
+
+                // Recalculate cluster centers
+                const clusterRadius = Math.min(width, height) / 3;
+                types.forEach((type, index) => {
+                    const angle = (index / numTypes) * 2 * Math.PI;
+                    clusterCenters[type].x = width / 2 + clusterRadius * Math.cos(angle);
+                    clusterCenters[type].y = height / 2 + clusterRadius * Math.sin(angle);
+                });
+
+                simulation.alpha(0.3).restart(); // Restart simulation for smooth transition
+            });
+        }
+
+        /***************************************************************
+        * TOOLTIP FUNCTIONS TO DISPLAY NODE INFORMATION
+        ***************************************************************/
+
+        /**
+         * Displays the tooltip when hovering over a node.
+         *
+         * @param {Object} event - The mouseover event object.
+         * @param {Object} d - The data object associated with the node.
+         */
+        function showTooltip(event, d) {
+            // Use the node's description if available
+            const description = d.description ? `${d.description}` : 'No description available';
+            tooltip.style("visibility", "visible").text(description);
+        }    
+
+        /**
+         * Moves the tooltip with the mouse cursor.
+         *
+         * @param {Object} event - The mousemove event object.
+         */
+        function moveTooltip(event) {
+            tooltip.style("top", (event.pageY + 10) + "px")
+                .style("left", (event.pageX + 10) + "px");
+        }
+
+        /**
+         * Hides the tooltip when the mouse leaves the node.
+         */
+        function hideTooltip() {
+            tooltip.style("visibility", "hidden");
+        }
+
+        /***************************************************************
+        * DRAG FUNCTIONS TO ENABLE INTERACTIVE NODE MOVEMENT
+        ***************************************************************/
+
+        /**
+         * Handles the start of a drag event on a node.
+         *
+         * @param {Object} event - The dragstart event object.
+         */
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart(); // Restart simulation
+            event.subject.fx = event.subject.x; // Fix x position
+            event.subject.fy = event.subject.y; // Fix y position
+        }
+
+        /**
+         * Updates the node's position during dragging.
+         *
+         * @param {Object} event - The drag event object.
+         */
+        function dragged(event) {
+            event.subject.fx = event.x; // Set new x position
+            event.subject.fy = event.y; // Set new y position
+        }
+
+        /**
+         * Releases the node's position at the end of the drag.
+         *
+         * @param {Object} event - The dragend event object.
+         */
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0); // Stop the simulation after drag
+            event.subject.fx = null; // Release fixed x position, allowing it to move freely
+            event.subject.fy = null; // Release fixed y position, restoring natural movement
+        }
+
+        /***************************************************************
+         * INITIALIZING AND FETCHING GRAPH DATA ON PAGE LOAD
+         ***************************************************************/
+
+        /**
+         * Calls `fetchGraphData` when the page loads to initialize the graph.
+         * This will retrieve the graph data from the backend and render it in the SVG element.
+         */
+        fetchGraphData(); // Start fetching and rendering the graph
     </script>
 </body>
 </html>
