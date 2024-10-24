@@ -176,7 +176,7 @@ function renderGraph(graphData) {
     *************************************/
     node.append("text")
         .attr("dx", "1ex") // Slightly offset for child nodes
-        .attr("dy", "-.5ex") // Adjust vertical alignment
+        .attr("dy", ".5ex") // Adjust vertical alignment
         .text(d => d.id) // Display the node ID
         .attr("class", d => {
             // Assign 'root-node' if it's the root node, otherwise assign child class
@@ -201,9 +201,9 @@ function renderGraph(graphData) {
         })
             .strength(0.1))         // Link strength
         .force("charge", d3.forceManyBody()
-            .strength(-200)       // Repulsion between nodes
-            .distanceMax(400))   // Limit the distance over which nodes repel each other
-        .force("center", d3.forceCenter(width / 2, height / 2)) // Center the graph
+            .strength(-300)       // Repulsion between nodes; more negative = stronger repulsion
+            .distanceMax(200))   // Limit the distance over which nodes repel each other; nodes more than x val away will not repel
+        .force("center", d3.forceCenter(width / 2.5, height / 2)) // Center the graph
         .force("collision", d3.forceCollide()
             .radius(10)          // Set collision radius to prevent overlapping
             .strength(-100))      // Adjust strength to smooth out interactions
@@ -212,18 +212,25 @@ function renderGraph(graphData) {
         .alphaDecay(0.03)        // Control the cooling rate for smoother animation
         .on("tick", ticked);
 
+        graphData.nodes.forEach(node => {
+            if (node.type === 'root') {
+                node.fx = width / 2;  // Lock x position to the center
+                node.fy = 100;          // Lock y position to the top (50 pixels down)
+            }
+        });
+
     /********************************************************************
     * SIMULATION TICK FUNCTION: UPDATE POSITIONS OF NODES AND LINKS     *
     * This function runs on every tick of the simulation, ensuring that *
     * the positions of nodes and links are updated continuously.        *
     *********************************************************************/
     function ticked() {
-        node.attr("transform", d => {
+        node
+        .attr("transform", d => {
             d.x = Math.max(0, Math.min(width, d.x)); // Ensure nodes stay within width
             d.y = Math.max(0, Math.min(height, d.y)); // Ensure nodes stay within height
             return `translate(${d.x},${d.y})`;
         });
-
         link
             .attr("x1", d => d.source.x)
             .attr("y1", d => d.source.y)
@@ -235,16 +242,31 @@ function renderGraph(graphData) {
     * CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
     *********************************************************************/
     function clusteringForce() {
+        // Return a function that gets called on each simulation step
         return function(alpha) {
             graphData.nodes.forEach(function(d) {
+                // Skip the root node itself
                 if (d.id !== rootNode) {
+                    // Determine the cluster center for this node based on its type
                     const cluster = clusterCenters[d.type];
-                    d.vx -= (d.x - cluster.x) * alpha * 0.1;
-                    d.vy -= (d.y - cluster.y) * alpha * 0.1;
+    
+                    // Check if the node is connected to a 'root'-type node through any link
+                    const isRootChild = graphData.links.some(link => 
+                        (link.target.id === d.id && link.source.type === 'root') ||
+                        (link.source.id === d.id && link.target.type === 'root')
+                    );
+    
+                    // Use different alpha scaling based on whether the node is connected to a 'root'-type node
+                    const scalingFactor = isRootChild ? 0.01 : 0.1;
+    
+                    // Adjust the x and y velocities towards the cluster center
+                    d.vx -= (d.x - cluster.x) * alpha * scalingFactor;
+                    d.vy -= (d.y - cluster.y) * alpha * scalingFactor;
                 }
             });
         };
     }
+    
 
     /*************************************************
     * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
