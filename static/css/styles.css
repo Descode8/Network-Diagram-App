@@ -6,19 +6,76 @@ body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+    background-color: #FFFFFF;
 }
 
 .left-container,
 .right-container {
-    background-color: #f0f0f0;
+    background-color: rgb(188, 148, 91, 0.6);
     z-index: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100vh;
     width: 15vw;
-    border-right: 1px solid #e0e0e0;
 }
+
+.right-container {
+    background-color: rgb(24, 40, 83, 0.6);
+    padding: 10px;
+    overflow-y: auto;
+
+}
+
+.right-container h2 {
+    margin-top: 0;
+}
+
+.right-container h3 {
+    margin-top: 20px;
+}
+
+.right-container h4 {
+    margin-top: 10px;
+}
+
+.right-container p {
+    margin-left: 10px;
+}
+
+.left-container {
+    background-color: rgba(188, 148, 91, 0.6);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    overflow-y: auto;
+    height: 100vh;
+    width: 15vw;
+}
+
+.left-container h1 {
+    margin-top: 0;
+}
+
+.left-container input[type="text"],
+.left-container input[type="range"] {
+    width: 80%;
+    margin: 5px 0;
+}
+
+.left-container button {
+    width: 80%;
+    margin: 5px 0;
+}
+
+.left-container label,
+.left-container span {
+    margin: 5px 0;
+}
+
 
 .graph-container {
     width: 70vw;
@@ -36,6 +93,7 @@ body {
     width: 100vw;
     height: 100vh;
     display: block;
+    cursor: pointer;
 }
 
 .tooltip {
@@ -54,22 +112,26 @@ body {
 
 text {
     font-family: 'Century Gothic Regular', 'Century Gothic', Arial, sans-serif;
+    cursor: pointer;
 }
 
 .root-node {
     font-weight: bold;
     font-size: 1rem;
     fill: #000000;
+    cursor: pointer;
 }
 
 .parent-node {
     font-weight: bold;
     font-size: .7rem;
     fill: #0C0C0C;
+    cursor: pointer;
 }
 
 .child-node {
     font-weight: normal;
     font-size: .7rem;
     fill: #000000;
+    cursor: pointer;
 }

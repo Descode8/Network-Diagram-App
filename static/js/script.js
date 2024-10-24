@@ -2,10 +2,22 @@
  * VARIABLE DECLARATIONS AND INITIAL SETUP
  ***************************************************************/
 let rootNode;
+let activeNodeId; // Variable to store the ID of the active node
+let parentNodes = []; // Stack of parent nodes
 
 // Select the <svg> element and the tooltip element using D3.js
 const svg = d3.select("svg");
 const tooltip = d3.select("#tooltip");
+
+// Select the right-container div
+const rightContainer = d3.select(".right-container");
+
+// Select the controls from the DOM
+const searchInput = document.getElementById('searchInput');
+const searchButton = document.getElementById('searchButton');
+const homeButton = document.getElementById('homeButton');
+const depthSlider = document.getElementById('depthSlider');
+const depthValueDisplay = document.getElementById('depthValue');
 
 // Get the actual dimensions of the SVG element
 const svgElement = svg.node();
@@ -26,8 +38,6 @@ let visibleNodes = [];
 let visibleLinks = [];
 let node; // Selection of nodes
 let link; // Selection of links
-let activeNode; // Currently active node
-let parentNodes = []; // Stack of parent nodes
 
 /**********************************
  * ADD ZOOM AND PAN FUNCTIONALITY *
@@ -72,21 +82,27 @@ async function fetchGraphData() {
  * ASSIGNING COLORS TO NODES BASED ON THEIR TYPE *
  *************************************************/
 function assignColors(data) {
-    // Extract unique node types from the data
-    const types = [...new Set(data.nodes.map(node => node.type))];
-
-    // Create a color scale with a unique color for each type
-    const colorScale = d3.scaleOrdinal()
-        .domain(types)
-        .range(d3.schemeCategory10); // You can choose a different color scheme if you prefer
+    // Map of node types to their specified colors
+    const typeColorMap = new Map([
+        ['Applications', '#000000'], // Root node
+        ['Application', '#4F81BD'],
+        ['Software', '#C0504D'],
+        ['People', '#9BBB59'],
+        ['Server', '#F79646'],
+        ['Technology', '#7030A0']
+    ]);
 
     // Assign colors to nodes based on their type
     data.nodes.forEach(node => {
         if (node.id === rootNode) {
-            nodeColorMap.set(node.id, '#231f20');
+            nodeColorMap.set(node.id, '#000000'); // Root node color
         } else {
-            const color = colorScale(node.type); // Get color from scale based on type
-            nodeColorMap.set(node.id, color);
+            const color = typeColorMap.get(node.type);
+            if (color) {
+                nodeColorMap.set(node.id, color);
+            } else {
+                nodeColorMap.set(node.id, '#808080'); // Default color if type not specified
+            }
         }
     });
 }
@@ -123,90 +139,18 @@ function renderGraph(data) {
     visibleNodes = [];
     visibleLinks = [];
 
-    // Identify the root node
-    const rootNodeId = rootNode; // Assuming `rootNode` is defined globally
-    const rootNodeObj = nodeById.get(rootNodeId);
-
-    if (!rootNodeObj) {
-        console.error("Root node not found in graph data");
-        return;
-    }
-
-    // Set root node as active node
-    rootNodeObj.isActive = true;
-    activeNode = rootNodeObj;
-    parentNodes = []; // No parent nodes at the beginning
-
-    // Add root node to visible nodes
-    visibleNodes.push(rootNodeObj);
-
-    // Find immediate children of the root node
-    const immediateLinks = data.links.filter(
-        link => link.source.id === rootNodeId || link.target.id === rootNodeId
-    );
-
-    immediateLinks.forEach(link => {
-        visibleLinks.push(link);
-
-        // Get the child node connected to the root
-        const childNode = link.source.id === rootNodeId ? link.target : link.source;
-
-        if (childNode && !visibleNodes.includes(childNode)) {
-            visibleNodes.push(childNode);
-        }
-    });
-
-    // Proceed with creating the visualization using visibleNodes and visibleLinks
-
-    /***************************************************
-    * CREATE LINKS BETWEEN NODES                       *
-    ****************************************************/
+    // Create initial selections for nodes and links
     link = g.append("g") // Append group element for links
         .attr("class", "links")
-        .selectAll("line")
-        .data(visibleLinks)
-        .enter().append("line")
-        .attr("stroke-width", 1)
-        .attr("stroke", "#D8D8D8");
+        .selectAll("line");
 
-    /****************************************************
-    * CREATE NODES AND ASSIGN CSS CLASSES BASED ON TYPE *
-    *****************************************************/
     node = g.append("g")
         .attr("class", "nodes")
-        .selectAll("g")
-        .data(visibleNodes)
-        .enter().append("g")
-        .call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended));
+        .selectAll("g");
 
-    /**************************************************************************
-    * APPEND CIRCLES FOR NODES                                                *
-    ***************************************************************************/
-    node.append("circle")
-        .attr("r", d => (d.id === rootNodeId ? 5: 3))
-        .attr("fill", d => nodeColorMap.get(d.id))
-        .on("click", nodeClicked)
-        .on("mouseover", (event, d) => showTooltip(event, d))
-        .on("mousemove", moveTooltip)
-        .on("mouseout", hideTooltip);
-
-    /************************************
-    * APPEND TEXT LABELS FOR NODES      *
-    *************************************/
-    node.append("text")
-        .attr("dx", d => (d.id === rootNodeId ? "1ex" : ".8ex"))
-        .attr("dy", d => (d.id === rootNodeId ? "0.5ex" : ".3ex"))
-        .text(d => d.id)
-        .attr("class", d => (d.id === rootNodeId ? 'root-node' : 'child-node'));
-
-    /*****************************************************************
-    * INITIALIZE THE FORCE SIMULATION                                *
-    ******************************************************************/
-    simulation = d3.forceSimulation(visibleNodes)
-        .force("link", d3.forceLink(visibleLinks)
+    // Initialize the force simulation
+    simulation = d3.forceSimulation()
+        .force("link", d3.forceLink()
             .distance(d => {
                 // Check if the source node's type is 'Application'
                 if (d.source.type === 'Application') {
@@ -228,7 +172,8 @@ function renderGraph(data) {
         .alphaDecay(0.03)
         .on("tick", ticked);
 
-    updateNodePositions();
+    // Initial render with default depth
+    resetGraph(parseInt(depthSlider.value));
 }
 
 /********************************************************************
@@ -257,7 +202,7 @@ function clusteringForce() {
     return function(alpha) {
         visibleNodes.forEach(function(d) {
             // Skip the active node and parent nodes
-            if (!d.isActive && !parentNodes.includes(d)) {
+            if (d.id !== activeNodeId && !parentNodes.includes(d)) {
                 // Determine the cluster center for this node based on its type
                 const cluster = clusterCenters[d.type];
 
@@ -273,7 +218,7 @@ function clusteringForce() {
 * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
 **************************************************/
 function clusterCollideForce() {
-    const padding = 10; // Minimum distance between cluster centers
+    const padding = 50; // Minimum distance between cluster centers
 
     // Extract unique node types from the data (excluding the root node type)
     const types = [...new Set(graphData.nodes
@@ -321,24 +266,26 @@ function clusterCollideForce() {
 * NODE CLICK EVENT HANDLERS FOR ACTIVE NODE MANAGEMENT *
 **************************************************/
 function nodeClicked(event, d) {
-    if (d === activeNode) {
+    if (d.id === activeNodeId) {
         return; // Do nothing if the clicked node is already active
     }
 
     // Update parentNodes stack
-    if (!parentNodes.includes(activeNode)) {
-        parentNodes.push(activeNode);
+    const previousActiveNode = nodeById.get(activeNodeId);
+    if (previousActiveNode && !parentNodes.includes(previousActiveNode)) {
+        parentNodes.push(previousActiveNode);
     }
 
-    activeNode.isActive = false; // Mark previous active node as inactive
-    d.isActive = true; // Mark clicked node as active
-    activeNode = d; // Update active node
+    activeNodeId = d.id; // Update active node ID
 
     // Expand new active node's immediate children
     expandNode(d);
 
     updateNodePositions();
     updateGraph();
+
+    // Update the right-container with the new active node's attributes
+    updateRightContainer();
 }
 
 function expandNode(node) {
@@ -393,7 +340,7 @@ function updateGraph() {
             .on("end", dragended));
 
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === rootNode ? 5 : 4))
+        .attr("r", d => (d.id === rootNode ? 4 : 3))
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked)
         .on("mouseover", (event, d) => showTooltip(event, d))
@@ -436,14 +383,14 @@ function ticked() {
 function updateNodePositions() {
     // Fix the active node at the center
     visibleNodes.forEach(n => {
-        if (n.isActive) {
+        if (n.id === activeNodeId) {
             n.fx = width / 2;
             n.fy = height / 2;
         } else if (parentNodes.includes(n)) {
             // Stack parent nodes at the top
             const index = parentNodes.indexOf(n);
             n.fx = width / 2;
-            n.fy = 50 + index * 30; // Stack with some spacing
+            n.fy = 50 + index * 1; // Stack with some spacing
         } else {
             n.fx = null;
             n.fy = null;
@@ -455,6 +402,133 @@ function updateNodePositions() {
     simulation.force("clusterCollide", clusterCollideForce());
 
     simulation.alpha(0.3).restart();
+}
+
+/************************************************
+* UPDATE RIGHT-CONTAINER WITH NODE ATTRIBUTES   *
+*************************************************/
+function updateRightContainer() {
+    // Clear the existing content
+    rightContainer.html("");
+
+    // Get the active node object
+    const activeNode = nodeById.get(activeNodeId);
+
+    // Display the active node's ID at the top
+    rightContainer.append("h2").text(`${activeNode.id}`);
+
+    // Display the active node's description
+    const description = activeNode.description ? activeNode.description : 'No description available';
+    rightContainer.append("p").text(`${description}`);
+
+    // Display the types and descriptions
+    rightContainer.append("h3").text("Immediate Children:");
+
+    // Get the types of the active node's immediate children
+    const immediateChildren = visibleNodes.filter(n => {
+        return visibleLinks.some(link =>
+            (link.source.id === activeNodeId && link.target.id === n.id) ||
+            (link.target.id === activeNodeId && link.source.id === n.id)
+        ) && n.id !== activeNodeId;
+    });
+
+    // Group children by type
+    const types = d3.group(immediateChildren, d => d.type);
+
+    // Display each type and its nodes
+    types.forEach((nodes, type) => {
+        rightContainer.append("h4").text(`Type: ${type}`);
+        nodes.forEach(node => {
+            const nodeDescription = node.description ? node.description : 'No description available';
+            rightContainer.append("p").text(`${node.id}: ${nodeDescription}`);
+        });
+    });
+}
+
+/************************************************
+* EVENT LISTENERS FOR CONTROLS                 *
+*************************************************/
+
+// Add event listener for the search button
+searchButton.addEventListener('click', () => {
+    const searchTerm = searchInput.value.trim();
+    if (searchTerm) {
+        searchNode(searchTerm);
+    }
+});
+
+// Add event listener for the home button
+homeButton.addEventListener('click', () => {
+    resetGraph();
+});
+
+// Add event listener for the depth slider
+depthSlider.addEventListener('input', () => {
+    const depth = parseInt(depthSlider.value);
+    depthValueDisplay.textContent = depth;
+    // Re-render the graph with the new depth
+    resetGraph(depth);
+});
+
+/************************************************
+* FUNCTIONS FOR CONTROLS                        *
+*************************************************/
+function searchNode(nodeId) {
+    // Check if the node exists
+    if (nodeById.has(nodeId)) {
+        const node = nodeById.get(nodeId);
+        // Reset the graph and set the searched node as active node
+        activeNodeId = nodeId;
+        parentNodes = []; // Clear parent nodes
+        visibleNodes = [];
+        visibleLinks = [];
+        // Expand the node based on the current depth
+        expandNodeByDepth(node, parseInt(depthSlider.value));
+        updateNodePositions();
+        updateGraph();
+        updateRightContainer();
+    } else {
+        alert("Node not found!");
+    }
+}
+
+function resetGraph(depth = parseInt(depthSlider.value)) {
+    // Reset to initial state with given depth
+    activeNodeId = rootNode;
+    parentNodes = [];
+    visibleNodes = [];
+    visibleLinks = [];
+    const rootNodeObj = nodeById.get(rootNode);
+    visibleNodes.push(rootNodeObj);
+    expandNodeByDepth(rootNodeObj, depth);
+    updateNodePositions();
+    updateGraph();
+    updateRightContainer();
+}
+
+function expandNodeByDepth(node, depth) {
+    if (depth > 0) {
+        // Find immediate children of the node
+        const newLinks = graphData.links.filter(
+            link => (link.source.id === node.id || link.target.id === node.id)
+        );
+
+        newLinks.forEach(link => {
+            // Ensure the link isn't already visible
+            if (!visibleLinks.includes(link)) {
+                visibleLinks.push(link);
+
+                // Get the connected node
+                const otherNode = link.source.id === node.id ? link.target : link.source;
+
+                if (otherNode && !visibleNodes.includes(otherNode)) {
+                    visibleNodes.push(otherNode);
+                    // Recursively expand the child node
+                    expandNodeByDepth(otherNode, depth - 1);
+                }
+            }
+        });
+    }
 }
 
 /************************************************
@@ -511,7 +585,7 @@ function dragged(event) {
 
 function dragended(event) {
     if (!event.active) simulation.alphaTarget(0);
-    if (!event.subject.isActive && !parentNodes.includes(event.subject)) {
+    if (event.subject.id !== activeNodeId && !parentNodes.includes(event.subject)) {
         event.subject.fx = null;
         event.subject.fy = null;
     }

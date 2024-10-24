@@ -2,22 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
     <title>Network Diagram</title>
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
 </head>
 <body>
-    <div class= "left-container">
-        <h1>Search</h1>
+    <div class="left-container">
+        <h1>Controls</h1>
+        <!-- Search Function -->
+        <input type="text" id="searchInput" placeholder="Search Node">
+        <button id="searchButton">Search</button>
+
+        <!-- Home Button -->
+        <button id="homeButton">Home</button>
+
+        <!-- Settings Slider -->
+        <label for="depthSlider">Depth:</label>
+        <input type="range" id="depthSlider" min="1" max="3" value="2">
+        <span id="depthValue">2</span>
     </div>
+
     <div class="graph-container">
         <svg></svg>
     </div>
+
     <div class="tooltip" id="tooltip"></div>
 
-    <div class= "right-container">
+    <div class="right-container">
         <h1>Attributes</h1>
     </div>
+
     <!-- Import D3.js library from CDN -->
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
