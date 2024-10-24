@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 
-def fetch_graph_data(excel_file='utilities/data/network_diagram.xlsx'):
+def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     """
     Dynamically extracts graph data from the Excel file based on its structure.
     It ensures all child nodes are directly linked to UPMIS, without intermediate parent nodes.

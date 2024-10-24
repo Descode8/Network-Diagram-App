@@ -1,8 +1,7 @@
 from flask import Flask, jsonify, render_template, request
-from utilities.data_extractor import fetch_graph_data
-import os
+from data_extractor import fetch_graph_data
 
-app = Flask(__name__, template_folder=os.path.join('utilities', 'templates'))
+app = Flask(__name__)
 
 @app.route("/", methods=["GET"])
 def index():

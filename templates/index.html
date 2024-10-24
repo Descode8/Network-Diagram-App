@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+    <title>Network Diagram</title>
+
+</head>
+<body>
+    <div class= "left-container">
+        <h1>Search</h1>
+    </div>
+    <div class="graph-container">
+        <svg></svg>
+    </div>
+    <div class="tooltip" id="tooltip"></div>
+
+    <div class= "right-container">
+        <h1>Attributes</h1>
+    </div>
+    <!-- Import D3.js library from CDN -->
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
