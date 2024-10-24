@@ -447,7 +447,12 @@ function updateRightContainer() {
 
 /************************************************
 * EVENT LISTENERS FOR CONTROLS                 *
-*************************************************/
+************************************************/
+
+// Modify the home button event listener to reset to the initial state
+homeButton.addEventListener('click', () => {
+    resetToInitialState(); // Reset to the same state as the initial render
+});
 
 // Add event listener for the search button
 searchButton.addEventListener('click', () => {
@@ -457,42 +462,49 @@ searchButton.addEventListener('click', () => {
     }
 });
 
-// Add event listener for the home button
-homeButton.addEventListener('click', () => {
-    resetGraph();
-});
-
 // Add event listener for the depth slider
 depthSlider.addEventListener('input', () => {
     const depth = parseInt(depthSlider.value);
     depthValueDisplay.textContent = depth;
-    // Re-render the graph with the new depth
-    resetGraph(depth);
+    resetGraph(depth, activeNodeId); // Use the active node instead of root
 });
 
 /************************************************
 * FUNCTIONS FOR CONTROLS                        *
 *************************************************/
 function searchNode(nodeId) {
-    // Check if the node exists
     if (nodeById.has(nodeId)) {
-        const node = nodeById.get(nodeId);
-        // Simulate a click on the node
-        nodeClicked(null, node);
+        resetGraph(parseInt(depthSlider.value), nodeId); // Unified logic
     } else {
         alert("Node not found!");
     }
 }
 
-function resetGraph(depth = parseInt(depthSlider.value)) {
-    // Reset to initial state with given depth
-    activeNodeId = rootNode;
+/************************************************
+* FUNCTIONS FOR CONTROLS AND INTERACTIONS       *
+************************************************/
+
+// Reset the graph to the initial state as when the app loads
+function resetToInitialState() {
+    // Set the depth slider to its initial value
+    depthSlider.value = 1;
+    depthValueDisplay.textContent = 1;
+
+    // Reset graph to the root node with depth 1
+    resetGraph(1, rootNode);
+}
+
+// Unified logic for resetting the graph
+function resetGraph(depth = parseInt(depthSlider.value), nodeId = rootNode) {
+    activeNodeId = nodeId;
     parentNodes = [];
     visibleNodes = [];
     visibleLinks = [];
-    const rootNodeObj = nodeById.get(rootNode);
-    visibleNodes.push(rootNodeObj);
-    expandNodeByDepth(rootNodeObj, depth);
+
+    const nodeObj = nodeById.get(nodeId);
+    visibleNodes.push(nodeObj);
+    expandNodeByDepth(nodeObj, depth);
+
     updateNodePositions();
     updateGraph();
     updateRightContainer();
