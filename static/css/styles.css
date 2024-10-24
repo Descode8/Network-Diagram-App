@@ -23,7 +23,8 @@ body {
 .graph-container {
     width: 70vw;
     height: 100vh;  /* Ensure the container has full height */
-    border: 2px solid limegreen;
+    border-left: 2px solid black;
+    border-right: 2px solid black;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -53,23 +54,22 @@ body {
 
 text {
     font-family: 'Century Gothic Regular', 'Century Gothic', Arial, sans-serif;
-    font-size: 12px;
 }
 
 .root-node {
     font-weight: bold;
-    font-size: 16px;
-    fill: black;
+    font-size: 1rem;
+    fill: #000000;
 }
 
 .parent-node {
     font-weight: bold;
-    font-size: 14px;
-    fill: black;
+    font-size: .7rem;
+    fill: #0C0C0C;
 }
 
 .child-node {
     font-weight: normal;
-    font-size: 12px;
-    fill: #333;
+    font-size: .7rem;
+    fill: #000000;
 }

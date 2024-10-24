@@ -1,7 +1,6 @@
 /***************************************************************
  * VARIABLE DECLARATIONS AND INITIAL SETUP
  ***************************************************************/
-// Root node for the visualization; this is the main point from which other nodes connect
 let rootNode;
 
 // Select the <svg> element and the tooltip element using D3.js
@@ -14,14 +13,21 @@ let width = svgElement.getBoundingClientRect().width;
 let height = svgElement.getBoundingClientRect().height;
 
 // Create a group <g> element where all the graph elements (nodes and links) will reside
-// Apply a transform to this group when zooming and panning
 const g = svg.append("g");
 
 // A Map to store node colors by their ID for quick reference
 const nodeColorMap = new Map();
 
-// Declare the simulation outside to make it accessible across functions
+// Declare the simulation and other variables to make them accessible across functions
 let simulation;
+let graphData;
+let nodeById;
+let visibleNodes = [];
+let visibleLinks = [];
+let node; // Selection of nodes
+let link; // Selection of links
+let activeNode; // Currently active node
+let parentNodes = []; // Stack of parent nodes
 
 /**********************************
  * ADD ZOOM AND PAN FUNCTIONALITY *
@@ -50,7 +56,7 @@ async function fetchGraphData() {
     }
 
     // Parse the response into JSON
-    const graphData = await response.json();
+    graphData = await response.json();
     rootNode = graphData.links[0].target;
     console.log("Root node:", rootNode);
     console.log("Graph data fetched successfully:", graphData);
@@ -77,7 +83,7 @@ function assignColors(data) {
     // Assign colors to nodes based on their type
     data.nodes.forEach(node => {
         if (node.id === rootNode) {
-            nodeColorMap.set(node.id, '#231f20'); 
+            nodeColorMap.set(node.id, '#231f20');
         } else {
             const color = colorScale(node.type); // Get color from scale based on type
             nodeColorMap.set(node.id, color);
@@ -96,28 +102,145 @@ function isParentNode(node, graphData) {
 /*************************************
  * RENDERING THE GRAPH VISUALIZATION *
  *************************************/
-function renderGraph(graphData) {
+function renderGraph(data) {
 
     /*****************************************************
     * CREATE A MAP TO REFERENCE NODE OBJECTS BY THEIR ID *
     ******************************************************/
-    const nodeById = new Map(graphData.nodes.map(node => [node.id, node]));
+    nodeById = new Map(data.nodes.map(node => [node.id, node]));
 
     // Replace source and target IDs in links with actual node objects
-    graphData.links.forEach(link => {
-        link.source = nodeById.get(link.source);
-        link.target = nodeById.get(link.target);
+    data.links.forEach(link => {
+        if (typeof link.source === 'string') {
+            link.source = nodeById.get(link.source);
+        }
+        if (typeof link.target === 'string') {
+            link.target = nodeById.get(link.target);
+        }
     });
 
-    /***************************************************************
-    * DYNAMICALLY ASSIGN CLUSTER CENTERS FOR NODE TYPES
-    ***************************************************************/
+    // Initialize visible nodes and links
+    visibleNodes = [];
+    visibleLinks = [];
+
+    // Identify the root node
+    const rootNodeId = rootNode; // Assuming `rootNode` is defined globally
+    const rootNodeObj = nodeById.get(rootNodeId);
+
+    if (!rootNodeObj) {
+        console.error("Root node not found in graph data");
+        return;
+    }
+
+    // Set root node as active node
+    rootNodeObj.isActive = true;
+    activeNode = rootNodeObj;
+    parentNodes = []; // No parent nodes at the beginning
+
+    // Add root node to visible nodes
+    visibleNodes.push(rootNodeObj);
+
+    // Find immediate children of the root node
+    const immediateLinks = data.links.filter(
+        link => link.source.id === rootNodeId || link.target.id === rootNodeId
+    );
+
+    immediateLinks.forEach(link => {
+        visibleLinks.push(link);
+
+        // Get the child node connected to the root
+        const childNode = link.source.id === rootNodeId ? link.target : link.source;
+
+        if (childNode && !visibleNodes.includes(childNode)) {
+            visibleNodes.push(childNode);
+        }
+    });
+
+    // Proceed with creating the visualization using visibleNodes and visibleLinks
+
+    /***************************************************
+    * CREATE LINKS BETWEEN NODES                       *
+    ****************************************************/
+    link = g.append("g") // Append group element for links
+        .attr("class", "links")
+        .selectAll("line")
+        .data(visibleLinks)
+        .enter().append("line")
+        .attr("stroke-width", 1)
+        .attr("stroke", "#D8D8D8");
+
+    /****************************************************
+    * CREATE NODES AND ASSIGN CSS CLASSES BASED ON TYPE *
+    *****************************************************/
+    node = g.append("g")
+        .attr("class", "nodes")
+        .selectAll("g")
+        .data(visibleNodes)
+        .enter().append("g")
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+
+    /**************************************************************************
+    * APPEND CIRCLES FOR NODES                                                *
+    ***************************************************************************/
+    node.append("circle")
+        .attr("r", d => (d.id === rootNodeId ? 5: 3))
+        .attr("fill", d => nodeColorMap.get(d.id))
+        .on("click", nodeClicked)
+        .on("mouseover", (event, d) => showTooltip(event, d))
+        .on("mousemove", moveTooltip)
+        .on("mouseout", hideTooltip);
+
+    /************************************
+    * APPEND TEXT LABELS FOR NODES      *
+    *************************************/
+    node.append("text")
+        .attr("dx", d => (d.id === rootNodeId ? "1ex" : ".8ex"))
+        .attr("dy", d => (d.id === rootNodeId ? "0.5ex" : ".3ex"))
+        .text(d => d.id)
+        .attr("class", d => (d.id === rootNodeId ? 'root-node' : 'child-node'));
+
+    /*****************************************************************
+    * INITIALIZE THE FORCE SIMULATION                                *
+    ******************************************************************/
+    simulation = d3.forceSimulation(visibleNodes)
+        .force("link", d3.forceLink(visibleLinks)
+            .distance(d => {
+                // Check if the source node's type is 'Application'
+                if (d.source.type === 'Application') {
+                    return 75;
+                } else {
+                    return 150;
+                }
+            })
+            .strength(0.1))
+        .force("charge", d3.forceManyBody()
+            .strength(-100)
+            .distanceMax(1000))
+        .force("center", d3.forceCenter(width / 2.5, height / 2))
+        .force("collision", d3.forceCollide()
+            .radius(10)
+            .strength(-100))
+        .force("cluster", clusteringForce()) // Custom clustering force
+        .force("clusterCollide", clusterCollideForce(10)) // Custom force to repel clusters
+        .alphaDecay(0.03)
+        .on("tick", ticked);
+
+    updateNodePositions();
+}
+
+/********************************************************************
+* CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
+*********************************************************************/
+function clusteringForce() {
     // Extract unique node types from the data (excluding the root node type)
     const types = [...new Set(graphData.nodes
         .filter(node => node.id !== rootNode)
         .map(node => node.type))];
 
-    // Assign cluster centers to types, evenly spaced around a circle centered on the root node
+    // Assign cluster centers to types, evenly spaced around a circle centered on the active node
     const clusterCenters = {};
     const numTypes = types.length;
     const clusterRadius = Math.min(width, height) / 3; // Radius of the circle for clusters
@@ -130,199 +253,229 @@ function renderGraph(graphData) {
         };
     });
 
-    /***************************************************
-    * CREATE LINKS BETWEEN NODES                       *
-    * Links are represented as lines connecting nodes. *
-    ****************************************************/
-    const link = g.append("g") // Append group element for links
-        .attr("class", "links")
-        .selectAll("line") // Select all lines for links
-        .data(graphData.links) // Bind link data to the elements
-        .enter().append("line") // Append a line for each link
-        .attr("stroke-width", 1) // Set the thickness of the link lines
-        .attr("stroke", "#999"); // Set the line color
+    // Return a function that gets called on each simulation step
+    return function(alpha) {
+        visibleNodes.forEach(function(d) {
+            // Skip the active node and parent nodes
+            if (!d.isActive && !parentNodes.includes(d)) {
+                // Determine the cluster center for this node based on its type
+                const cluster = clusterCenters[d.type];
 
-    /****************************************************
-    * CREATE NODES AND ASSIGN CSS CLASSES BASED ON TYPE *
-    * Each node consists of a circle and a text label.  *
-    *****************************************************/
-    const node = g.append("g") // Append group element for nodes
-        .attr("class", "nodes")
-        .selectAll("g") // Select all group elements for nodes
-        .data(graphData.nodes) // Bind node data to the elements
-        .enter().append("g") // Append a group for each node
-        .call(d3.drag() // Enable dragging functionality on nodes
-            .on("start", dragstarted) // Handle drag start event
-            .on("drag", dragged) // Handle dragging event
-            .on("end", dragended)); // Handle drag end event
-
-    /**************************************************************************
-    * APPEND CIRCLES FOR NODES                                                *
-    * Circles visually represent each node, filled with colors based on type. *
-    ***************************************************************************/
-    node.append("circle") // Append a circle for each node
-        .attr("r", d => {
-            if (d.id === rootNode) return 5; // Root node is larger
-            return 3; // Other nodes have a standard size
-        })
-        .attr("fill", d => nodeColorMap.get(d.id)) // Set circle color based on node ID
-        .on("mouseover", (event, d) => showTooltip(event, d)) // Show tooltip on hover
-        .on("mousemove", moveTooltip) // Move tooltip with mouse
-        .on("mouseout", hideTooltip); // Hide tooltip when mouse leaves
-
-    /************************************
-    * APPEND TEXT LABELS FOR NODES      *
-    * Text labels display the node IDs. *
-    *************************************/
-    node.append("text")
-        .attr("dx", "1ex") // Slightly offset for child nodes
-        .attr("dy", ".5ex") // Adjust vertical alignment
-        .text(d => d.id) // Display the node ID
-        .attr("class", d => {
-            // Assign 'root-node' if it's the root node, otherwise assign child class
-            if (d.id === rootNode) return 'root-node';
-            return 'child-node';
-        });
-
-    /*****************************************************************
-    * INITIALIZE THE FORCE SIMULATION                                *
-    * The simulation applies physics-like behavior to nodes, such as *
-    * repelling or attracting forces and centering the graph.        *
-    ******************************************************************/
-    simulation = d3.forceSimulation(graphData.nodes)
-        .force("link", d3.forceLink(graphData.links)
-        .distance(d => {
-            // Check if the source node's type is 'Application'
-            if (d.source.type === 'Application') {
-                return 200;
-            } else {
-                return 100;
-            }
-        })
-            .strength(0.1))         // Link strength
-        .force("charge", d3.forceManyBody()
-            .strength(-300)       // Repulsion between nodes; more negative = stronger repulsion
-            .distanceMax(200))   // Limit the distance over which nodes repel each other; nodes more than x val away will not repel
-        .force("center", d3.forceCenter(width / 2.5, height / 2)) // Center the graph
-        .force("collision", d3.forceCollide()
-            .radius(10)          // Set collision radius to prevent overlapping
-            .strength(-100))      // Adjust strength to smooth out interactions
-        .force("cluster", clusteringForce()) // Custom clustering force
-        .force("clusterCollide", clusterCollideForce(10)) // Custom force to repel clusters
-        .alphaDecay(0.03)        // Control the cooling rate for smoother animation
-        .on("tick", ticked);
-
-        graphData.nodes.forEach(node => {
-            if (node.type === 'root') {
-                node.fx = width / 2;  // Lock x position to the center
-                node.fy = 100;          // Lock y position to the top (50 pixels down)
+                // Adjust the x and y velocities towards the cluster center
+                d.vx -= (d.x - cluster.x) * alpha * 0.1;
+                d.vy -= (d.y - cluster.y) * alpha * 0.1;
             }
         });
+    };
+}
 
-    /********************************************************************
-    * SIMULATION TICK FUNCTION: UPDATE POSITIONS OF NODES AND LINKS     *
-    * This function runs on every tick of the simulation, ensuring that *
-    * the positions of nodes and links are updated continuously.        *
-    *********************************************************************/
-    function ticked() {
-        node
-        .attr("transform", d => {
-            d.x = Math.max(0, Math.min(width, d.x)); // Ensure nodes stay within width
-            d.y = Math.max(0, Math.min(height, d.y)); // Ensure nodes stay within height
-            return `translate(${d.x},${d.y})`;
-        });
-        link
-            .attr("x1", d => d.source.x)
-            .attr("y1", d => d.source.y)
-            .attr("x2", d => d.target.x)
-            .attr("y2", d => d.target.y);
-    }
+/*************************************************
+* CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
+**************************************************/
+function clusterCollideForce() {
+    const padding = 10; // Minimum distance between cluster centers
 
-    /********************************************************************
-    * CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
-    *********************************************************************/
-    function clusteringForce() {
-        // Return a function that gets called on each simulation step
-        return function(alpha) {
-            graphData.nodes.forEach(function(d) {
-                // Skip the root node itself
-                if (d.id !== rootNode) {
-                    // Determine the cluster center for this node based on its type
-                    const cluster = clusterCenters[d.type];
-    
-                    // Check if the node is connected to a 'root'-type node through any link
-                    const isRootChild = graphData.links.some(link => 
-                        (link.target.id === d.id && link.source.type === 'root') ||
-                        (link.source.id === d.id && link.target.type === 'root')
-                    );
-    
-                    // Use different alpha scaling based on whether the node is connected to a 'root'-type node
-                    const scalingFactor = isRootChild ? 0.01 : 0.1;
-    
-                    // Adjust the x and y velocities towards the cluster center
-                    d.vx -= (d.x - cluster.x) * alpha * scalingFactor;
-                    d.vy -= (d.y - cluster.y) * alpha * scalingFactor;
+    // Extract unique node types from the data (excluding the root node type)
+    const types = [...new Set(graphData.nodes
+        .filter(node => node.id !== rootNode)
+        .map(node => node.type))];
+
+    // Assign cluster centers to types, evenly spaced around a circle centered on the active node
+    const clusterCenters = {};
+    const numTypes = types.length;
+    const clusterRadius = Math.min(width, height) / 3; // Radius of the circle for clusters
+
+    types.forEach((type, index) => {
+        const angle = (index / numTypes) * 2 * Math.PI;
+        clusterCenters[type] = {
+            x: width / 2 + clusterRadius * Math.cos(angle),
+            y: height / 2 + clusterRadius * Math.sin(angle)
+        };
+    });
+
+    return function() {
+        types.forEach((typeA, i) => {
+            const clusterA = clusterCenters[typeA];
+            types.slice(i + 1).forEach(typeB => {
+                const clusterB = clusterCenters[typeB];
+                let dx = clusterB.x - clusterA.x;
+                let dy = clusterB.y - clusterA.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                let minDistance = padding;
+
+                if (distance < minDistance) {
+                    let moveX = dx / distance * (minDistance - distance) / 2;
+                    let moveY = dy / distance * (minDistance - distance) / 2;
+
+                    clusterA.x -= moveX;
+                    clusterA.y -= moveY;
+                    clusterB.x += moveX;
+                    clusterB.y += moveY;
                 }
             });
-        };
-    }
-    
-
-    /*************************************************
-    * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
-    **************************************************/
-    function clusterCollideForce() {
-        const padding = 50; // Minimum distance between cluster centers
-        return function() {
-            types.forEach((typeA, i) => {
-                const clusterA = clusterCenters[typeA];
-                types.slice(i + 1).forEach(typeB => {
-                    const clusterB = clusterCenters[typeB];
-                    let dx = clusterB.x - clusterA.x;
-                    let dy = clusterB.y - clusterA.y;
-                    let distance = Math.sqrt(dx * dx + dy * dy);
-                    let minDistance = padding;
-
-                    if (distance < minDistance) {
-                        let moveX = dx / distance * (minDistance - distance) / 2;
-                        let moveY = dy / distance * (minDistance - distance) / 2;
-
-                        clusterA.x -= moveX;
-                        clusterA.y -= moveY;
-                        clusterB.x += moveX;
-                        clusterB.y += moveY;
-                    }
-                });
-            });
-        };
-    }
-
-    /************************************************
-    * RESPONSIVENESS: CENTER GRAPH ON WINDOW RESIZE *
-    *************************************************/
-    window.addEventListener("resize", () => {
-        // Get the actual dimensions of the SVG element
-        const svgElement = svg.node();
-        width = svgElement.getBoundingClientRect().width;
-        height = svgElement.getBoundingClientRect().height;
-
-        // Update the SVG size
-        svg.attr("width", width).attr("height", height);
-
-        // Update the force center to keep the graph centered
-        simulation.force("center", d3.forceCenter(width / 2, height / 2));
-
-        // Recalculate cluster centers
-        const clusterRadius = Math.min(width, height) / 3;
-        types.forEach((type, index) => {
-            const angle = (index / numTypes) * 2 * Math.PI;
-            clusterCenters[type].x = width / 2 + clusterRadius * Math.cos(angle);
-            clusterCenters[type].y = height / 2 + clusterRadius * Math.sin(angle);
         });
-
-        simulation.alpha(0.3).restart(); // Restart simulation for smooth transition
-    });
+    };
 }
+
+/*************************************************
+* NODE CLICK EVENT HANDLERS FOR ACTIVE NODE MANAGEMENT *
+**************************************************/
+function nodeClicked(event, d) {
+    if (d === activeNode) {
+        return; // Do nothing if the clicked node is already active
+    }
+
+    // Update parentNodes stack
+    if (!parentNodes.includes(activeNode)) {
+        parentNodes.push(activeNode);
+    }
+
+    activeNode.isActive = false; // Mark previous active node as inactive
+    d.isActive = true; // Mark clicked node as active
+    activeNode = d; // Update active node
+
+    // Expand new active node's immediate children
+    expandNode(d);
+
+    updateNodePositions();
+    updateGraph();
+}
+
+function expandNode(node) {
+    // Find immediate children of the node
+    const newLinks = graphData.links.filter(
+        link => (link.source.id === node.id || link.target.id === node.id)
+    );
+
+    newLinks.forEach(link => {
+        // Ensure the link isn't already visible
+        if (!visibleLinks.includes(link)) {
+            visibleLinks.push(link);
+
+            // Get the connected node
+            const otherNode = link.source.id === node.id ? link.target : link.source;
+
+            if (otherNode && !visibleNodes.includes(otherNode)) {
+                visibleNodes.push(otherNode);
+            }
+        }
+    });
+
+    // Optionally, you can collapse previous active node's children here if desired
+}
+
+/**************************************
+* UPDATE THE GRAPH AFTER NODE CHANGES *
+***************************************/
+function updateGraph() {
+    // Update links
+    link = g.select(".links").selectAll("line")
+        .data(visibleLinks, d => `${d.source.id}-${d.target.id}`);
+
+    link.exit().remove();
+
+    const linkEnter = link.enter().append("line")
+        .attr("stroke-width", 1)
+        .attr("stroke", "#D8D8D8");
+
+    link = linkEnter.merge(link);
+
+    // Update nodes
+    node = g.select(".nodes").selectAll("g")
+        .data(visibleNodes, d => d.id);
+
+    node.exit().remove();
+
+    const nodeEnter = node.enter().append("g")
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+
+    nodeEnter.append("circle")
+        .attr("r", d => (d.id === rootNode ? 5 : 4))
+        .attr("fill", d => nodeColorMap.get(d.id))
+        .on("click", nodeClicked)
+        .on("mouseover", (event, d) => showTooltip(event, d))
+        .on("mousemove", moveTooltip)
+        .on("mouseout", hideTooltip);
+
+    nodeEnter.append("text")
+        .attr("dx", d => (d.id === rootNode ? "-1.5ex" : "1.5ex"))
+        .attr("dy", ".5ex")
+        .text(d => d.id)
+        .attr("class", d => (d.id === rootNode ? 'root-node' : 'child-node'));
+
+    node = nodeEnter.merge(node);
+
+    // Restart the simulation
+    simulation.nodes(visibleNodes);
+    simulation.force("link").links(visibleLinks);
+    simulation.alpha(0.3).restart();
+}
+
+/********************************************************************
+* SIMULATION TICK FUNCTION: UPDATE POSITIONS OF NODES AND LINKS     *
+*********************************************************************/
+function ticked() {
+    node.attr("transform", d => {
+        d.x = Math.max(0, Math.min(width, d.x)); // Ensure nodes stay within width
+        d.y = Math.max(0, Math.min(height, d.y)); // Ensure nodes stay within height
+        return `translate(${d.x},${d.y})`;
+    });
+
+    link.attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+}
+
+/************************************************
+* UPDATE NODE POSITIONS BASED ON ACTIVE NODE    *
+*************************************************/
+function updateNodePositions() {
+    // Fix the active node at the center
+    visibleNodes.forEach(n => {
+        if (n.isActive) {
+            n.fx = width / 2;
+            n.fy = height / 2;
+        } else if (parentNodes.includes(n)) {
+            // Stack parent nodes at the top
+            const index = parentNodes.indexOf(n);
+            n.fx = width / 2;
+            n.fy = 50 + index * 30; // Stack with some spacing
+        } else {
+            n.fx = null;
+            n.fy = null;
+        }
+    });
+
+    // Reinitialize the clustering force to recalculate cluster centers based on the active node
+    simulation.force("cluster", clusteringForce());
+    simulation.force("clusterCollide", clusterCollideForce());
+
+    simulation.alpha(0.3).restart();
+}
+
+/************************************************
+* RESPONSIVENESS: CENTER GRAPH ON WINDOW RESIZE *
+*************************************************/
+window.addEventListener("resize", () => {
+    // Get the actual dimensions of the SVG element
+    const svgElement = svg.node();
+    width = svgElement.getBoundingClientRect().width;
+    height = svgElement.getBoundingClientRect().height;
+
+    // Update the SVG size
+    svg.attr("width", width).attr("height", height);
+
+    // Update the force center to keep the graph centered
+    simulation.force("center", d3.forceCenter(width / 2, height / 2));
+
+    updateNodePositions();
+
+    simulation.alpha(0.3).restart(); // Restart simulation for smooth transition
+});
 
 /************************************************
 * TOOLTIP FUNCTIONS TO DISPLAY NODE INFORMATION *
@@ -346,20 +499,22 @@ function hideTooltip() {
 * DRAG FUNCTIONS TO ENABLE INTERACTIVE NODE MOVEMENT *
 ******************************************************/
 function dragstarted(event) {
-    if (!event.active) simulation.alphaTarget(0.3).restart(); // Restart simulation
-    event.subject.fx = event.subject.x; // Fix x position
-    event.subject.fy = event.subject.y; // Fix y position
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
 }
 
 function dragged(event) {
-    event.subject.fx = event.x; // Set new x position
-    event.subject.fy = event.y; // Set new y position
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
 }
 
 function dragended(event) {
-    if (!event.active) simulation.alphaTarget(0); // Stop the simulation after drag
-    event.subject.fx = null; // Release fixed x position, allowing it to move freely
-    event.subject.fy = null; // Release fixed y position, restoring natural movement
+    if (!event.active) simulation.alphaTarget(0);
+    if (!event.subject.isActive && !parentNodes.includes(event.subject)) {
+        event.subject.fx = null;
+        event.subject.fy = null;
+    }
 }
 
 /*****************************************************
@@ -368,7 +523,5 @@ function dragended(event) {
 
 // Ensure the SVG element is fully loaded before starting
 window.onload = function() {
-    // Calls `fetchGraphData` when the page loads to initialize the graph.
-    // This will retrieve the graph data from the backend and render it in the SVG element.
-    fetchGraphData(); // Start fetching and rendering the graph
+    fetchGraphData();
 };
