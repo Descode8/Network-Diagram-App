@@ -348,7 +348,7 @@ function updateGraph() {
         .on("mouseout", hideTooltip);
 
     nodeEnter.append("text")
-        .attr("dx", d => (d.id === rootNode ? "-1.5ex" : "1.5ex"))
+        .attr("dx", "1ex")
         .attr("dy", ".5ex")
         .text(d => d.id)
         .attr("class", d => (d.id === rootNode ? 'root-node' : 'child-node'));
@@ -477,16 +477,8 @@ function searchNode(nodeId) {
     // Check if the node exists
     if (nodeById.has(nodeId)) {
         const node = nodeById.get(nodeId);
-        // Reset the graph and set the searched node as active node
-        activeNodeId = nodeId;
-        parentNodes = []; // Clear parent nodes
-        visibleNodes = [];
-        visibleLinks = [];
-        // Expand the node based on the current depth
-        expandNodeByDepth(node, parseInt(depthSlider.value));
-        updateNodePositions();
-        updateGraph();
-        updateRightContainer();
+        // Simulate a click on the node
+        nodeClicked(null, node);
     } else {
         alert("Node not found!");
     }
