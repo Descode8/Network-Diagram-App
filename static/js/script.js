@@ -1,91 +1,103 @@
 /***************************************************************
  * VARIABLE DECLARATIONS AND INITIAL SETUP
  ***************************************************************/
-let rootNode;
-let activeNodeId; // Variable to store the ID of the active node
-let parentNodes = []; // Stack of parent nodes
+// Stores the home node of the graph
+let homeNode;
 
-// Select the <svg> element and the tooltip element using D3.js
+// Variable to store the ID of the currently active/selected node
+let activeNodeId;
+
+// Stack array to keep track of parent nodes when navigating the graph
+let parentNodes = [];
+
+// Select the main SVG element where the graph will be rendered using D3
 var svg = d3.select("svg");
+
+// Select the tooltip element that will show node information on hover
 var tooltip = d3.select("#tooltip");
 
-// Select the right-container div
+// Select the container that will show detailed information about selected nodes
 var rightContainer = d3.select(".right-container");
 
-// Select the controls from the DOM
-var searchInput = document.getElementById('searchInput');
-var searchButton = document.getElementById('searchButton');
-var homeButton = document.getElementById('homeButton');
-var depthSlider = document.getElementById('depthSlider');
-var depthValueDisplay = document.getElementById('depthValue');
+// Get references to UI control elements
+var searchInput = document.getElementById('searchInput');    // Input field for node search
+var searchButton = document.getElementById('searchButton');  // Button to trigger search
+var homeButton = document.getElementById('homeButton');      // Button to return to home view
+var depthSlider = document.getElementById('depthSlider');   // Slider to control graph depth
+var depthValueDisplay = document.getElementById('depthValue'); // Display current depth value
 
-// Get the actual dimensions of the SVG element
+// Get the actual dimensions of the SVG container
 var svgElement = svg.node();
-let width = svgElement.getBoundingClientRect().width;
-let height = svgElement.getBoundingClientRect().height;
+let width = svgElement.getBoundingClientRect().width;   // Get actual width of SVG
+let height = svgElement.getBoundingClientRect().height; // Get actual height of SVG
 
-// Create a group <g> element where all the graph elements (nodes and links) will reside
+// Create a group element to contain all graph elements (nodes and links)
 var g = svg.append("g");
 
-// A Map to store node colors by their ID for quick reference
+// Map to store colors for each node, indexed by node ID
 var nodeColorMap = new Map();
 
-// Declare the simulation and other variables to make them accessible across functions
-let simulation;
-let graphData;
-let nodeById;
-let visibleNodes = [];
-let visibleLinks = [];
-let node; // Selection of nodes
-let link; // Selection of links
+// Declare main graph variables to be accessible throughout the application
+let simulation;  // Force simulation that positions nodes
+let graphData;   // The complete graph data structure
+let nodeById;    // Map to quickly look up nodes by their ID
+let visibleNodes = []; // Array of currently visible nodes
+let visibleLinks = []; // Array of currently visible links
+let node;  // D3 selection of node elements
+let link;  // D3 selection of link elements
 
- // Map of node types to their specified colors
+// Define color mapping for different types of nodes
 const typeColorMap = new Map([
-    ['Root', '#000000'], // Root node
-    ['Application', '#92CDDC'],
-    ['Software', '#B2A2C7'],
-    ['People', '#548DD4'],
-    ['Server', '#D99694'],
-    ['Technology', '#938953']
+    ['Home', '#000000'],      
+    ['Application', '#000000'], 
+    ['People', '#9BBB59'],      
+    ['Server', '#F79646'],      
+    ['Technology', '#C0504D'],
+    ['Windows Server', '#C0504D'],
+    ['VMWare', '#C0504D'],
+    ['Procurement', '#FF0000']
 ]);
 
 /**********************************
  * ADD ZOOM AND PAN FUNCTIONALITY *
  **********************************/
+// Create a D3 zoom behavior object
 var zoom = d3.zoom()
-    .scaleExtent([0.5, 1.5]) // Set the minimum and maximum zoom scale
+    // Set zoom limits: 0.5 = 50% zoomed out, 1.5 = 150% zoomed in
+    .scaleExtent([0.5, 1.5])
+    // Event handler for zoom/pan actions that transforms the graph container
     .on('zoom', (event) => {
         g.attr('transform', event.transform);
     });
 
-svg.call(zoom); // Attach zoom behavior to the SVG element
+// Apply the zoom behavior to the SVG element
+svg.call(zoom);
 
 /**********************************
  * FETCHING DATA FROM THE BACKEND *
  **********************************/
-
 async function fetchGraphData() {
     var response = await fetch("/", {
-        headers: { "Accept": "application/json" } // Expecting JSON data from the server
+        headers: { "Accept": "application/json" }
     });
 
-    // If the request fails, log an error and exit
     if (!response.ok) {
         console.error("Failed to fetch graph data:", response.statusText);
         return;
     }
 
-    // Parse the response into JSON
     graphData = await response.json();
-    rootNode = activeNodeId = graphData.links[0].target;
-    console.log("Root node:", rootNode);
+
+    // Dynamically assign home and active nodes from the graph data
+    const homeLink = graphData.links.find(link => link.target === 'home') || graphData.links[0];
+    homeNode = homeLink ? homeLink.target : 'home';
+    activeNodeId = homeLink ? homeLink.target : 'Applications';
+
+    console.log("home node:", homeNode);
     console.log("Active node:", activeNodeId);
     console.log("Graph data fetched successfully:", graphData);
 
-    // Assign colors to the nodes
     assignColors(graphData);
-
-    // Render the graph visualization
     renderGraph(graphData);
 }
 
@@ -93,16 +105,20 @@ async function fetchGraphData() {
  * ASSIGNING COLORS TO NODES BASED ON THEIR TYPE *
  *************************************************/
 function assignColors(data) {
-    // Assign colors to nodes based on their type
+    // Iterate through each node in the dataset
     data.nodes.forEach(node => {
-        if (node.id === rootNode) {
-            nodeColorMap.set(node.id, '#000000'); // Root node color
+        if (node.id === homeNode) {
+            // home node gets black color
+            nodeColorMap.set(node.id, '#000000');
         } else {
+            // Get the color associated with the node's type from the type-color mapping
             var color = typeColorMap.get(node.type);
             if (color) {
+                // If a color exists for this type, use it
                 nodeColorMap.set(node.id, color);
             } else {
-                nodeColorMap.set(node.id, '#808080'); // Default color if type not specified
+                // If no color is defined for this type, use gray as default
+                nodeColorMap.set(node.id, '#808080');
             }
         }
     });
@@ -112,7 +128,7 @@ function assignColors(data) {
  * HELPER FUNCTION TO CHECK IF A NODE IS A PARENT NODE *
  *******************************************************/
 function isParentNode(node, graphData) {
-    // A node is a parent if it is the source of at least one link
+    // Check if this node is the source (parent) of any link in the graph
     return graphData.links.some(link => link.source.id === node.id);
 }
 
@@ -120,60 +136,68 @@ function isParentNode(node, graphData) {
  * RENDERING THE GRAPH VISUALIZATION *
  *************************************/
 function renderGraph(data) {
-
-    /*****************************************************
-    * CREATE A MAP TO REFERENCE NODE OBJECTS BY THEIR ID *
-    ******************************************************/
+    // Create a map for quick node lookups by ID
     nodeById = new Map(data.nodes.map(node => [node.id, node]));
 
-    // Replace source and target IDs in links with actual node objects
+    // Convert string IDs to actual node objects in the links array
     data.links.forEach(link => {
+        // Replace source ID with source node object if it's a string
         if (typeof link.source === 'string') {
             link.source = nodeById.get(link.source);
         }
+        // Replace target ID with target node object if it's a string
         if (typeof link.target === 'string') {
             link.target = nodeById.get(link.target);
         }
     });
 
-    // Initialize visible nodes and links
+    // Clear the arrays that track visible elements
     visibleNodes = [];
     visibleLinks = [];
 
-    // Create initial selections for nodes and links
-    link = g.append("g") // Append group element for links
+    // Create container for link elements
+    link = g.append("g")
         .attr("class", "links")
         .selectAll("line");
 
+    // Create container for node elements
     node = g.append("g")
         .attr("class", "nodes")
         .selectAll("g");
 
-    // Initialize the force simulation
+    // Initialize the force simulation with multiple forces
     simulation = d3.forceSimulation()
+        // Link force: controls the distance and strength between connected nodes
         .force("link", d3.forceLink()
             .distance(d => {
-                // Check if the source node's type is 'Application'
-                if (d.source.type === 'Application') {
-                    return 75;
-                } else {
-                    return 150;
-                }
+                // Shorter distance for Application nodes
+                return d.source.type === 'Application' ? 75 : 150;
             })
             .strength(0.1))
+        // Charge force: makes nodes repel each other
         .force("charge", d3.forceManyBody()
-            .strength(-100)
-            .distanceMax(1000))
+            .strength(-100)    // Repulsion strength
+            .distanceMax(300)) // Maximum effect distance
+
+        // Center force: pulls the entire graph toward the center
         .force("center", d3.forceCenter(width / 2.5, height / 2))
+
+        // Collision force: prevents nodes from overlapping
         .force("collision", d3.forceCollide()
-            .radius(10)
-            .strength(-100))
-        .force("cluster", clusteringForce()) // Custom clustering force
-        .force("clusterCollide", clusterCollideForce(10)) // Custom force to repel clusters
-        .alphaDecay(0.03)
+            .radius(10)     // Collision radius
+            .strength(1))   // Collision strength
+
+        // Custom forces for clustering and cluster separation
+        .force("cluster", clusteringForce())
+        .force("clusterCollide", clusterCollideForce(10))
+
+        // Control simulation cooling rate
+        .alphaDecay(0.01)
+
+        // Update positions on each simulation step
         .on("tick", ticked);
 
-    // Initial render with default depth
+    // Initialize the graph with the current depth setting
     resetGraph(parseInt(depthSlider.value));
 }
 
@@ -181,35 +205,45 @@ function renderGraph(data) {
 * CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
 *********************************************************************/
 function clusteringForce() {
-    // Extract unique node types from the data (excluding the root node type)
+    // Create an array of unique node types, excluding the home node type
+    // Using Set to remove duplicates and spread operator to convert back to array
     var types = [...new Set(graphData.nodes
-        .filter(node => node.id !== rootNode)
-        .map(node => node.type))];
+        .filter(node => node.id !== homeNode)  // Remove home node from consideration
+        .map(node => node.type))];             // Extract just the type property
 
-    // Assign cluster centers to types, evenly spaced around a circle centered on the active node
-    var clusterCenters = {};
-    var numTypes = types.length;
-    var clusterRadius = Math.min(width, height) / 3; // Radius of the circle for clusters
+    // Set up the structure for positioning cluster centers
+    var clusterCenters = {};                   // Object to store center coordinates for each type
+    var numTypes = types.length;               // Count of unique types
+    // Calculate radius for arranging clusters in a circle
+    // Uses 1/3 of the smaller dimension to ensure clusters fit on screen
+    var clusterRadius = Math.min(width, height) / 3;
 
+    // Calculate position for each cluster type's center
     types.forEach((type, index) => {
+        // Calculate angle for even spacing around a circle (in radians)
         var angle = (index / numTypes) * 2 * Math.PI;
+        // Store the x,y coordinates for this cluster's center
         clusterCenters[type] = {
-            x: width / 2 + clusterRadius * Math.cos(angle),
-            y: height / 2 + clusterRadius * Math.sin(angle)
+            // Use trigonometry to place centers in a circle
+            x: width / 2 + clusterRadius * Math.cos(angle),   // Center X + radius * cos(angle)
+            y: height / 2 + clusterRadius * Math.sin(angle)   // Center Y + radius * sin(angle)
         };
     });
 
-    // Return a function that gets called on each simulation step
-    return function(alpha) {
+    // Return the actual force function that D3 will call during simulation
+    return function(alpha) {  // alpha is the simulation's "temperature"
         visibleNodes.forEach(function(d) {
-            // Skip the active node and parent nodes
+            // Don't move active node or parent nodes - they have fixed positions
             if (d.id !== activeNodeId && !parentNodes.includes(d)) {
-                // Determine the cluster center for this node based on its type
+                // Get the target cluster center for this node's type
                 var cluster = clusterCenters[d.type];
 
-                // Adjust the x and y velocities towards the cluster center
-                d.vx -= (d.x - cluster.x) * alpha * 0.1;
-                d.vy -= (d.y - cluster.y) * alpha * 0.1;
+                // Apply forces to move node toward its cluster center
+                // Subtract current position from target position
+                // Multiply by alpha (decreases over time) for smooth animation
+                // Multiply by 0.1 to dampen the force
+                d.vx -= (d.x - cluster.x) * alpha * 0.1;  // Adjust X velocity
+                d.vy -= (d.y - cluster.y) * alpha * 0.1;  // Adjust Y velocity
             }
         });
     };
@@ -219,18 +253,19 @@ function clusteringForce() {
 * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
 **************************************************/
 function clusterCollideForce() {
-    var padding = 50; // Minimum distance between cluster centers
+    var padding = 50;  // Minimum pixels between cluster centers
 
-    // Extract unique node types from the data (excluding the root node type)
+    // Same type extraction as in clusteringForce()
     var types = [...new Set(graphData.nodes
-        .filter(node => node.id !== rootNode)
+        .filter(node => node.id !== homeNode)
         .map(node => node.type))];
 
-    // Assign cluster centers to types, evenly spaced around a circle centered on the active node
+    // Same cluster center calculation as in clusteringForce()
     var clusterCenters = {};
     var numTypes = types.length;
-    var clusterRadius = Math.min(width, height) / 3; // Radius of the circle for clusters
+    var clusterRadius = Math.min(width, height) / 3;
 
+    // Calculate initial positions of cluster centers
     types.forEach((type, index) => {
         var angle = (index / numTypes) * 2 * Math.PI;
         clusterCenters[type] = {
@@ -239,24 +274,32 @@ function clusterCollideForce() {
         };
     });
 
+    // Return the force function that prevents cluster overlap
     return function() {
+        // Compare each cluster with every other cluster
         types.forEach((typeA, i) => {
             var clusterA = clusterCenters[typeA];
+            // Only compare with clusters we haven't checked yet (slice(i + 1))
             types.slice(i + 1).forEach(typeB => {
                 var clusterB = clusterCenters[typeB];
-                let dx = clusterB.x - clusterA.x;
-                let dy = clusterB.y - clusterA.y;
-                let distance = Math.sqrt(dx * dx + dy * dy);
-                let minDistance = padding;
+                // Calculate distance between clusters
+                let dx = clusterB.x - clusterA.x;  // X distance
+                let dy = clusterB.y - clusterA.y;  // Y distance
+                let distance = Math.sqrt(dx * dx + dy * dy);  // Pythagorean theorem
+                let minDistance = padding;  // Minimum allowed distance
 
+                // If clusters are too close, push them apart
                 if (distance < minDistance) {
+                    // Calculate how far to move each cluster
+                    // Movement is proportional to how much they overlap
                     let moveX = dx / distance * (minDistance - distance) / 2;
                     let moveY = dy / distance * (minDistance - distance) / 2;
 
-                    clusterA.x -= moveX;
-                    clusterA.y -= moveY;
-                    clusterB.x += moveX;
-                    clusterB.y += moveY;
+                    // Move clusters in opposite directions
+                    clusterA.x -= moveX;  // Move cluster A left
+                    clusterA.y -= moveY;  // Move cluster A up
+                    clusterB.x += moveX;  // Move cluster B right
+                    clusterB.y += moveY;  // Move cluster B down
                 }
             });
         });
@@ -325,7 +368,7 @@ function updateGraph() {
 
     var linkEnter = link.enter().append("line")
         .attr("stroke-width", 1)
-        .attr("stroke", "#D8D8D8");
+        .attr("stroke", "#BFBFBF");
 
     link = linkEnter.merge(link);
 
@@ -342,7 +385,7 @@ function updateGraph() {
             .on("end", dragended));
 
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === rootNode ? 4 : 3))
+        .attr("r", d => (d.id === homeNode ? 4 : 3))
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked)
         .on("mouseover", (event, d) => showTooltip(event, d))
@@ -353,7 +396,7 @@ function updateGraph() {
         .attr("dx", "1ex")
         .attr("dy", ".5ex")
         .text(d => d.id)
-        .attr("class", d => (d.id === rootNode ? 'root-node' : 'child-node'));
+        .attr("class", d => (d.id === homeNode ? 'home-node' : 'child-node'));
 
     node = nodeEnter.merge(node);
 
@@ -423,7 +466,7 @@ function updateRightContainer() {
     // rightContainer.append("h3").text("Name:");
 
     // Display the active node's type
-    rightContainer.append("p").html(`Type: <strong>${activeNode.type}</strong>`);
+    rightContainer.append("p").html(`<strong>Type: </strong>${activeNode.type}`);
 
     // Display the active node's description
     var description = activeNode.description ? activeNode.description : 'No description available';
@@ -445,24 +488,50 @@ function updateRightContainer() {
         return visibleLinks.some(link =>
             (link.source.id === activeNodeId && link.target.id === n.id) ||
             (link.target.id === activeNodeId && link.source.id === n.id)
-        ) && n.id !== activeNodeId && n.id !== rootNode && !parentNodes.includes(n);
+        ) && n.id !== activeNodeId && n.id !== homeNode && !parentNodes.includes(n);
     });
 
     // Group children by type
     var types = d3.group(immediateChildren, d => d.type);
 
-    // Display each type and its nodes
-    types.forEach((nodes, types) => {
-        rightContainer.append("p")
-            .style("background-color", typeColorMap.get(types) || '#000')
-            .html(`<strong>${types}</strong>`);
-        nodes.forEach(node => {
-            var nodeDescription = node.description ? node.description : 'No description available';
-            var nodeName = node.id;
+    // Define the desired display order
+    const orderedTypes = ["People", "Technology"];
+
+    // Display "People" and "Technology" first, in that order
+    orderedTypes.forEach(type => {
+        if (types.has(type)) {
+            const nodes = types.get(type);
             rightContainer.append("p")
-            .attr("class", "dependency-node")
-            .html(`<strong>${nodeName}</strong>: ${nodeDescription}`);
-        });
+                .style("background-color", typeColorMap.get(type) || '#000')
+                .attr("class", "dependency-type")
+                .html(`<strong>${type}</strong>`);
+
+            nodes.forEach(node => {
+                const nodeDescription = node.description || 'No description available';
+                const nodeName = node.id;
+                rightContainer.append("p")
+                    .attr("class", "dependency-node")
+                    .html(`<strong>${nodeName}</strong>`);
+            });
+        }
+    });
+
+    // Display remaining types (excluding "People" and "Technology")
+    types.forEach((nodes, type) => {
+        if (!orderedTypes.includes(type)) {
+            rightContainer.append("p")
+                .style("background-color", typeColorMap.get(type) || '#000')
+                .attr("class", "dependency-type")
+                .html(`<strong>${type}</strong>`);
+
+            nodes.forEach(node => {
+                const nodeDescription = node.description || 'No description available';
+                const nodeName = node.id;
+                rightContainer.append("p")
+                    .attr("class", "dependency-node")
+                    .html(`<strong>${nodeName}</strong>`);
+            });
+        }
     });
 }
 
@@ -487,7 +556,7 @@ searchButton.addEventListener('click', () => {
 depthSlider.addEventListener('input', () => {
     var depth = parseInt(depthSlider.value);
     depthValueDisplay.textContent = depth;
-    resetGraph(depth, activeNodeId); // Use the active node instead of root
+    resetGraph(depth, activeNodeId); // Use the active node instead of home
 });
 
 /************************************************
@@ -512,12 +581,12 @@ function resetToInitialState() {
     depthSlider.value = 1;
     depthValueDisplay.textContent = 1;
 
-    // Reset graph to the root node with depth 1
-    resetGraph(1, rootNode);
+    // Reset graph to the home node with depth 1
+    resetGraph(1, homeNode);
 }
 
 // Unified logic for resetting the graph
-function resetGraph(depth = parseInt(depthSlider.value), nodeId = rootNode) {
+function resetGraph(depth = parseInt(depthSlider.value), nodeId = homeNode) {
     activeNodeId = nodeId;
     parentNodes = [];
     visibleNodes = [];
