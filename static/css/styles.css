@@ -14,15 +14,28 @@ body, html {
     background-color: var(--cont-bg-clr);
     overflow-y: auto;
     box-sizing: border-box;
-    height: 100%; /* Ensure it fills the available vertical space */
+    height: 100%; /* Ensures it fills the available vertical space */
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    align-items: stretch;
-    gap: 0px; /* Add spacing between elements */
+    gap: 5px; /* Adds spacing between elements */
     width: 20vw;
     margin: 0 auto;
+    padding: 3px;
 }
+
+.left-container input[type="text"],
+.left-container input[type="range"],
+.left-container button {
+    width: 90%; /* Adjust to ensure items fit nicely */
+    margin: 5px 0;
+}
+
+.left-container label,
+.left-container span {
+    margin: 5px 0;
+}
+
 
 .right-container h2, .left-container h2 {
     margin-top: 0;
@@ -76,27 +89,6 @@ body, html {
 .right-container h4 {
     margin-top: 10px;
 }
-
-.left-container h1 {
-    margin-top: 0;
-}
-
-.left-container input[type="text"],
-.left-container input[type="range"] {
-    width: 80%;
-    margin: 5px 0;
-}
-
-.left-container button {
-    width: 80%;
-    margin: 5px 0;
-}
-
-.left-container label,
-.left-container span {
-    margin: 5px 0;
-}
-
 
 .graph-container {
     width: 60vw;
