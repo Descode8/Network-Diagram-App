@@ -10,20 +10,8 @@ body, html {
     background-color: #FFFFFF;
 }
 
-.left-container,
-.right-container {
-    background-color: var(--lft-cont-clr);
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    width: 15vw;
-}
-
-.right-container {
-    background-color: var(--rgt-cont-clr);
+.right-container, .left-container {
+    background-color: var(--cont-bg-clr);
     overflow-y: auto;
     box-sizing: border-box;
     height: 100%; /* Ensure it fills the available vertical space */
@@ -36,42 +24,53 @@ body, html {
     margin: 0 auto;
 }
 
-.right-container h2 {
+.right-container h2, .left-container h2 {
     margin-top: 0;
     font-size: 2rem;
     margin: 0;
     padding: 3px; 
     text-align: center;
-    background-color: var(--rgt-h1-clr);
+    background-color: var(--activ-nde-clr);
     border-bottom: 2px solid var(--brdr-clr);
+    font-weight: bold;
+}
+
+.left-container h2 {
+    background-color: var(--lft-ttl-bg-clr);
 }
 
 .right-container p {
     text-align: center;
-    padding: 10px;
+    padding: 3px;
     margin: 0;
     border-bottom: 1px solid var(--brdr-clr);
+    font-size: .8rem;
 }
 
-.right-container h3 {
-    margin-top: 20px;
+.description-header, .dependencies-header {
+    margin-top: 0;
+    font-size: 1rem;
+    margin: 0;
+    padding: 3px; 
+    text-align: center;
+    background-color: var(--descrip-clr);
+    border-bottom: 2px solid var(--brdr-clr);
+    font-weight: bold;
+}
+
+.dependencies-header {
+    background-color: var(--depend-hdr-clr);
+}
+
+.dependency-node {
+    padding: 3px;
+    margin: 0;
+    border-bottom: 1px solid var(--brdr-clr);
+    font-size: .8rem;
 }
 
 .right-container h4 {
     margin-top: 10px;
-}
-
-
-.left-container {
-    background-color: var(-lft-cont-clr);
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 3px;
-    overflow-y: auto;
-    height: 100vh;
-    width: 15vw;
 }
 
 .left-container h1 {
@@ -96,7 +95,7 @@ body, html {
 
 
 .graph-container {
-    width: 65vw;
+    width: 60vw;
     height: 100vh;  /* Ensure the container has full height */
     border-left: 2px solid var(--brdr-clr);
     border-right: 2px solid var(--brdr-clr);
@@ -192,5 +191,5 @@ text {
 
 ::-webkit-scrollbar-track {
     background-color: transparent;
-    margin: 5px 0; /* Adds space at the top and bottom of the scrollbar */
+    margin: 0px 2px; /* Adds space at the top and bottom of the scrollbar */
 }

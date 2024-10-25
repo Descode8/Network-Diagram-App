@@ -43,7 +43,7 @@ let link; // Selection of links
  * ADD ZOOM AND PAN FUNCTIONALITY *
  **********************************/
 const zoom = d3.zoom()
-    .scaleExtent([0.8, 2]) // Set the minimum and maximum zoom scale
+    .scaleExtent([0.5, 1.5]) // Set the minimum and maximum zoom scale
     .on('zoom', (event) => {
         g.attr('transform', event.transform);
     });
@@ -417,30 +417,47 @@ function updateRightContainer() {
     // Display the active node's ID at the top
     rightContainer.append("h2").text(`${activeNode.id}`);
 
+    // Display the active node's name
+    // rightContainer.append("h3").text("Name:");
+
+    // Display the active node's type
+    rightContainer.append("p").html(`Type: <strong>${activeNode.type}</strong>`);
+
     // Display the active node's description
     const description = activeNode.description ? activeNode.description : 'No description available';
-    rightContainer.append("p").text(`${description}`);
+    // Add the Description header with a specific class
+        rightContainer.append("h3")
+        .attr("class", "description-header")
+        .html(`Description`);
 
-    // Display the types and descriptions
-    rightContainer.append("h3").text("Immediate Children:");
+        // Add the description text
+        rightContainer.append("p").html(`${description}`);
+
+        // Add the Dependencies header with a different class
+        rightContainer.append("h3")
+        .attr("class", "dependencies-header")
+        .html("Dependencies");
 
     // Get the types of the active node's immediate children
     const immediateChildren = visibleNodes.filter(n => {
         return visibleLinks.some(link =>
             (link.source.id === activeNodeId && link.target.id === n.id) ||
             (link.target.id === activeNodeId && link.source.id === n.id)
-        ) && n.id !== activeNodeId;
+        ) && n.id !== activeNodeId && n.id !== rootNode && !parentNodes.includes(n);
     });
 
     // Group children by type
     const types = d3.group(immediateChildren, d => d.type);
 
     // Display each type and its nodes
-    types.forEach((nodes, type) => {
-        rightContainer.append("h4").text(`Type: ${type}`);
+    types.forEach((nodes, types) => {
+        rightContainer.append("p").html(`Type: <strong>${types}</strong>`);
         nodes.forEach(node => {
             const nodeDescription = node.description ? node.description : 'No description available';
-            rightContainer.append("p").text(`${node.id}: ${nodeDescription}`);
+            rightContainer.append("p")
+            .attr("class", "dependency-node")
+            .html(`${node.id}`)
+            .html(`${nodeDescription}`);
         });
     });
 }

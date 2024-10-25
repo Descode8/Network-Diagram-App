@@ -7,15 +7,17 @@
 </head>
 <style>
     :root {
-        --lft-cont-clr: #D8D8D8;
-        --rgt-cont-clr: #D8D8D8;
-        --rgt-h1-clr: #95B3D7;
+        --cont-bg-clr: #D8D8D8;
+        --lft-ttl-bg-clr:#D99694;
+        --activ-nde-clr: #95B3D7;
+        --descrip-clr: #FAC08F;
+        --depend-hdr-clr: #D7E3BC;
         --brdr-clr: #595959;
     }
 </style>
 <body>
     <div class="left-container">
-        <h1>Controls</h1>
+        <h2>Controls</h2>
         <!-- Search Function -->
         <input type="text" id="searchInput" placeholder="Search Node">
         <button id="searchButton">Search</button>
@@ -38,9 +40,7 @@
 
     <div class="tooltip" id="tooltip"></div>
 
-    <div class="right-container">
-        <h1>Attributes</h1>
-    </div>
+    <div class="right-container"></div>
 
     <!-- Import D3.js library from CDN -->
     <script src="https://d3js.org/d3.v6.min.js"></script>
