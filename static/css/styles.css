@@ -47,6 +47,8 @@ body, html {
     font-size: .8rem;
 }
 
+
+
 .description-header, .dependencies-header {
     margin-top: 0;
     font-size: 1rem;
@@ -58,15 +60,17 @@ body, html {
     font-weight: bold;
 }
 
-.dependencies-header {
+
+.right-container .dependencies-header {
     background-color: var(--depend-hdr-clr);
 }
 
-.dependency-node {
+.right-container .dependency-node {
     padding: 3px;
     margin: 0;
     border-bottom: 1px solid var(--brdr-clr);
-    font-size: .8rem;
+    font-size: 0.8rem;
+    text-align: left;
 }
 
 .right-container h4 {

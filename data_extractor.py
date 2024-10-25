@@ -14,6 +14,9 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     # Load the Excel file and replace NaN values with 'None'
     df = pd.read_excel(excel_file).fillna('None')
 
+    # Strip leading and trailing whitespaces from string columns
+    df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
     # Dynamically detect the columns based on common keywords in their names
     ci_name_col = next(col for col in df.columns if 'CI_Name' in col)
     ci_type_col = next(col for col in df.columns if 'CI_Type' in col)

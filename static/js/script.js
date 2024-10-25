@@ -6,29 +6,29 @@ let activeNodeId; // Variable to store the ID of the active node
 let parentNodes = []; // Stack of parent nodes
 
 // Select the <svg> element and the tooltip element using D3.js
-const svg = d3.select("svg");
-const tooltip = d3.select("#tooltip");
+var svg = d3.select("svg");
+var tooltip = d3.select("#tooltip");
 
 // Select the right-container div
-const rightContainer = d3.select(".right-container");
+var rightContainer = d3.select(".right-container");
 
 // Select the controls from the DOM
-const searchInput = document.getElementById('searchInput');
-const searchButton = document.getElementById('searchButton');
-const homeButton = document.getElementById('homeButton');
-const depthSlider = document.getElementById('depthSlider');
-const depthValueDisplay = document.getElementById('depthValue');
+var searchInput = document.getElementById('searchInput');
+var searchButton = document.getElementById('searchButton');
+var homeButton = document.getElementById('homeButton');
+var depthSlider = document.getElementById('depthSlider');
+var depthValueDisplay = document.getElementById('depthValue');
 
 // Get the actual dimensions of the SVG element
-const svgElement = svg.node();
+var svgElement = svg.node();
 let width = svgElement.getBoundingClientRect().width;
 let height = svgElement.getBoundingClientRect().height;
 
 // Create a group <g> element where all the graph elements (nodes and links) will reside
-const g = svg.append("g");
+var g = svg.append("g");
 
 // A Map to store node colors by their ID for quick reference
-const nodeColorMap = new Map();
+var nodeColorMap = new Map();
 
 // Declare the simulation and other variables to make them accessible across functions
 let simulation;
@@ -39,10 +39,20 @@ let visibleLinks = [];
 let node; // Selection of nodes
 let link; // Selection of links
 
+ // Map of node types to their specified colors
+const typeColorMap = new Map([
+    ['Root', '#000000'], // Root node
+    ['Application', '#92CDDC'],
+    ['Software', '#B2A2C7'],
+    ['People', '#548DD4'],
+    ['Server', '#D99694'],
+    ['Technology', '#938953']
+]);
+
 /**********************************
  * ADD ZOOM AND PAN FUNCTIONALITY *
  **********************************/
-const zoom = d3.zoom()
+var zoom = d3.zoom()
     .scaleExtent([0.5, 1.5]) // Set the minimum and maximum zoom scale
     .on('zoom', (event) => {
         g.attr('transform', event.transform);
@@ -55,7 +65,7 @@ svg.call(zoom); // Attach zoom behavior to the SVG element
  **********************************/
 
 async function fetchGraphData() {
-    const response = await fetch("/", {
+    var response = await fetch("/", {
         headers: { "Accept": "application/json" } // Expecting JSON data from the server
     });
 
@@ -67,8 +77,9 @@ async function fetchGraphData() {
 
     // Parse the response into JSON
     graphData = await response.json();
-    rootNode = graphData.links[0].target;
+    rootNode = activeNodeId = graphData.links[0].target;
     console.log("Root node:", rootNode);
+    console.log("Active node:", activeNodeId);
     console.log("Graph data fetched successfully:", graphData);
 
     // Assign colors to the nodes
@@ -82,22 +93,12 @@ async function fetchGraphData() {
  * ASSIGNING COLORS TO NODES BASED ON THEIR TYPE *
  *************************************************/
 function assignColors(data) {
-    // Map of node types to their specified colors
-    const typeColorMap = new Map([
-        ['Applications', '#000000'], // Root node
-        ['Application', '#4F81BD'],
-        ['Software', '#C0504D'],
-        ['People', '#9BBB59'],
-        ['Server', '#F79646'],
-        ['Technology', '#7030A0']
-    ]);
-
     // Assign colors to nodes based on their type
     data.nodes.forEach(node => {
         if (node.id === rootNode) {
             nodeColorMap.set(node.id, '#000000'); // Root node color
         } else {
-            const color = typeColorMap.get(node.type);
+            var color = typeColorMap.get(node.type);
             if (color) {
                 nodeColorMap.set(node.id, color);
             } else {
@@ -181,17 +182,17 @@ function renderGraph(data) {
 *********************************************************************/
 function clusteringForce() {
     // Extract unique node types from the data (excluding the root node type)
-    const types = [...new Set(graphData.nodes
+    var types = [...new Set(graphData.nodes
         .filter(node => node.id !== rootNode)
         .map(node => node.type))];
 
     // Assign cluster centers to types, evenly spaced around a circle centered on the active node
-    const clusterCenters = {};
-    const numTypes = types.length;
-    const clusterRadius = Math.min(width, height) / 3; // Radius of the circle for clusters
+    var clusterCenters = {};
+    var numTypes = types.length;
+    var clusterRadius = Math.min(width, height) / 3; // Radius of the circle for clusters
 
     types.forEach((type, index) => {
-        const angle = (index / numTypes) * 2 * Math.PI;
+        var angle = (index / numTypes) * 2 * Math.PI;
         clusterCenters[type] = {
             x: width / 2 + clusterRadius * Math.cos(angle),
             y: height / 2 + clusterRadius * Math.sin(angle)
@@ -204,7 +205,7 @@ function clusteringForce() {
             // Skip the active node and parent nodes
             if (d.id !== activeNodeId && !parentNodes.includes(d)) {
                 // Determine the cluster center for this node based on its type
-                const cluster = clusterCenters[d.type];
+                var cluster = clusterCenters[d.type];
 
                 // Adjust the x and y velocities towards the cluster center
                 d.vx -= (d.x - cluster.x) * alpha * 0.1;
@@ -218,20 +219,20 @@ function clusteringForce() {
 * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
 **************************************************/
 function clusterCollideForce() {
-    const padding = 50; // Minimum distance between cluster centers
+    var padding = 50; // Minimum distance between cluster centers
 
     // Extract unique node types from the data (excluding the root node type)
-    const types = [...new Set(graphData.nodes
+    var types = [...new Set(graphData.nodes
         .filter(node => node.id !== rootNode)
         .map(node => node.type))];
 
     // Assign cluster centers to types, evenly spaced around a circle centered on the active node
-    const clusterCenters = {};
-    const numTypes = types.length;
-    const clusterRadius = Math.min(width, height) / 3; // Radius of the circle for clusters
+    var clusterCenters = {};
+    var numTypes = types.length;
+    var clusterRadius = Math.min(width, height) / 3; // Radius of the circle for clusters
 
     types.forEach((type, index) => {
-        const angle = (index / numTypes) * 2 * Math.PI;
+        var angle = (index / numTypes) * 2 * Math.PI;
         clusterCenters[type] = {
             x: width / 2 + clusterRadius * Math.cos(angle),
             y: height / 2 + clusterRadius * Math.sin(angle)
@@ -240,9 +241,9 @@ function clusterCollideForce() {
 
     return function() {
         types.forEach((typeA, i) => {
-            const clusterA = clusterCenters[typeA];
+            var clusterA = clusterCenters[typeA];
             types.slice(i + 1).forEach(typeB => {
-                const clusterB = clusterCenters[typeB];
+                var clusterB = clusterCenters[typeB];
                 let dx = clusterB.x - clusterA.x;
                 let dy = clusterB.y - clusterA.y;
                 let distance = Math.sqrt(dx * dx + dy * dy);
@@ -271,12 +272,13 @@ function nodeClicked(event, d) {
     }
 
     // Update parentNodes stack
-    const previousActiveNode = nodeById.get(activeNodeId);
+    var previousActiveNode = nodeById.get(activeNodeId);
     if (previousActiveNode && !parentNodes.includes(previousActiveNode)) {
         parentNodes.push(previousActiveNode);
     }
 
     activeNodeId = d.id; // Update active node ID
+    console.log("Active node:", activeNodeId);
 
     // Expand new active node's immediate children
     expandNode(d);
@@ -290,7 +292,7 @@ function nodeClicked(event, d) {
 
 function expandNode(node) {
     // Find immediate children of the node
-    const newLinks = graphData.links.filter(
+    var newLinks = graphData.links.filter(
         link => (link.source.id === node.id || link.target.id === node.id)
     );
 
@@ -300,7 +302,7 @@ function expandNode(node) {
             visibleLinks.push(link);
 
             // Get the connected node
-            const otherNode = link.source.id === node.id ? link.target : link.source;
+            var otherNode = link.source.id === node.id ? link.target : link.source;
 
             if (otherNode && !visibleNodes.includes(otherNode)) {
                 visibleNodes.push(otherNode);
@@ -321,7 +323,7 @@ function updateGraph() {
 
     link.exit().remove();
 
-    const linkEnter = link.enter().append("line")
+    var linkEnter = link.enter().append("line")
         .attr("stroke-width", 1)
         .attr("stroke", "#D8D8D8");
 
@@ -333,7 +335,7 @@ function updateGraph() {
 
     node.exit().remove();
 
-    const nodeEnter = node.enter().append("g")
+    var nodeEnter = node.enter().append("g")
         .call(d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
@@ -388,7 +390,7 @@ function updateNodePositions() {
             n.fy = height / 2;
         } else if (parentNodes.includes(n)) {
             // Stack parent nodes at the top
-            const index = parentNodes.indexOf(n);
+            var index = parentNodes.indexOf(n);
             n.fx = width / 2;
             n.fy = 50 + index * 1; // Stack with some spacing
         } else {
@@ -412,7 +414,7 @@ function updateRightContainer() {
     rightContainer.html("");
 
     // Get the active node object
-    const activeNode = nodeById.get(activeNodeId);
+    var activeNode = nodeById.get(activeNodeId);
 
     // Display the active node's ID at the top
     rightContainer.append("h2").text(`${activeNode.id}`);
@@ -424,7 +426,7 @@ function updateRightContainer() {
     rightContainer.append("p").html(`Type: <strong>${activeNode.type}</strong>`);
 
     // Display the active node's description
-    const description = activeNode.description ? activeNode.description : 'No description available';
+    var description = activeNode.description ? activeNode.description : 'No description available';
     // Add the Description header with a specific class
         rightContainer.append("h3")
         .attr("class", "description-header")
@@ -439,7 +441,7 @@ function updateRightContainer() {
         .html("Dependencies");
 
     // Get the types of the active node's immediate children
-    const immediateChildren = visibleNodes.filter(n => {
+    var immediateChildren = visibleNodes.filter(n => {
         return visibleLinks.some(link =>
             (link.source.id === activeNodeId && link.target.id === n.id) ||
             (link.target.id === activeNodeId && link.source.id === n.id)
@@ -447,17 +449,19 @@ function updateRightContainer() {
     });
 
     // Group children by type
-    const types = d3.group(immediateChildren, d => d.type);
+    var types = d3.group(immediateChildren, d => d.type);
 
     // Display each type and its nodes
     types.forEach((nodes, types) => {
-        rightContainer.append("p").html(`Type: <strong>${types}</strong>`);
+        rightContainer.append("p")
+            .style("background-color", typeColorMap.get(types) || '#000')
+            .html(`<strong>${types}</strong>`);
         nodes.forEach(node => {
-            const nodeDescription = node.description ? node.description : 'No description available';
+            var nodeDescription = node.description ? node.description : 'No description available';
+            var nodeName = node.id;
             rightContainer.append("p")
             .attr("class", "dependency-node")
-            .html(`${node.id}`)
-            .html(`${nodeDescription}`);
+            .html(`<strong>${nodeName}</strong>: ${nodeDescription}`);
         });
     });
 }
@@ -473,7 +477,7 @@ homeButton.addEventListener('click', () => {
 
 // Add event listener for the search button
 searchButton.addEventListener('click', () => {
-    const searchTerm = searchInput.value.trim();
+    var searchTerm = searchInput.value.trim();
     if (searchTerm) {
         searchNode(searchTerm);
     }
@@ -481,7 +485,7 @@ searchButton.addEventListener('click', () => {
 
 // Add event listener for the depth slider
 depthSlider.addEventListener('input', () => {
-    const depth = parseInt(depthSlider.value);
+    var depth = parseInt(depthSlider.value);
     depthValueDisplay.textContent = depth;
     resetGraph(depth, activeNodeId); // Use the active node instead of root
 });
@@ -491,7 +495,7 @@ depthSlider.addEventListener('input', () => {
 *************************************************/
 function searchNode(nodeId) {
     if (nodeById.has(nodeId)) {
-        const node = nodeById.get(nodeId); // Get the node object
+        var node = nodeById.get(nodeId); // Get the node object
         nodeClicked(null, node); // Trigger the same logic as a click
     } else {
         alert("Node not found!");
@@ -519,7 +523,7 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = rootNode) {
     visibleNodes = [];
     visibleLinks = [];
 
-    const nodeObj = nodeById.get(nodeId);
+    var nodeObj = nodeById.get(nodeId);
     visibleNodes.push(nodeObj);
     expandNodeByDepth(nodeObj, depth);
 
@@ -531,7 +535,7 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = rootNode) {
 function expandNodeByDepth(node, depth) {
     if (depth > 0) {
         // Find immediate children of the node
-        const newLinks = graphData.links.filter(
+        var newLinks = graphData.links.filter(
             link => (link.source.id === node.id || link.target.id === node.id)
         );
 
@@ -541,7 +545,7 @@ function expandNodeByDepth(node, depth) {
                 visibleLinks.push(link);
 
                 // Get the connected node
-                const otherNode = link.source.id === node.id ? link.target : link.source;
+                var otherNode = link.source.id === node.id ? link.target : link.source;
 
                 if (otherNode && !visibleNodes.includes(otherNode)) {
                     visibleNodes.push(otherNode);
@@ -558,7 +562,7 @@ function expandNodeByDepth(node, depth) {
 *************************************************/
 window.addEventListener("resize", () => {
     // Get the actual dimensions of the SVG element
-    const svgElement = svg.node();
+    var svgElement = svg.node();
     width = svgElement.getBoundingClientRect().width;
     height = svgElement.getBoundingClientRect().height;
 
@@ -578,7 +582,7 @@ window.addEventListener("resize", () => {
 *************************************************/
 function showTooltip(event, d) {
     // Use the node's description if available
-    const description = d.description ? `${d.description}` : 'No description available';
+    var description = d.description ? `${d.description}` : 'No description available';
     tooltip.style("visibility", "visible").text(description);
 }
 
