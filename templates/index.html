@@ -18,9 +18,17 @@
 <body>
     <div class="left-container">
         <h2>CIO Dashboard</h2>
-        <input type="text" id="searchInput" placeholder="Search Node">
-        <button id="searchButton">Search</button>
-        <button id="homeButton">Home</button>
+        <button id="homeButton" title="Go Home">
+            <img src="{{ url_for('static', filename='images/house-solid.svg') }}" alt="Home Icon" class="home-icon">
+        </button>
+    
+        <div class="input-container">
+            <input type="text" id="searchInput" placeholder="Search Node">
+            <button id="searchButton" title="Search">
+                <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon">
+            </button>
+        </div>
+    
         <label for="depthSlider">Depth</label>
         <div class="custom-slider">
             <input type="range" id="depthSlider" min="1" max="4" value="2">

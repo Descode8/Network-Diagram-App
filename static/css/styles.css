@@ -172,7 +172,7 @@ text {
 
 .custom-slider input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    background-color: #548DD4;
+    background-color: var(--pane-ttle-bg-clr);
     width: 5px;
     height: 20px;
     cursor: pointer;
@@ -192,4 +192,81 @@ text {
 ::-webkit-scrollbar-track {
     background-color: transparent;
     margin: 0px 2px; /* Adds space at the top and bottom of the scrollbar */
+}
+
+button#homeButton, button#searchButton {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Space between icon and text */
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 5px;
+}
+
+button#homeButton img.home-icon, button#searchButton {
+    width: 30px;
+    height: 30px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.input-container {
+    position: relative;
+    width: 100%; /* Ensure it fits the parent */
+    max-width: 300px; /* Control input field size */
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Space between input and button */
+}
+
+#searchInput {
+    width: 100%;
+    padding-right: 40px; /* Leave space for icon */
+    box-sizing: border-box;
+}
+
+#searchButton {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.custom-slider input {
+    width: 100%; /* Make the slider responsive */
+}
+
+#homeButton {
+    display: flex;
+    align-items: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.home-icon {
+    width: 30px;
+    height: 30px;
+}
+
+label, span {
+    text-align: center;
+}
+
+#searchInput {
+    width: 100%;
+    padding-right: 40px;
+    box-sizing: border-box;
+    border: 2px solid var(--pane-ttle-bg-clr);
+    border-radius: 2px;
 }
