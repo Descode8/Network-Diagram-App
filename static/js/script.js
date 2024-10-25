@@ -474,7 +474,8 @@ depthSlider.addEventListener('input', () => {
 *************************************************/
 function searchNode(nodeId) {
     if (nodeById.has(nodeId)) {
-        resetGraph(parseInt(depthSlider.value), nodeId); // Unified logic
+        const node = nodeById.get(nodeId); // Get the node object
+        nodeClicked(null, node); // Trigger the same logic as a click
     } else {
         alert("Node not found!");
     }

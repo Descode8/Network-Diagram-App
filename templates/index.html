@@ -5,6 +5,14 @@
     <title>Network Diagram</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
 </head>
+<style>
+    :root {
+        --lft-cont-clr: #D8D8D8;
+        --rgt-cont-clr: #D8D8D8;
+        --rgt-h1-clr: #95B3D7;
+        --brdr-clr: #595959;
+    }
+</style>
 <body>
     <div class="left-container">
         <h1>Controls</h1>
@@ -16,9 +24,12 @@
         <button id="homeButton">Home</button>
 
         <!-- Settings Slider -->
-        <label for="depthSlider">Depth:</label>
-        <input type="range" id="depthSlider" min="1" max="5" value="1">
+        <label for="depthSlider">Depth</label>
+        <div class="custom-slider">
+            <input type="range" id="depthSlider" min="1" max="5" value="1">
+        </div>
         <span id="depthValue">1</span>
+
     </div>
 
     <div class="graph-container">
