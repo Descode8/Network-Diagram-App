@@ -385,10 +385,9 @@ function updateGraph() {
             .on("end", dragended));
 
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === homeNode ? 4 : 3))
+        .attr("r", d => (d.id === homeNode ? 5 : 4))
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked)
-        .on("mouseover", (event, d) => showTooltip(event, d))
         .on("mousemove", moveTooltip)
         .on("mouseout", hideTooltip);
 
@@ -539,9 +538,10 @@ function updateRightContainer() {
 * EVENT LISTENERS FOR CONTROLS                 *
 ************************************************/
 
-// Modify the home button event listener to reset to the initial state
+// Modify the home button event listener to use the current slider depth
 homeButton.addEventListener('click', () => {
-    resetToInitialState(); // Reset to the same state as the initial render
+    const depth = parseInt(depthSlider.value);  // Get the current depth from the slider
+    resetGraph(depth, homeNode);  // Reset graph with current depth and home node
 });
 
 // Add event listener for the search button
@@ -556,7 +556,7 @@ searchButton.addEventListener('click', () => {
 depthSlider.addEventListener('input', () => {
     var depth = parseInt(depthSlider.value);
     depthValueDisplay.textContent = depth;
-    resetGraph(depth, activeNodeId); // Use the active node instead of home
+    resetGraph(depth, activeNodeId);
 });
 
 /************************************************
@@ -601,30 +601,36 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = homeNode) {
     updateRightContainer();
 }
 
-function expandNodeByDepth(node, depth) {
-    if (depth > 0) {
-        // Find immediate children of the node
-        var newLinks = graphData.links.filter(
-            link => (link.source.id === node.id || link.target.id === node.id)
-        );
+function expandNodeByDepth(node, depth, currentDepth = 1) {
+    if (currentDepth > depth) return;  // Stop recursion when the target depth is reached
 
-        newLinks.forEach(link => {
-            // Ensure the link isn't already visible
-            if (!visibleLinks.includes(link)) {
-                visibleLinks.push(link);
-
-                // Get the connected node
-                var otherNode = link.source.id === node.id ? link.target : link.source;
-
-                if (otherNode && !visibleNodes.includes(otherNode)) {
-                    visibleNodes.push(otherNode);
-                    // Recursively expand the child node
-                    expandNodeByDepth(otherNode, depth - 1);
-                }
-            }
-        });
+    if (!visibleNodes.includes(node)) {
+        visibleNodes.push(node);  // Add the current node to the visible list
     }
+
+    // If the current depth is the maximum, stop expanding further
+    if (currentDepth === depth) return;
+
+    // Find only the immediate children of the current node
+    const childLinks = graphData.links.filter(link => 
+        link.source.id === node.id || link.target.id === node.id
+    );
+
+    childLinks.forEach(link => {
+        if (!visibleLinks.includes(link)) {
+            visibleLinks.push(link);  // Add the link to visible links
+
+            // Get the connected node (either source or target of the link)
+            const childNode = link.source.id === node.id ? link.target : link.source;
+
+            // Recursively expand the graph if the connected node isn't already visible
+            if (!visibleNodes.includes(childNode)) {
+                expandNodeByDepth(childNode, depth, currentDepth + 1);
+            }
+        }
+    });
 }
+
 
 /************************************************
 * RESPONSIVENESS: CENTER GRAPH ON WINDOW RESIZE *
@@ -692,5 +698,8 @@ function dragended(event) {
 
 // Ensure the SVG element is fully loaded before starting
 window.onload = function() {
-    fetchGraphData();
+    fetchGraphData().then(() => {
+        resetGraph(2, homeNode);  // Set initial depth to 2
+    });
 };
+

@@ -3,49 +3,38 @@ import os
 
 def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     """
-    Dynamically extracts graph data from the Excel file based on its structure.
-    This function ensures that all child nodes are correctly linked to the main
-    configuration items (CIs) without hard-coding specific CI names like UPMIS.
-
-    Args:
-        excel_file (str): Path to the Excel file containing the network diagram data.
-
-    Returns:
-        dict: A dictionary containing:
-            - 'nodes': List of dictionaries representing nodes, each with 'id', 'type', and 'description'.
-            - 'links': List of dictionaries representing links, each with 'source' and 'target' keys.
+    Extracts graph data from the Excel file, ensuring dependencies like 'Procurement'
+    connect directly to relevant nodes (e.g., 'McCoy, Eric') without creating redundant
+    parent nodes.
     """
 
-    # Check if the Excel file exists; raise an error if not found
+    # Check if Excel file exists
     if not os.path.exists(excel_file):
         raise FileNotFoundError(f"{excel_file} not found.")
 
-    # Load the Excel file and replace any NaN values with 'None' for easier handling
+    # Load and clean the data
     df = pd.read_excel(excel_file).fillna('None')
-
-    # Strip leading and trailing whitespaces from all string-type columns to prevent data inconsistencies
     df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 
-    # Initialize containers for nodes, links, and a set to track added node IDs (to avoid duplicates)
-    nodes = []  # List of all nodes with their attributes (id, type, description)
-    links = []  # List of all links between nodes (source and target)
-    node_ids = set()  # Set to keep track of nodes added to avoid duplication
+    # Initialize structures to hold graph components
+    nodes = []  # All nodes
+    links = []  # All links between nodes
+    node_ids = set()  # Track nodes to avoid duplication
 
-    # List of parent nodes and a mapping of parent node names to their types
-    parent_nodes = ['People', 'Technologies', 'Servers', 'Staff Augmentation']
+    # Define parent nodes and map them to their types
+    parent_nodes = ['Peoples', 'Technologies', 'Servers', 'Staff Augmentation']
     parent_to_type = {
-        'People': 'People',
+        'Peoples': 'People',
         'Technologies': 'Technology',
         'Servers': 'Server',
         'Staff Augmentation': 'Procurement'
     }
 
-    # Dictionary to keep track of configuration items (CIs) and their parent dependencies
+    # Track parent-child relationships
     ci_to_parents = {}
 
-    # Iterate over each row in the DataFrame to process nodes and their dependencies
+    # Iterate over the Excel rows to populate nodes and links
     for _, row in df.iterrows():
-        # Extract values from the current row
         ci_name = row['CI_Name']
         ci_type = row['CI_Type']
         ci_description = row['CI_Descrip']
@@ -53,51 +42,48 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         dependency_type = row['Dependency_Type']
         dependency_description = row['Dependency_Descrip']
 
-        # If the CI name is valid (not 'None'), not already added, and not in parent nodes, add it as a new node
-        if ci_name != 'None' and ci_name not in node_ids and ci_name not in parent_nodes:
+        # Add CI node if not already present
+        if ci_name != 'None' and ci_name not in node_ids:
             nodes.append({
-                'id': ci_name,  # The unique identifier of the node
-                'type': ci_type,  # The type/category of the node (e.g., Application, Server)
-                'description': ci_description  # Description of the node
+                'id': ci_name,
+                'type': ci_type,
+                'description': ci_description
             })
-            node_ids.add(ci_name)  # Track the node to avoid duplicates
+            node_ids.add(ci_name)
 
-        # Similarly, if the dependency name is valid, not already added, and not in parent nodes, add it as a new node
-        if dependency_name != 'None' and dependency_name not in node_ids:
+        # Add dependency node if not a parent node and not already present
+        if dependency_name != 'None' and dependency_name not in parent_nodes and dependency_name not in node_ids:
             nodes.append({
-                'id': dependency_name,  # The unique identifier of the dependency node
-                'type': dependency_type,  # The type/category of the dependency node
-                'description': dependency_description  # Description of the dependency node
+                'id': dependency_name,
+                'type': dependency_type,
+                'description': dependency_description
             })
-            node_ids.add(dependency_name)  # Track the dependency node to avoid duplicates
+            node_ids.add(dependency_name)
 
-        # If the dependency is a parent node, associate it with the CI in the ci_to_parents dictionary
+        # Record parent-child relationships
         if dependency_name in parent_nodes:
-            # If the CI name is not yet a key in ci_to_parents, initialize a set for it
             if ci_name not in ci_to_parents:
                 ci_to_parents[ci_name] = set()
-            # Add the parent node to the set of parents associated with this CI
             ci_to_parents[ci_name].add(dependency_name)
 
-        # If both the CI name and dependency name are valid, and the dependency is not a parent node, create a link
-        if dependency_name != 'None' and ci_name != 'None' and dependency_name not in parent_nodes:
+        # Add link between CI and its dependency (if valid)
+        if dependency_name != 'None' and dependency_name not in parent_nodes:
             links.append({
-                'source': dependency_name,  # The dependency node acts as the source in the link
-                'target': ci_name  # The CI node acts as the target in the link
+                'source': dependency_name,
+                'target': ci_name
             })
 
-    # Now, link all nodes of corresponding types to their associated CIs based on parent dependencies
+    # Create links between CIs and their parents based on parent-child relationships
     for ci, parents in ci_to_parents.items():
         for parent in parents:
-            node_type = parent_to_type[parent]  # Get the type associated with the parent node
-            # Link all nodes of the same type directly to the CI
+            node_type = parent_to_type[parent]
+            # Connect all nodes of the same type to the CI
             for node in nodes:
                 if node['type'] == node_type:
                     links.append({
-                        'source': node['id'],  # The node of the same type acts as the source
-                        'target': ci  # The CI acts as the target in the link
+                        'source': node['id'],
+                        'target': ci
                     })
 
-    # Prepare the final graph data structure containing nodes and links
-    graph_data = {'nodes': nodes, 'links': links}
-    return graph_data  # Return the graph data structure for further use
+    # Return the final graph structure
+    return {'nodes': nodes, 'links': links}
