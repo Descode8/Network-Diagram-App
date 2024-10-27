@@ -48,14 +48,13 @@ let link;  // D3 selection of link elements
 
 // Define color mapping for different types of nodes
 const typeColorMap = new Map([
-    ['Home', '#000000'],      
-    ['Application', '#000000'], 
-    ['People', '#9BBB59'],      
-    ['Server', '#F79646'],      
-    ['Technology', '#C0504D'],
-    ['Windows Server', '#C0504D'],
-    ['VMWare', '#C0504D'],
-    ['Procurement', '#FF0000']
+    ['Home', '#212F3C'],      
+    ['Applications', '#4F81BD'], // navy blue
+    ['People', '#00B050'],      // green      
+    ['Technology', '#953734'],  // red
+    ['Data', '#5d6d7e'], // olive
+    ['Procurements', '#FFC000'], // orange
+    ['Facilities', '#5F497A'] // purple
 ]);
 
 /**********************************
@@ -109,7 +108,7 @@ function assignColors(data) {
     data.nodes.forEach(node => {
         if (node.id === homeNode) {
             // home node gets black color
-            nodeColorMap.set(node.id, '#000000');
+            nodeColorMap.set(node.id, '#212F3C');
         } else {
             // Get the color associated with the node's type from the type-color mapping
             var color = typeColorMap.get(node.type);

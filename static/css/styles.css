@@ -10,6 +10,14 @@ body, html {
     background-color: #FFFFFF;
 }
 
+circle {
+    cursor: pointer;
+}
+
+text, circle text {
+    cursor: default;
+}
+
 .right-container, .left-container {
     background-color: var(--cont-bg-clr);
     overflow-y: auto;
@@ -23,8 +31,6 @@ body, html {
     margin: 0 auto;
     padding: 3px;
 }
-
-
 
 .left-container input[type="text"],
 .left-container input[type="range"],
@@ -41,7 +47,7 @@ body, html {
 
 .right-container h2, .left-container h2 {
     margin-top: 0;
-    font-size: 1.5rem;
+    font-size: 1.5vw;
     margin: 0;
     padding: 3px; 
     text-align: center;
@@ -127,10 +133,6 @@ body, html {
     z-index: 2;
 }
 
-text {
-    cursor: pointer;
-}
-
 .root-node {
     font-weight: bold;
     font-size: 1rem;
@@ -167,6 +169,7 @@ text {
     border-radius: 5px;
     outline: none;
     margin: 10px 0;
+    cursor: pointer;
 }
 
 
