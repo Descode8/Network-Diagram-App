@@ -59,7 +59,7 @@ var slider = document.getElementById('depthSlider');
         slider.addEventListener('input', updateSlider);
 
 // Define color mapping for different types of nodes
-const typeColorMap = new Map([
+var typeColorMap = new Map([
     ['Home', '#212F3C'],      
     ['Applications', '#3498db'], // Blue
     ['People', '#16a085'],     // Green       
@@ -100,7 +100,7 @@ async function fetchGraphData() {
     graphData = await response.json();
 
     // Dynamically assign home and active nodes from the graph data
-    const homeLink = graphData.links.find(link => link.target === 'home') || graphData.links[0];
+    var homeLink = graphData.links.find(link => link.target === 'home') || graphData.links[0];
     homeNode = homeLink ? homeLink.target : 'home';
     activeNodeId = homeLink ? homeLink.target : 'Applications';
 
@@ -505,20 +505,20 @@ function updateRightContainer() {
     var types = d3.group(immediateChildren, d => d.type);
 
     // Define the desired display order
-    const orderedTypes = ["People", "Technology"];
+    var orderedTypes = ["People", "Technology"];
 
     // Display "People" and "Technology" first, in that order
     orderedTypes.forEach(type => {
         if (types.has(type)) {
-            const nodes = types.get(type);
+            var nodes = types.get(type);
             rightContainer.append("p")
                 .style("background-color", typeColorMap.get(type) || '#000')
                 .attr("class", "dependency-type")
                 .html(`<strong>${type}</strong>`);
 
             nodes.forEach(node => {
-                const nodeDescription = node.description || 'No description available';
-                const nodeName = node.id;
+                var nodeDescription = node.description || 'No description available';
+                var nodeName = node.id;
                 rightContainer.append("p")
                     .attr("class", "dependency-node")
                     .html(`<strong>${nodeName}</strong>`);
@@ -535,8 +535,7 @@ function updateRightContainer() {
                 .html(`<strong>${type}</strong>`);
 
             nodes.forEach(node => {
-                const nodeDescription = node.description || 'No description available';
-                const nodeName = node.id;
+                var nodeName = node.id;
                 rightContainer.append("p")
                     .attr("class", "dependency-node")
                     .html(`<strong>${nodeName}</strong>`);
@@ -551,8 +550,8 @@ function updateRightContainer() {
 
 // Modify the home button event listener to use the current slider depth
 homeButton.addEventListener('click', () => {
-    const depth = parseInt(depthSlider.value);  // Get the current depth from the slider
-    resetGraph(depth, homeNode);  // Reset graph with current depth and home node
+    var depth = parseInt(depthSlider.value);  
+    resetGraph(depth, homeNode);  
 });
 
 // Add event listener for the search button
@@ -560,6 +559,16 @@ searchButton.addEventListener('click', () => {
     var searchTerm = searchInput.value.trim();
     if (searchTerm) {
         searchNode(searchTerm);
+    }
+});
+
+// Add event listener for 'Enter' key press on the input field
+searchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        var searchTerm = searchInput.value.trim();
+        if (searchTerm) {
+            searchNode(searchTerm);
+        }
     }
 });
 
@@ -623,7 +632,7 @@ function expandNodeByDepth(node, depth, currentDepth = 1) {
     if (currentDepth === depth) return;
 
     // Find only the immediate children of the current node
-    const childLinks = graphData.links.filter(link => 
+    var childLinks = graphData.links.filter(link => 
         link.source.id === node.id || link.target.id === node.id
     );
 
@@ -632,7 +641,7 @@ function expandNodeByDepth(node, depth, currentDepth = 1) {
             visibleLinks.push(link);  // Add the link to visible links
 
             // Get the connected node (either source or target of the link)
-            const childNode = link.source.id === node.id ? link.target : link.source;
+            var childNode = link.source.id === node.id ? link.target : link.source;
 
             // Recursively expand the graph if the connected node isn't already visible
             if (!visibleNodes.includes(childNode)) {
