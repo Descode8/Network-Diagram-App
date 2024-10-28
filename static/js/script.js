@@ -46,15 +46,27 @@ let visibleLinks = []; // Array of currently visible links
 let node;  // D3 selection of node elements
 let link;  // D3 selection of link elements
 
+var slider = document.getElementById('depthSlider');
+        // Function to update the gradient and the displayed value
+        function updateSlider() {
+            var value = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+            slider.style.setProperty('--value', `${value}%`);
+            depthValue.textContent = slider.value; // Update the displayed value
+        }
+        // Initialize the slider with the default value on page load
+        updateSlider();
+        // Update the slider whenever its value changes
+        slider.addEventListener('input', updateSlider);
+
 // Define color mapping for different types of nodes
 const typeColorMap = new Map([
     ['Home', '#212F3C'],      
-    ['Applications', '#4F81BD'], // navy blue
-    ['People', '#00B050'],      // green      
-    ['Technology', '#953734'],  // red
-    ['Data', '#5d6d7e'], // olive
-    ['Procurements', '#FFC000'], // orange
-    ['Facilities', '#5F497A'] // purple
+    ['Applications', '#3498db'], // Blue
+    ['People', '#16a085'],     // Green       
+    ['Technology', '#e74c3c '],  // Red
+    ['Data', '#616a6b'], // Gray
+    ['Procurements', '#f39c12'], // Yellow 
+    ['Facilities', '#884ea0'] // Purple
 ]);
 
 /**********************************

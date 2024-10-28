@@ -26,24 +26,21 @@ text, circle text {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 5px; /* Adds spacing between elements */
+    gap: 10px; /* Adds spacing between elements */
     width: 15vw;
     margin: 0 auto;
     padding: 3px;
 }
 
+.right-container {
+    width: 18vw;
+}
+
 .left-container input[type="text"],
-.left-container input[type="range"],
-.left-container button {
+.left-container input[type="range"] {
     width: 90%; /* Adjust to ensure items fit nicely */
     margin: 5px 0;
 }
-
-.left-container label,
-.left-container span {
-    margin: 5px 0;
-}
-
 
 .right-container h2, .left-container h2 {
     margin-top: 0;
@@ -65,8 +62,6 @@ text, circle text {
     font-size: .8rem;
 }
 
-
-
 .description-header, .dependencies-header {
     margin-top: 0;
     font-size: 1rem;
@@ -78,7 +73,6 @@ text, circle text {
     font-weight: bold;
     color: white;
 }
-
 
 .right-container .dependencies-header {
     background-color: var(--depend-hdr-clr);
@@ -101,7 +95,7 @@ text, circle text {
 }
 
 .graph-container {
-    width: 70vw;
+    width: 67vw;
     height: 100vh;  
     border-left: 2px solid var(--brdr-clr);
     border-right: 2px solid var(--brdr-clr);
@@ -116,7 +110,7 @@ text, circle text {
     width: 100vw;
     height: 100vh;
     display: block;
-    cursor: default;
+    cursor: move;
 }
 
 .tooltip {
@@ -154,30 +148,52 @@ text, circle text {
     cursor: pointer;
 }
 
-.customer-slider {
-    border: 2px solid #548DD4;
-    width: 100%;
+.custom-slider {
+    width: 90%;
+    margin: 0px auto;
 }
 
 .custom-slider input[type="range"] {
+    -webkit-appearance: none;
     appearance: none;
-    -webkit-appearance: none; 
-    -moz-appearance: none; 
     width: 100%;
     height: 8px;
-    background: var(--brdr-clr);
-    border-radius: 5px;
-    outline: none;
+    background: transparent;
     margin: 10px 0;
     cursor: pointer;
+    position: relative;
 }
 
+.custom-slider input[type="range"]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    background: linear-gradient(to right, var(--pane-ttle-bg-clr) 0%, var(--pane-ttle-bg-clr) var(--value), var(--brdr-clr) var(--value), var(--brdr-clr) 100%);
+}
+
+.custom-slider input[type="range"]::-moz-range-track {
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    background-color: var(--pane-ttle-bg-clr) ;
+}
 
 .custom-slider input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    background-color: var(--pane-ttle-bg-clr);
-    width: 5px;
-    height: 20px;
+    background-color: var(--pane-ttle-bg-clr) ;
+    width: 10px;
+    height: 38px;
+    margin-top: -14px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 3px solid var(--cont-bg-clr);
+}
+
+.custom-slider input[type="range"]::-moz-range-thumb {
+    background-color: var(--pane-ttle-bg-clr) ;
+    width: 3px;
+    height: 24px;
+    border-radius: 10px;
     cursor: pointer;
 }
 
@@ -197,61 +213,10 @@ text, circle text {
     margin: 0px 2px; /* Adds space at the top and bottom of the scrollbar */
 }
 
-button#homeButton, button#searchButton {
-    display: flex;
-    align-items: center;
-    gap: 5px; /* Space between icon and text */
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 5px;
-}
-
-button#homeButton img.home-icon, button#searchButton {
-    width: 30px;
-    height: 30px;
-    display: inline-block;
-    vertical-align: middle;
-}
-
-.input-container {
-    position: relative;
-    width: 100%; /* Ensure it fits the parent */
-    max-width: 300px; /* Control input field size */
-    display: flex;
-    align-items: center;
-    gap: 5px; /* Space between input and button */
-}
-
-#searchInput {
-    width: 100%;
-    padding-right: 40px; /* Leave space for icon */
-    box-sizing: border-box;
-}
-
-#searchButton {
-    border: none;
-    background: none;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.search-icon {
-    width: 20px;
-    height: 20px;
-}
-
-.custom-slider input {
-    width: 100%; /* Make the slider responsive */
-}
-
 #homeButton {
     display: flex;
     align-items: center;
+    justify-content: center;
     border: none;
     background: none;
     cursor: pointer;
@@ -262,14 +227,52 @@ button#homeButton img.home-icon, button#searchButton {
     height: 30px;
 }
 
-label, span {
-    text-align: center;
+.custom-slider input {
+    width: 100%; 
+}
+
+.input-and-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background-color: #f2eef6; 
+    border-radius: 24px; 
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); 
+    width: 90%;
 }
 
 #searchInput {
-    width: 100%;
-    padding-right: 40px;
-    box-sizing: border-box;
-    border: 2px solid var(--pane-ttle-bg-clr);
-    border-radius: 2px;
+    border: none;
+    outline: none;
+    background-color: transparent;
+    flex-grow: 1;
+    color: #333; 
+    margin-left: 8px;
+}
+
+#searchButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    padding-left: 8px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.search-icon {
+    width: 20px;
+    height: 20px;
+    opacity: 0.8;
+}
+
+label, span {
+    text-align: center;
+    padding: 0;
+    margin: 0;
+    font-weight: bold;
+    color: var(--pane-ttle-bg-clr);
+    font-size: .8rem;
 }

@@ -14,7 +14,7 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
 
     # Load and clean the data
     df = pd.read_excel(excel_file).fillna('None')
-    df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+    df = df.apply(lambda col: col.str.strip() if col.dtype == 'object' else col)
 
     # Initialize structures to hold graph components
     nodes = []  # All nodes

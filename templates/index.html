@@ -13,21 +13,22 @@
         --descrip-clr: #4F81BD;
         --depend-hdr-clr: #4F81BD;
         --brdr-clr: #BFBFBF;
+        --dot-color: #4a357d; 
     }
 </style>
 <body>
     <div class="left-container">
         <h2>CIO Dashboard</h2>
         <button id="homeButton" title="Go Home">
-            <img src="{{ url_for('static', filename='images/house-solid.svg') }}" alt="Home Icon" class="home-icon">
+            <img src="{{ url_for('static', filename='images/house.svg') }}" alt="Home Icon" class="home-icon">
         </button>
     
-        <div class="input-container">
-            <input type="text" id="searchInput" placeholder="Search Node">
+        <div class="input-and-button">
             <button id="searchButton" title="Search">
                 <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon">
             </button>
-        </div>
+            <input type="text" id="searchInput" placeholder="Search Node...">
+        </div>                
     
         <label for="depthSlider">Depth</label>
         <div class="custom-slider">
@@ -39,12 +40,9 @@
     <div class="graph-container">
         <svg></svg>
     </div>
-
     <div class="tooltip" id="tooltip"></div>
-
     <div class="right-container"></div>
 
-    <!-- Import D3.js library from CDN -->
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
