@@ -7,54 +7,55 @@ body, html {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background-color: #FFFFFF;
+    background-color: var(--page-bg-clr);
 }
 
 circle {
     cursor: pointer;
+    padding: 50px;
 }
 
 text, circle text {
     cursor: default;
 }
 
-.right-container, .left-container {
-    background-color: var(--cont-bg-clr);
+.right-pane, .left-pane {
+    background-color: var(--pane-bg-clr);
     overflow-y: auto;
     box-sizing: border-box;
-    height: 100%; /* Ensures it fills the available vertical space */
+    height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 10px; /* Adds spacing between elements */
+    gap: 10px; 
     width: 15vw;
     margin: 0 auto;
     padding: 3px;
 }
 
-.right-container {
+.right-pane {
     width: 18vw;
 }
 
-.left-container input[type="text"],
-.left-container input[type="range"] {
-    width: 90%; /* Adjust to ensure items fit nicely */
+.left-pane input[type="text"],
+.left-pane input[type="range"] {
+    width: 90%; 
     margin: 5px 0;
 }
 
-.right-container h2, .left-container h2 {
+.right-pane h2, .left-pane h2 {
     margin-top: 0;
     font-size: 1.5vw;
     margin: 0;
     padding: 3px; 
     text-align: center;
     background-color: var(--pane-ttle-bg-clr);
-    border-bottom: 2px solid var(--brdr-clr);
+    border-radius: 5px;
     font-weight: bold;
     color: white;
 }
 
-.right-container p {
+.right-pane p {
     text-align: center;
     padding: 3px;
     margin: 0;
@@ -69,20 +70,25 @@ text, circle text {
     padding: 3px; 
     text-align: center;
     background-color: var(--descrip-clr);
-    border-bottom: 2px solid var(--brdr-clr);
     font-weight: bold;
     color: white;
+    border-radius: 5px;
 }
 
-.right-container .dependencies-header {
+.right-pane .dependencies-header {
     background-color: var(--depend-hdr-clr);
 }
 
-.right-container .dependency-type {
+.right-pane .dependency-type {
     color: white;
+    border-bottom: none;
 }
 
-.right-container .dependency-node {
+.dependency-type {
+    border-radius: 5px;
+}
+
+.right-pane .dependency-node {
     padding: 3px;
     margin: 0;
     border-bottom: 1px solid var(--brdr-clr);
@@ -90,7 +96,7 @@ text, circle text {
     text-align: left;
 }
 
-.right-container h4 {
+.right-pane h4 {
     margin-top: 10px;
 }
 
@@ -184,16 +190,16 @@ text, circle text {
     width: 10px;
     height: 38px;
     margin-top: -14px;
-    border-radius: 10px;
+    border-radius: 5px;
     cursor: pointer;
-    border: 3px solid var(--cont-bg-clr);
+    border: 3px solid var(--pane-bg-clr);
 }
 
 .custom-slider input[type="range"]::-moz-range-thumb {
     background-color: var(--pane-ttle-bg-clr) ;
     width: 3px;
     height: 24px;
-    border-radius: 10px;
+    border-radius: 5px;
     cursor: pointer;
 }
 
@@ -210,7 +216,7 @@ text, circle text {
 
 ::-webkit-scrollbar-track {
     background-color: transparent;
-    margin: 0px 2px; /* Adds space at the top and bottom of the scrollbar */
+    margin: 0px 2px; 
 }
 
 #homeButton {
@@ -266,6 +272,10 @@ text, circle text {
     width: 20px;
     height: 20px;
     opacity: 0.8;
+}
+
+.search-icon:hover {
+    opacity: 1;
 }
 
 label, span {

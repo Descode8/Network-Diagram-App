@@ -1,6 +1,6 @@
-/***************************************************************
- * VARIABLE DECLARATIONS AND INITIAL SETUP
- ***************************************************************/
+/*******************************************
+ * VARIABLE DECLARATIONS AND INITIAL SETUP *
+ *******************************************/
 // Stores the home node of the graph
 let homeNode;
 
@@ -17,7 +17,7 @@ var svg = d3.select("svg");
 var tooltip = d3.select("#tooltip");
 
 // Select the container that will show detailed information about selected nodes
-var rightContainer = d3.select(".right-container");
+var rightContainer = d3.select(".right-pane");
 
 // Get references to UI control elements
 var searchInput = document.getElementById('searchInput');    // Input field for node search
@@ -60,13 +60,13 @@ var slider = document.getElementById('depthSlider');
 
 // Define color mapping for different types of nodes
 var typeColorMap = new Map([
-    ['Home', '#212F3C'],      
-    ['Applications', '#3498db'], // Blue
-    ['People', '#16a085'],     // Green       
-    ['Technology', '#e74c3c '],  // Red
-    ['Data', '#616a6b'], // Gray
-    ['Procurements', '#f39c12'], // Yellow 
-    ['Facilities', '#884ea0'] // Purple
+    ['Home', '#2E4053'],      
+    ['Applications', '#3498DB'], // Blue
+    ['People', '#229954'],     // Green       
+    ['Technology', '#C0392B'],  // Red
+    ['Data', '#1F618D'], // Gray
+    ['Procurements', '#E67E22'], // Yellow 
+    ['Facilities', '#7D3C98'] // Purple
 ]);
 
 /**********************************
@@ -195,7 +195,7 @@ function renderGraph(data) {
 
         // Collision force: prevents nodes from overlapping
         .force("collision", d3.forceCollide()
-            .radius(10)     // Collision radius
+            .radius(3)     // Collision radius
             .strength(1))   // Collision strength
 
         // Custom forces for clustering and cluster separation
@@ -253,8 +253,8 @@ function clusteringForce() {
                 // Subtract current position from target position
                 // Multiply by alpha (decreases over time) for smooth animation
                 // Multiply by 0.1 to dampen the force
-                d.vx -= (d.x - cluster.x) * alpha * 0.1;  // Adjust X velocity
-                d.vy -= (d.y - cluster.y) * alpha * 0.1;  // Adjust Y velocity
+                d.vx -= (d.x - cluster.x) * alpha * 0.09;  // Adjust X velocity
+                d.vy -= (d.y - cluster.y) * alpha * 0.09;  // Adjust Y velocity
             }
         });
     };
@@ -317,9 +317,9 @@ function clusterCollideForce() {
     };
 }
 
-/*************************************************
+/*******************************************************
 * NODE CLICK EVENT HANDLERS FOR ACTIVE NODE MANAGEMENT *
-**************************************************/
+********************************************************/
 function nodeClicked(event, d) {
     if (d.id === activeNodeId) {
         return; // Do nothing if the clicked node is already active
@@ -340,7 +340,7 @@ function nodeClicked(event, d) {
     updateNodePositions();
     updateGraph();
 
-    // Update the right-container with the new active node's attributes
+    // Update the right-pane with the new active node's attributes
     updateRightContainer();
 }
 
@@ -378,8 +378,8 @@ function updateGraph() {
     link.exit().remove();
 
     var linkEnter = link.enter().append("line")
-        .attr("stroke-width", 1)
-        .attr("stroke", "#BFBFBF");
+        .attr("stroke-width", 0.5)
+        .attr("stroke", "#85929e");
 
     link = linkEnter.merge(link);
 
@@ -403,8 +403,8 @@ function updateGraph() {
         .on("mouseout", hideTooltip);
 
     nodeEnter.append("text")
-        .attr("dx", "1ex")
-        .attr("dy", ".5ex")
+        .attr("dx", ".5ex")
+        .attr("dy", "-.5ex")
         .text(d => d.id)
         .attr("class", d => (d.id === homeNode ? 'home-node' : 'child-node'));
 
@@ -416,9 +416,9 @@ function updateGraph() {
     simulation.alpha(0.3).restart();
 }
 
-/********************************************************************
-* SIMULATION TICK FUNCTION: UPDATE POSITIONS OF NODES AND LINKS     *
-*********************************************************************/
+/****************************************************************
+* SIMULATION TICK FUNCTION: UPDATE POSITIONS OF NODES AND LINKS *
+*****************************************************************/
 function ticked() {
     node.attr("transform", d => {
         d.x = Math.max(0, Math.min(width, d.x)); // Ensure nodes stay within width
@@ -432,9 +432,9 @@ function ticked() {
         .attr("y2", d => d.target.y);
 }
 
-/************************************************
-* UPDATE NODE POSITIONS BASED ON ACTIVE NODE    *
-*************************************************/
+/*********************************************
+* UPDATE NODE POSITIONS BASED ON ACTIVE NODE *
+**********************************************/
 function updateNodePositions() {
     // Fix the active node at the center
     visibleNodes.forEach(n => {
@@ -459,9 +459,9 @@ function updateNodePositions() {
     simulation.alpha(0.3).restart();
 }
 
-/************************************************
-* UPDATE RIGHT-CONTAINER WITH NODE ATTRIBUTES   *
-*************************************************/
+/**********************************************
+* UPDATE right-pane WITH NODE ATTRIBUTES *
+***********************************************/
 function updateRightContainer() {
     // Clear the existing content
     rightContainer.html("");
@@ -544,9 +544,9 @@ function updateRightContainer() {
     });
 }
 
-/************************************************
-* EVENT LISTENERS FOR CONTROLS                 *
-************************************************/
+/*******************************
+* EVENT LISTENERS FOR CONTROLS *
+********************************/
 
 // Modify the home button event listener to use the current slider depth
 homeButton.addEventListener('click', () => {
@@ -579,9 +579,9 @@ depthSlider.addEventListener('input', () => {
     resetGraph(depth, activeNodeId);
 });
 
-/************************************************
-* FUNCTIONS FOR CONTROLS                        *
-*************************************************/
+/*************************
+* FUNCTIONS FOR CONTROLS *
+**************************/
 function searchNode(nodeId) {
     if (nodeById.has(nodeId)) {
         var node = nodeById.get(nodeId); // Get the node object
@@ -591,9 +591,9 @@ function searchNode(nodeId) {
     }
 }
 
-/************************************************
-* FUNCTIONS FOR CONTROLS AND INTERACTIONS       *
-************************************************/
+/******************************************
+* FUNCTIONS FOR CONTROLS AND INTERACTIONS *
+*******************************************/
 
 // Reset the graph to the initial state as when the app loads
 function resetToInitialState() {
@@ -650,7 +650,6 @@ function expandNodeByDepth(node, depth, currentDepth = 1) {
         }
     });
 }
-
 
 /************************************************
 * RESPONSIVENESS: CENTER GRAPH ON WINDOW RESIZE *
