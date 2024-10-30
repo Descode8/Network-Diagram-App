@@ -14,7 +14,7 @@ let parentNodes = [];
 var svg = d3.select("svg");
 
 // Select the tooltip element that will show node information on hover
-var tooltip = d3.select("#tooltip");
+// var tooltip = d3.select("#tooltip");
 
 // Select the container that will show detailed information about selected nodes
 var rightContainer = d3.select(".right-pane");
@@ -174,29 +174,28 @@ function renderGraph(data) {
     // Create container for node elements
     node = g.append("g")
         .attr("class", "nodes")
+        .style("stroke", "#17202A")
+        .style("text-anchor", "middle")
         .selectAll("g");
 
     // Initialize the force simulation with multiple forces
     simulation = d3.forceSimulation()
         // Link force: controls the distance and strength between connected nodes
         .force("link", d3.forceLink()
-            .distance(d => {
-                // Shorter distance for Application nodes
-                return d.source.type === 'Application' ? 75 : 150;
-            })
-            .strength(0.1))
+            .distance(150)  // Desired link length
+            .strength(0.1)) // Strength of the link force
         // Charge force: makes nodes repel each other
         .force("charge", d3.forceManyBody()
-            .strength(-100)    // Repulsion strength
-            .distanceMax(300)) // Maximum effect distance
+            .strength(-200)    // Repulsion strength
+            .distanceMax(100)) // Maximum effect distance
 
         // Center force: pulls the entire graph toward the center
-        .force("center", d3.forceCenter(width / 2.5, height / 2))
+        .force("center", d3.forceCenter(width / 2, height / 2))
 
         // Collision force: prevents nodes from overlapping
         .force("collision", d3.forceCollide()
-            .radius(3)     // Collision radius
-            .strength(1))   // Collision strength
+            .radius(10)     // This defines how close nodes can get to each other before the force kicks in to prevent overlap
+            .strength(2))   // This controls how strongly nodes repel each other when they collide.
 
         // Custom forces for clustering and cluster separation
         .force("cluster", clusteringForce())
@@ -227,7 +226,7 @@ function clusteringForce() {
     var numTypes = types.length;               // Count of unique types
     // Calculate radius for arranging clusters in a circle
     // Uses 1/3 of the smaller dimension to ensure clusters fit on screen
-    var clusterRadius = Math.min(width, height) / 3;
+    var clusterRadius = Math.min(width, height) / 2;
 
     // Calculate position for each cluster type's center
     types.forEach((type, index) => {
@@ -248,13 +247,9 @@ function clusteringForce() {
             if (d.id !== activeNodeId && !parentNodes.includes(d)) {
                 // Get the target cluster center for this node's type
                 var cluster = clusterCenters[d.type];
-
-                // Apply forces to move node toward its cluster center
-                // Subtract current position from target position
-                // Multiply by alpha (decreases over time) for smooth animation
-                // Multiply by 0.1 to dampen the force
-                d.vx -= (d.x - cluster.x) * alpha * 0.09;  // Adjust X velocity
-                d.vy -= (d.y - cluster.y) * alpha * 0.09;  // Adjust Y velocity
+                // These lines control how each node moves towards its assigned cluster center
+                d.vx -= (d.x - cluster.x) * alpha * 0.05;  
+                d.vy -= (d.y - cluster.y) * alpha * 0.05;  
             }
         });
     };
@@ -274,7 +269,7 @@ function clusterCollideForce() {
     // Same cluster center calculation as in clusteringForce()
     var clusterCenters = {};
     var numTypes = types.length;
-    var clusterRadius = Math.min(width, height) / 3;
+    var clusterRadius = Math.min(width, height) / 2;
 
     // Calculate initial positions of cluster centers
     types.forEach((type, index) => {
@@ -372,13 +367,14 @@ function expandNode(node) {
 ***************************************/
 function updateGraph() {
     // Update links
-    link = g.select(".links").selectAll("line")
+    link = g.select(".links")
+        .selectAll("line")
         .data(visibleLinks, d => `${d.source.id}-${d.target.id}`);
 
     link.exit().remove();
 
     var linkEnter = link.enter().append("line")
-        .attr("stroke-width", 0.5)
+        .attr("stroke-width", 0.6)
         .attr("stroke", "#85929e");
 
     link = linkEnter.merge(link);
@@ -396,15 +392,16 @@ function updateGraph() {
             .on("end", dragended));
 
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === homeNode ? 5 : 4))
+        .attr("r", d => (d.id === homeNode ? 6.5 : 5))
         .attr("fill", d => nodeColorMap.get(d.id))
-        .on("click", nodeClicked)
-        .on("mousemove", moveTooltip)
-        .on("mouseout", hideTooltip);
+        .on("click", nodeClicked);
+        // .on("mousemove", moveTooltip)
+        // .on("mouseout", hideTooltip);
 
     nodeEnter.append("text")
-        .attr("dx", ".5ex")
-        .attr("dy", "-.5ex")
+        .attr("dx", "0ex")
+        .attr("dy", "-1.5ex")
+        .attr("stroke-width", 0)
         .text(d => d.id)
         .attr("class", d => (d.id === homeNode ? 'home-node' : 'child-node'));
 
@@ -412,7 +409,8 @@ function updateGraph() {
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
-    simulation.force("link").links(visibleLinks);
+    simulation.force("link")
+        .links(visibleLinks)
     simulation.alpha(0.3).restart();
 }
 
@@ -674,20 +672,20 @@ window.addEventListener("resize", () => {
 /************************************************
 * TOOLTIP FUNCTIONS TO DISPLAY NODE INFORMATION *
 *************************************************/
-function showTooltip(event, d) {
-    // Use the node's description if available
-    var description = d.description ? `${d.description}` : 'No description available';
-    tooltip.style("visibility", "visible").text(description);
-}
+// function showTooltip(event, d) {
+//     // Use the node's description if available
+//     var description = d.description ? `${d.description}` : 'No description available';
+//     tooltip.style("visibility", "visible").text(description);
+// }
 
-function moveTooltip(event) {
-    tooltip.style("top", (event.pageY + 10) + "px")
-        .style("left", (event.pageX + 10) + "px");
-}
+// function moveTooltip(event) {
+//     tooltip.style("top", (event.pageY + 10) + "px")
+//         .style("left", (event.pageX + 10) + "px");
+// }
 
-function hideTooltip() {
-    tooltip.style("visibility", "hidden");
-}
+// function hideTooltip() {
+//     tooltip.style("visibility", "hidden");
+// }
 
 /*****************************************************
 * DRAG FUNCTIONS TO ENABLE INTERACTIVE NODE MOVEMENT *

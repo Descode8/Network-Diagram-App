@@ -12,7 +12,8 @@ body, html {
 
 circle {
     cursor: pointer;
-    padding: 50px;
+    padding: 0px;
+    margin: 0px;
 }
 
 text, circle text {
@@ -113,13 +114,13 @@ text, circle text {
 }
 
 .graph-container svg {
-    width: 100vw;
-    height: 100vh;
+    width: inherit;
+    height: inherit;
     display: block;
     cursor: move;
 }
 
-.tooltip {
+/* .tooltip {
     position: absolute;
     text-align: left;
     padding: 4px;
@@ -131,26 +132,26 @@ text, circle text {
     font-size: 12px;
     width: 200px;
     z-index: 2;
-}
+} */
 
-.root-node {
+.home-node {
     font-weight: bold;
-    font-size: 1rem;
-    fill: #000000;
+    font-size: 1.2rem;
+    fill: var(--text-clr);;
     cursor: pointer;
 }
 
 .parent-node {
     font-weight: bold;
-    font-size: .7rem;
-    fill: #0C0C0C;
+    font-size: 7rem;
+    fill: var(--text-clr);;
     cursor: pointer;
 }
 
 .child-node {
     font-weight: normal;
-    font-size: .7rem;
-    fill: #000000;
+    font-size: .8rem;
+    fill: var(--text-clr);;
     cursor: pointer;
 }
 
