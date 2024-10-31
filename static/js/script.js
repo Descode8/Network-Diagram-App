@@ -195,13 +195,13 @@ function renderGraph(data) {
         .force("charge", d3.forceManyBody()
             .strength(-200)
             .distanceMax(100))
-        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("center", d3.forceCenter(width / 2, height / 2).strength(0.00001))
         .force("collision", d3.forceCollide()
-            .radius(10)
+            .radius(1)
             .strength(2))
         // Control simulation cooling rate
         .alphaDecay(0.01)
-        .force("clusterCollide", clusterCollideForce(10))
+        .force("clusterCollide", clusterCollideForce(1))
         .force("cluster", clusteringForce())
         .on("tick", ticked);
 
@@ -310,7 +310,7 @@ function clusteringForce() {
 * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
 **************************************************/
 function clusterCollideForce() {
-    var padding = 50;  // Minimum pixels between cluster centers
+    var padding = 5;  // Minimum pixels between cluster centers
 
     // Same type extraction as in clusteringForce()
     var types = [...new Set(graphData.nodes
@@ -320,7 +320,7 @@ function clusterCollideForce() {
     // Same cluster center calculation as in clusteringForce()
     var clusterCenters = {};
     var numTypes = types.length;
-    var clusterRadius = Math.min(width, height) / 2;
+    var clusterRadius = Math.min(width, height);
 
     // Calculate initial positions of cluster centers
     types.forEach((type, index) => {
@@ -349,8 +349,8 @@ function clusterCollideForce() {
                 if (distance < minDistance) {
                     // Calculate how far to move each cluster
                     // Movement is proportional to how much they overlap
-                    let moveX = dx / distance * (minDistance - distance) / 2;
-                    let moveY = dy / distance * (minDistance - distance) / 2;
+                    let moveX = dx / distance * (minDistance - distance);
+                    let moveY = dy / distance * (minDistance - distance);
 
                     // Move clusters in opposite directions
                     clusterA.x -= moveX;  // Move cluster A left
