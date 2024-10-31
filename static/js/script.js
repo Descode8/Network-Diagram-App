@@ -168,6 +168,7 @@ function renderGraph(data) {
     node = g.append("g")
         .attr("class", "nodes")
         .style("stroke", textClr)
+        .style("stroke-width", 1.5) // Stroke width for node outline
         .style("text-anchor", "middle")
         .selectAll("g")
         .data(visibleNodes, d => d.id)
@@ -205,7 +206,6 @@ function renderGraph(data) {
         .on("tick", ticked);
 
     // Start the simulation to ensure proper node positioning before rendering links
-    // simulation.alpha(0.3).restart();
     resetGraph(parseInt(depthSlider.value));
 }
 
@@ -221,7 +221,7 @@ function updateGraph() {
     link.exit().remove();
 
     var linkEnter = link.enter().append("line")
-        .attr("stroke-width", 0.6)
+        .attr("stroke-width", 1.5)
         .attr("stroke", lineClr);
 
     link = linkEnter.merge(link);
@@ -239,7 +239,7 @@ function updateGraph() {
             .on("end", dragended));
 
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === activeNodeId ? 7 : 5)) // Set active node radius to 6.5
+        .attr("r", d => (d.id === activeNodeId ? 7 : 5))
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked);
 
