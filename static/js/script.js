@@ -435,7 +435,6 @@ function updateNodePositions() {
     simulation.alpha(0.3).restart();
 }
 
-
 /**********************************************
 * UPDATE right-pane WITH NODE ATTRIBUTES *
 ***********************************************/
@@ -447,7 +446,11 @@ function updateRightContainer() {
     var activeNode = nodeById.get(activeNodeId);
 
     // Display the active node's ID at the top
-    rightContainer.append("h2").text(`${activeNode.id}`);
+    var color = typeColorMap.get(activeNode.id);
+            nodeColorMap.set(node.id, color);
+    rightContainer.append("h2")
+    .style("background-color", typeColorMap.get(activeNode.type) || '#000')
+    .html(`${activeNode.id}`);
 
     // Display the active node's name
     // rightContainer.append("h3").text("Name:");
@@ -494,7 +497,6 @@ function updateRightContainer() {
                 .html(`${type}`);
 
             nodes.forEach(node => {
-                var nodeDescription = node.description || 'No description available';
                 var nodeName = node.id;
                 rightContainer.append("p")
                     .attr("class", "dependency-node")
@@ -503,7 +505,7 @@ function updateRightContainer() {
         }
     });
 
-    // Display remaining types (excluding "People" and "Technology")
+    // Display remaining types 
     types.forEach((nodes, type) => {
         if (!orderedTypes.includes(type)) {
             rightContainer.append("p")
@@ -524,7 +526,6 @@ function updateRightContainer() {
 /*******************************
 * EVENT LISTENERS FOR CONTROLS *
 ********************************/
-
 // Modify the home button event listener to use the current slider depth
 homeButton.addEventListener('click', () => {
     var depth = parseInt(depthSlider.value);  

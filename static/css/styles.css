@@ -50,10 +50,13 @@ text, circle text {
     margin: 0;
     padding: 3px; 
     text-align: center;
-    background-color: var(--pane-ttle-bg-clr);
     /*border-radius: 5px;*/
     font-weight: bold;
     color: white;
+}
+
+.left-pane h2 {
+    background-color: var(--pane-ttle-bg-clr);
 }
 
 .right-pane p {
