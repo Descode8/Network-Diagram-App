@@ -179,12 +179,6 @@ function renderGraph(data) {
             .on("end", dragended)
         );
 
-    // Append circles and texts to nodes
-    node.append("circle")
-        .attr("r", d => (d.id === homeNode ? 6.5 : 5))
-        .attr("fill", d => nodeColorMap.get(d.id))
-        .on("click", nodeClicked);
-
     node.append("text")
         .attr("dx", "0ex")
         .attr("dy", "-1.5ex")
@@ -195,7 +189,7 @@ function renderGraph(data) {
     simulation = d3.forceSimulation(visibleNodes)
         .force("link", d3.forceLink(visibleLinks)
             .id(d => d.id)
-            .distance(150)
+            .distance(120)
             .strength(0.1))
         .force("charge", d3.forceManyBody()
             .strength(-200)
@@ -214,6 +208,60 @@ function renderGraph(data) {
     // simulation.alpha(0.3).restart();
     resetGraph(parseInt(depthSlider.value));
 }
+
+/**************************************
+* UPDATE THE GRAPH AFTER NODE CHANGES *
+***************************************/
+function updateGraph() {
+    // Update links
+    link = g.select(".links")
+        .selectAll("line")
+        .data(visibleLinks, d => `${d.source.id}-${d.target.id}`);
+
+    link.exit().remove();
+
+    var linkEnter = link.enter().append("line")
+        .attr("stroke-width", 0.6)
+        .attr("stroke", lineClr);
+
+    link = linkEnter.merge(link);
+
+    // Update nodes
+    node = g.select(".nodes").selectAll("g")
+        .data(visibleNodes, d => d.id);
+
+    node.exit().remove();
+
+    var nodeEnter = node.enter().append("g")
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+
+    nodeEnter.append("circle")
+        .attr("r", d => (d.id === activeNodeId ? 7 : 5)) // Set active node radius to 6.5
+        .attr("fill", d => nodeColorMap.get(d.id))
+        .on("click", nodeClicked);
+
+    nodeEnter.append("text")
+        .attr("dx", "0ex")
+        .attr("dy", "-1.5ex")
+        .attr("stroke-width", 0) // Stroke width for text outline
+        .text(d => d.id);
+
+    node = nodeEnter.merge(node);
+
+    // Update the radius for existing nodes based on whether they are active
+    node.select("circle")
+        .attr("r", d => (d.id === activeNodeId ? 7 : 5)); // Update the radius for all nodes based on activeNodeId
+
+    // Restart the simulation
+    simulation.nodes(visibleNodes);
+    simulation.force("link")
+        .links(visibleLinks);
+    simulation.alpha(0.3).restart();
+}
+
 
 /********************************************************************
 * CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
@@ -351,58 +399,6 @@ function expandNode(node) {
             }
         }
     });
-}
-
-/**************************************
-* UPDATE THE GRAPH AFTER NODE CHANGES *
-***************************************/
-function updateGraph() {
-    // Update links
-    link = g.select(".links")
-        .selectAll("line")
-        .data(visibleLinks, d => `${d.source.id}-${d.target.id}`);
-
-    link.exit().remove();
-
-    var linkEnter = link.enter().append("line")
-        .attr("stroke-width", 0.6)
-        .attr("stroke", lineClr);
-
-    link = linkEnter.merge(link);
-
-    // Update nodes
-    node = g.select(".nodes").selectAll("g")
-        .data(visibleNodes, d => d.id);
-
-    node.exit().remove();
-
-    var nodeEnter = node.enter().append("g")
-        .call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended));
-
-    nodeEnter.append("circle")
-        .attr("r", d => (d.id === homeNode ? 6.5 : 5))
-        .attr("fill", d => nodeColorMap.get(d.id))
-        .on("click", nodeClicked);
-        // .on("mousemove", moveTooltip)
-        // .on("mouseout", hideTooltip);
-
-    nodeEnter.append("text")
-        .attr("dx", "0ex")
-        .attr("dy", "-1.5ex")
-        .attr("stroke-width", 0) // Stroke width for text outline
-        .text(d => d.id)
-        .attr("class", d => (d.id === homeNode ? 'home-node' : 'child-node'));
-
-    node = nodeEnter.merge(node);
-
-    // Restart the simulation
-    simulation.nodes(visibleNodes);
-    simulation.force("link")
-        .links(visibleLinks)
-    simulation.alpha(0.3).restart();
 }
 
 /****************************************************************
