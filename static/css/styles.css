@@ -1,5 +1,5 @@
 body, html {
-    font-family: 'Century Gothic Regular', 'Century Gothic', Arial, sans-serif;
+    font-family: Tahoma, sans-serif;
     display: flex;
     flex-direction: row;
     margin: 0;
@@ -46,12 +46,12 @@ text, circle text {
 
 .right-pane h2, .left-pane h2 {
     margin-top: 0;
-    font-size: 1.5vw;
+    font-size: 1.3rem;
     margin: 0;
     padding: 3px; 
     text-align: center;
     background-color: var(--pane-ttle-bg-clr);
-    border-radius: 5px;
+    /*border-radius: 5px;*/
     font-weight: bold;
     color: white;
 }
@@ -60,7 +60,7 @@ text, circle text {
     text-align: center;
     padding: 3px;
     margin: 0;
-    border-bottom: 1px solid var(--brdr-clr);
+    border-bottom: 1px solid var(--bdr-clr);
     font-size: .8rem;
 }
 
@@ -73,7 +73,7 @@ text, circle text {
     background-color: var(--descrip-clr);
     font-weight: bold;
     color: white;
-    border-radius: 5px;
+    /* border-radius: 5px; */
 }
 
 .right-pane .dependencies-header {
@@ -85,14 +85,14 @@ text, circle text {
     border-bottom: none;
 }
 
-.dependency-type {
+/* .dependency-type {
     border-radius: 5px;
-}
+} */
 
 .right-pane .dependency-node {
     padding: 3px;
     margin: 0;
-    border-bottom: 1px solid var(--brdr-clr);
+    border-bottom: 1px solid var(--bdr-clr);
     font-size: 0.8rem;
     text-align: left;
 }
@@ -104,8 +104,8 @@ text, circle text {
 .graph-container {
     width: 67vw;
     height: 100vh;  
-    border-left: 2px solid var(--brdr-clr);
-    border-right: 2px solid var(--brdr-clr);
+    border-left: 2px solid var(--bdr-clr);
+    border-right: 2px solid var(--bdr-clr);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -167,7 +167,7 @@ text, circle text {
     height: 8px;
     background: transparent;
     margin: 10px 0;
-    cursor: pointer;
+    cursor: default;
     position: relative;
 }
 
@@ -175,7 +175,7 @@ text, circle text {
     width: 100%;
     height: 10px;
     border-radius: 5px;
-    background: linear-gradient(to right, var(--pane-ttle-bg-clr) 0%, var(--pane-ttle-bg-clr) var(--value), var(--brdr-clr) var(--value), var(--brdr-clr) 100%);
+    background: linear-gradient(to right, var(--pane-ttle-bg-clr) 0%, var(--pane-ttle-bg-clr) var(--value), var(--bdr-clr) var(--value), var(--bdr-clr) 100%);
 }
 
 .custom-slider input[type="range"]::-moz-range-track {
@@ -209,7 +209,7 @@ text, circle text {
 }
 
 ::-webkit-scrollbar-thumb {
-    background-color: var(--brdr-clr);
+    background-color: var(--bdr-clr);
     border-radius: 2px;
     cursor: pointer;
     min-height: 20px;

@@ -22,8 +22,9 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     node_ids = set()  # Track nodes to avoid duplication
 
     # Define parent nodes and map them to their types
-    parent_nodes = ['Peoples', 'Technologies', 'Servers', 'Staff Augmentation']
+    parent_nodes = ['Home', 'Peoples', 'Technologies', 'Servers', 'Staff Augmentation']
     parent_to_type = {
+        'Home': 'OIT',
         'Peoples': 'People',
         'Technologies': 'Technology',
         'Servers': 'Server',
