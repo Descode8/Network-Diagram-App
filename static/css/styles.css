@@ -136,27 +136,6 @@ text, circle text {
     z-index: 2;
 } */
 
-.home-node {
-    font-weight: bold;
-    font-size: 1.2rem;
-    fill: var(--text-clr);;
-    cursor: pointer;
-}
-
-.parent-node {
-    font-weight: bold;
-    font-size: 7rem;
-    fill: var(--text-clr);;
-    cursor: pointer;
-}
-
-.child-node {
-    font-weight: normal;
-    font-size: .8rem;
-    fill: var(--text-clr);;
-    cursor: pointer;
-}
-
 .custom-slider {
     width: 90%;
     margin: 0px auto;

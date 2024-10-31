@@ -168,7 +168,7 @@ function renderGraph(data) {
     node = g.append("g")
         .attr("class", "nodes")
         .style("stroke", textClr)
-        .style("stroke-width", 1.5) // Stroke width for node outline
+        .style("stroke-width", 1.2) // Stroke width for node outline
         .style("text-anchor", "middle")
         .selectAll("g")
         .data(visibleNodes, d => d.id)
@@ -221,7 +221,7 @@ function updateGraph() {
     link.exit().remove();
 
     var linkEnter = link.enter().append("line")
-        .attr("stroke-width", 1.5)
+        .attr("stroke-width", 1)
         .attr("stroke", lineClr);
 
     link = linkEnter.merge(link);
@@ -238,22 +238,27 @@ function updateGraph() {
             .on("drag", dragged)
             .on("end", dragended));
 
+    // Append circles with conditional radius for active node
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === activeNodeId ? 7 : 5))
+        .attr("r", d => (d.id === activeNodeId ? 10 : 5)) // Increased radius for active node
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked);
 
+    // Append text element
     nodeEnter.append("text")
         .attr("dx", "0ex")
-        .attr("dy", "-1.5ex")
-        .attr("stroke-width", 0) // Stroke width for text outline
+        .attr("dy", "-1.5ex") // Default positioning for non-active nodes
         .text(d => d.id);
 
     node = nodeEnter.merge(node);
 
-    // Update the radius for existing nodes based on whether they are active
+    // Update the circle and text attributes for both new and existing nodes
     node.select("circle")
-        .attr("r", d => (d.id === activeNodeId ? 7 : 5)); // Update the radius for all nodes based on activeNodeId
+        .attr("r", d => (d.id === activeNodeId ? 10 : 5)); // Update radius based on active node
+
+    node.select("text")
+        .attr("stroke-width", d => (d.id === activeNodeId ? 1 : 0)) // Outline text for active node
+        .attr("font-size", d => (d.id === activeNodeId ? 1.5 : 1) + "em"); // Ensure active node has larger font size
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
