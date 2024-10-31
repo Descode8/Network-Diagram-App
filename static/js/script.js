@@ -136,12 +136,13 @@ function assignColors(data) {
 
 /*************************************
  * RENDERING THE GRAPH VISUALIZATION *
-//  *************************************/
+*************************************/
 function renderGraph(data) {
-    // Create a map for quick node lookups by ID
+    // Create a map for quick node lookups by ID, enabling faster access to nodes by their ID.
     nodeById = new Map(data.nodes.map(node => [node.id, node]));
 
-    // Convert string IDs to actual node objects in the links array
+    // Convert string IDs to actual node objects in the links array.
+    // This is necessary for D3's force simulation to understand the link connections between nodes.
     data.links.forEach(link => {
         if (typeof link.source === 'string') {
             link.source = nodeById.get(link.source);
@@ -151,25 +152,47 @@ function renderGraph(data) {
         }
     });
 
-    // Clear the arrays that track visible elements
+    // --- New Code Starts Here ---
+    // Create a map to store the count of links per node, allowing for analysis or display of node connectivity.
+    var nodeLinkCount = new Map();
+
+    // Initialize counts to zero for each node, starting the counting process.
+    data.nodes.forEach(node => {
+        nodeLinkCount.set(node.id, 0);
+    });
+
+    // Count the number of links for each node, to identify nodes with multiple connections.
+    data.links.forEach(link => {
+        nodeLinkCount.set(link.source.id, nodeLinkCount.get(link.source.id) + 1);
+        nodeLinkCount.set(link.target.id, nodeLinkCount.get(link.target.id) + 1);
+    });
+
+    // Log nodes that have more than one link, helping to identify key nodes with higher connectivity.
+    nodeLinkCount.forEach((count, nodeId) => {
+        if (count > 1) {
+            console.log("Node with more than 1 link:", nodeId, "has", count, "links");
+        }
+    });
+
+    // Clear the arrays that track visible elements, removing any previous data before rendering the graph.
     visibleNodes = [];
     visibleLinks = [];
 
-    // Assign the initial nodes and links for rendering
-    // expandNodeByDepth(nodeById.get(homeNode), parseInt(depthSlider.value));
+    // Prepare initial nodes and links for rendering.
+    // expandNodeByDepth(nodeById.get(homeNode), parseInt(depthSlider.value)); // Uncomment to initially expand the home node by depth.
 
-    // Create container for link elements
+    // Create a container group for link elements, setting up a structure for links in the SVG.
     link = g.append("g")
         .attr("class", "links")
         .selectAll("line")
         .data(visibleLinks, d => `${d.source.id}-${d.target.id}`);
 
-    // Create container for node elements
+    // Create a container group for node elements, styling the nodes with text and outlines.
     node = g.append("g")
         .attr("class", "nodes")
-        .style("stroke", textClr)
-        .style("stroke-width", 1.2) // Stroke width for node outline
-        .style("text-anchor", "middle")
+        .style("stroke", textClr)               // Outline color for nodes
+        .style("stroke-width", 1.2)             // Outline thickness for nodes, increase for thicker outlines
+        .style("text-anchor", "middle")         // Centers text inside nodes
         .selectAll("g")
         .data(visibleNodes, d => d.id)
         .enter()
@@ -180,34 +203,49 @@ function renderGraph(data) {
             .on("end", dragended)
         );
 
+    // Append text to each node, with default position and no outline.
     node.append("text")
-        .attr("dx", "0ex")
-        .attr("dy", "-1.5ex")
-        .attr("stroke-width", 0)
-        .text(d => d.id);
+        .attr("dx", "0ex")                    // Horizontal position of text relative to node
+        .attr("dy", "-1.5ex")                 // Vertical offset of text, adjust to move text above or below node
+        .attr("stroke-width", 0)              // Text outline thickness, set to >0 to add outline
+        .text(d => d.id);                     // Sets text content to node ID
 
-    // Initialize the force simulation with nodes and links
+    // Initialize the force simulation with visible nodes.
     simulation = d3.forceSimulation(visibleNodes)
-        .force("link", d3.forceLink(visibleLinks)
-            .id(d => d.id)
-            .distance(120)
-            .strength(0.1))
-        .force("charge", d3.forceManyBody()
-            .strength(-200)
-            .distanceMax(100))
-        .force("center", d3.forceCenter(width / 2, height / 2).strength(0.00001))
-        .force("collision", d3.forceCollide()
-            .radius(1)
-            .strength(2))
-        // Control simulation cooling rate
-        .alphaDecay(0.01)
-        .force("clusterCollide", clusterCollideForce(1))
-        .force("cluster", clusteringForce())
-        .on("tick", ticked);
+    // Adds a link force to connect nodes based on visibleLinks.
+    .force("link", d3.forceLink(visibleLinks)
+        .id(d => d.id)
+        .distance(100)                        // Preferred length of links; increase to space nodes farther apart
+        .strength(0.2))                       // Rigidity of links; higher value = stiffer connections
 
-    // Start the simulation to ensure proper node positioning before rendering links
-    resetGraph(parseInt(depthSlider.value));
+    // Adds a repulsive force between nodes to prevent overlap.
+    .force("charge", d3.forceManyBody()
+        .strength(-300)                       // Repulsion strength; more negative values push nodes apart more strongly
+        .distanceMax(100))                    // Maximum range for repulsion; increase to apply repulsion over larger distances
+
+    // Centers the simulation, positioning nodes around the center of the SVG.
+    .force("center", d3.forceCenter(width / 2, height / 2).strength(0.00001))
+
+    // Adds a collision force to prevent nodes from overlapping by enforcing a minimum distance.
+    .force("collision", d3.forceCollide()
+        .radius(40)                           // Minimum separation distance between nodes; increase to space nodes farther
+        .strength(0.7))                       // Strength of collision force; higher value increases force's effect
+
+    .alphaDecay(0.01)                         // Controls the simulation decay rate; lower value makes simulation run longer
+
+    // Adds custom cluster repulsion to separate clusters based on types.
+    .force("clusterRepulsion", clusterRepulsionForce())
+
+    // Adds a clustering force to group nodes of the same type.
+    .force("cluster", clusteringForce())
+
+    // Event listener to update the graph layout on each simulation tick (iteration).
+    .on("tick", ticked);
+
+    // Start the simulation with initial node positions before rendering links.
+    resetGraph(parseInt(depthSlider.value));  // Depth value from slider determines how many levels are expanded initially.
 }
+
 
 /**************************************
 * UPDATE THE GRAPH AFTER NODE CHANGES *
@@ -240,7 +278,7 @@ function updateGraph() {
 
     // Append circles with conditional radius for active node
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === activeNodeId ? 10 : 5)) // Increased radius for active node
+        .attr("r", d => (d.id === activeNodeId ? 8 : 5)) // Increased radius for active node
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked);
 
@@ -254,7 +292,7 @@ function updateGraph() {
 
     // Update the circle and text attributes for both new and existing nodes
     node.select("circle")
-        .attr("r", d => (d.id === activeNodeId ? 10 : 5)); // Update radius based on active node
+        .attr("r", d => (d.id === activeNodeId ? 8 : 5)); // Update radius based on active node
 
     node.select("text")
         .attr("stroke-width", d => (d.id === activeNodeId ? 1 : 0)) // Outline text for active node
@@ -267,10 +305,9 @@ function updateGraph() {
     simulation.alpha(0.3).restart();
 }
 
-
 /********************************************************************
-* CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
-*********************************************************************/
+ * CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
+ *********************************************************************/
 function clusteringForce() {
     // Create an array of unique node types, excluding the home node type
     var types = [...new Set(graphData.nodes
@@ -280,7 +317,7 @@ function clusteringForce() {
     // Set up the structure for positioning cluster centers
     var clusterCenters = {};
     var numTypes = types.length;
-    var clusterRadius = Math.min(width, height); // Reduced radius for better separation
+    var clusterRadius = Math.min(width, height);
 
     // Calculate position for each cluster type's center
     types.forEach((type, index) => {
@@ -294,11 +331,24 @@ function clusteringForce() {
     // Return the force function
     return function(alpha) {
         visibleNodes.forEach(function(d) {
+            // Exclude nodes connected to multiple center nodes (shared nodes)
+            const connections = visibleLinks.filter(link =>
+                link.source.id === d.id || link.target.id === d.id
+            ).map(link => link.source.id === d.id ? link.target.id : link.source.id);
+
+            const uniqueCenters = new Set(connections.filter(nodeId => {
+                return visibleNodes.some(n => n.id === nodeId && n.id !== d.id);
+            }));
+
+            // If the node is connected to multiple unique centers, allow it to float freely
+            if (uniqueCenters.size > 1) {
+                return;
+            }
+
+            // Otherwise, apply clustering force
             if (d.id !== activeNodeId && d.id !== homeNode) {
                 var cluster = clusterCenters[d.type];
-                
-                // Soften the clustering effect to allow other forces to influence node position
-                var clusterStrength = 0.02; // Reduced strength to balance with other forces
+                var clusterStrength = 0.07; // Adjust strength as needed
                 d.vx -= (d.x - cluster.x) * alpha * clusterStrength;
                 d.vy -= (d.y - cluster.y) * alpha * clusterStrength;
             }
@@ -310,7 +360,7 @@ function clusteringForce() {
 * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
 **************************************************/
 function clusterCollideForce() {
-    var padding = 5;  // Minimum pixels between cluster centers
+    var padding = 20;  // Minimum pixels between cluster centers
 
     // Same type extraction as in clusteringForce()
     var types = [...new Set(graphData.nodes
@@ -558,7 +608,6 @@ searchInput.addEventListener('keydown', (event) => {
 // Add event listener for the depth slider
 depthSlider.addEventListener('input', () => {
     var depth = parseInt(depthSlider.value);
-    console.log("Depth slider value in depthSlider:", depth);
     depthValueDisplay.textContent = depth;
     resetGraph(depth, activeNodeId);
 });
@@ -591,7 +640,6 @@ function resetToInitialState() {
 
 // Unified logic for resetting the graph
 function resetGraph(depth = parseInt(depthSlider.value), nodeId = homeNode) {
-    console.log("Depth slider value:", depth);
     activeNodeId = nodeId;
     visibleNodes = [];
     visibleLinks = [];
@@ -608,7 +656,6 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = homeNode) {
 * EXPAND ACTIVE NODE BY DEPTH *
 *******************************/
 function expandNodeByDepth(node, depth, currentDepth = 1) {
-    console.log("Expanding node:", node.id, "Depth:", currentDepth);
     if (currentDepth > depth) return;  // Stop recursion when the target depth is reached
 
     if (!visibleNodes.includes(node)) {
@@ -696,6 +743,78 @@ function dragended(event) {
         event.subject.fx = null;
         event.subject.fy = null;
     }
+}
+
+/*************************************************
+ * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
+ **************************************************/
+function clusterRepulsionForce() {
+    return function(alpha) {
+        // Step 1: Identify center nodes (nodes with more than one connection)
+        var centerNodes = visibleNodes.filter(node => {
+            var connectedLinks = visibleLinks.filter(link => 
+                link.source.id === node.id || link.target.id === node.id
+            );
+            return connectedLinks.length > 1; // Center node if degree > 1
+        });
+
+        // Step 2: For each center node, collect its cluster (center node + connected nodes)
+        var clusters = [];
+        centerNodes.forEach(centerNode => {
+            var clusterNodes = [centerNode];
+            visibleLinks.forEach(link => {
+                if (link.source.id === centerNode.id && link.target.id !== centerNode.id) {
+                    clusterNodes.push(link.target);
+                } else if (link.target.id === centerNode.id && link.source.id !== centerNode.id) {
+                    clusterNodes.push(link.source);
+                }
+            });
+            clusters.push({ center: centerNode, nodes: clusterNodes });
+        });
+
+        // Step 3: Apply repulsion between clusters
+        for (var i = 0; i < clusters.length; i++) {
+            var clusterA = clusters[i];
+            // Calculate centroid of cluster A
+            var centroidA = calculateCentroid(clusterA.nodes);
+            for (var j = i + 1; j < clusters.length; j++) {
+                var clusterB = clusters[j];
+                // Calculate centroid of cluster B
+                var centroidB = calculateCentroid(clusterB.nodes);
+                var dx = centroidB.x - centroidA.x;
+                var dy = centroidB.y - centroidA.y;
+                var distance = Math.sqrt(dx * dx + dy * dy);
+                var minDistance = 150; // Minimum distance between clusters
+                var strength = .9;    // Strength of the repulsive force
+
+                if (distance < minDistance) {
+                    var force = (minDistance - distance) * strength * alpha;
+                    var fx = (dx / distance) * force;
+                    var fy = (dy / distance) * force;
+
+                    // Distribute the force among the nodes in each cluster
+                    clusterA.nodes.forEach(node => {
+                        node.vx -= fx / clusterA.nodes.length;
+                        node.vy -= fy / clusterA.nodes.length;
+                    });
+                    clusterB.nodes.forEach(node => {
+                        node.vx += fx / clusterB.nodes.length;
+                        node.vy += fy / clusterB.nodes.length;
+                    });
+                }
+            }
+        }
+    };
+}
+
+// Helper function to calculate the centroid of a set of nodes
+function calculateCentroid(nodes) {
+    var x = 0, y = 0, n = nodes.length;
+    nodes.forEach(d => {
+        x += d.x;
+        y += d.y;
+    });
+    return { x: x / n, y: y / n };
 }
 
 /*****************************************************
