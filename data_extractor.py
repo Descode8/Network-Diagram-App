@@ -3,9 +3,14 @@ import os
 
 def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     """
-    Extracts graph data from the Excel file, ensuring dependencies like 'Procurement'
-    connect directly to relevant nodes (e.g., 'McCoy, Eric') without creating redundant
-    parent nodes.
+    Data Extraction and Preparation
+    File Check: Verifies if the network diagram data (network_diagram.xlsx) exists. If missing, raises a FileNotFoundError.
+    Data Cleaning: Loads data from Excel, stripping whitespace and handling empty values.
+    Node and Link Initialization:
+    Creates lists to store nodes and links and uses a set to track unique node IDs.
+    Data Parsing: Iterates over each row in the data:
+    Node Creation: Adds nodes if they are not duplicates.
+    Link Creation: Connects each CI_Name to its dependencies, organizing relationships.
     """
 
     # Check if Excel file exists
@@ -20,19 +25,6 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     nodes = []  # All nodes
     links = []  # All links between nodes
     node_ids = set()  # Track nodes to avoid duplication
-
-    # Define parent nodes and map them to their types
-    parent_nodes = ['Home', 'Peoples', 'Technologies', 'Servers', 'Staff Augmentation']
-    parent_to_type = {
-        'Home': 'OIT',
-        'Peoples': 'People',
-        'Technologies': 'Technology',
-        'Servers': 'Server',
-        'Staff Augmentation': 'Procurement'
-    }
-
-    # Track parent-child relationships
-    ci_to_parents = {}
 
     # Iterate over the Excel rows to populate nodes and links
     for _, row in df.iterrows():
@@ -52,8 +44,8 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
             })
             node_ids.add(ci_name)
 
-        # Add dependency node if not a parent node and not already present
-        if dependency_name != 'None' and dependency_name not in parent_nodes and dependency_name not in node_ids:
+        # Add dependency node if not already present
+        if dependency_name != 'None' and dependency_name not in node_ids:
             nodes.append({
                 'id': dependency_name,
                 'type': dependency_type,
@@ -61,30 +53,12 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
             })
             node_ids.add(dependency_name)
 
-        # Record parent-child relationships
-        if dependency_name in parent_nodes:
-            if ci_name not in ci_to_parents:
-                ci_to_parents[ci_name] = set()
-            ci_to_parents[ci_name].add(dependency_name)
-
         # Add link between CI and its dependency (if valid)
-        if dependency_name != 'None' and dependency_name not in parent_nodes:
+        if dependency_name != 'None':
             links.append({
                 'source': dependency_name,
                 'target': ci_name
             })
-
-    # Create links between CIs and their parents based on parent-child relationships
-    for ci, parents in ci_to_parents.items():
-        for parent in parents:
-            node_type = parent_to_type[parent]
-            # Connect all nodes of the same type to the CI
-            for node in nodes:
-                if node['type'] == node_type:
-                    links.append({
-                        'source': node['id'],
-                        'target': ci
-                    })
 
     # Return the final graph structure
     return {'nodes': nodes, 'links': links}

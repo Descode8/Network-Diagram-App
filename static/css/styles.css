@@ -125,20 +125,6 @@ text, circle text {
     display: block;
 }
 
-/* .tooltip {
-    position: absolute;
-    text-align: left;
-    padding: 4px;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
-    border-radius: 4px;
-    pointer-events: none;
-    visibility: hidden;
-    font-size: 12px;
-    width: 200px;
-    z-index: 2;
-} */
-
 .custom-slider {
     width: 90%;
     margin: 0px auto;
