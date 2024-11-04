@@ -81,7 +81,6 @@ async function fetchGraphData() {
     var homeLink = graphData.links.find(link => link.target === 'Home') || graphData.links[0];
     homeNode = activeNodeId = homeLink ? homeLink.target : 'Home';
 
-    console.log("Home Node:", homeNode);
     console.log("Active Node:", activeNodeId);
     console.log("Graph data fetched successfully:", graphData);
 
@@ -95,7 +94,7 @@ async function fetchGraphData() {
 function assignColors(data) {
     // Iterate through each node in the dataset
     data.nodes.forEach(node => {
-        if (node.id === homeNode) {
+        if (node.id === activeNodeId) {
             var color = typeColorMap.get('Home');
             nodeColorMap.set(node.id, color);
         } else {
@@ -171,7 +170,7 @@ function renderGraph(data) {
     node = g.append("g")
         .attr("class", "nodes")
         .style("stroke", textClr)               // Outline color for nodes
-        .style("stroke-width", 1.5)             // Outline thickness for nodes, increase for thicker outlines
+        .style("stroke-width", 2)             // Outline thickness for nodes, increase for thicker outlines
         .style("text-anchor", "middle")         // Centers text inside nodes
         .selectAll("g")
         .data(visibleNodes, d => d.id)
@@ -185,9 +184,6 @@ function renderGraph(data) {
 
     // Append text to each node, with default position and no outline.
     node.append("text")
-        .attr("dx", "0ex")                    // Horizontal position of text relative to node
-        .attr("dy", "-1.5ex")                 // Vertical offset of text, adjust to move text above or below node
-        .attr("stroke-width", 0)              // Text outline thickness, set to >0 to add outline
         .text(d => d.id);                     // Sets text content to node ID
 
     // Initialize the force simulation with visible nodes.
@@ -195,7 +191,7 @@ function renderGraph(data) {
     // Adds a link force to connect nodes based on visibleLinks.
     .force("link", d3.forceLink(visibleLinks)
         .id(d => d.id)
-        .distance(100)                        // Preferred length of links; increase to space nodes farther apart
+        .distance(50)                        // Preferred length of links; increase to space nodes farther apart
         .strength(0.2))                       // Rigidity of links; higher value = stiffer connections
 
     // Adds a repulsive force between nodes to prevent overlap.
@@ -231,7 +227,7 @@ function renderGraph(data) {
 /****************************************
 * Unified logic for resetting the graph *
 *****************************************/
-function resetGraph(depth = parseInt(depthSlider.value), nodeId = homeNode) {
+function resetGraph(depth = parseInt(depthSlider.value), nodeId = activeNodeId) {
     activeNodeId = nodeId;
     visibleNodes = [];
     visibleLinks = [];
@@ -396,7 +392,7 @@ function updateRightContainer() {
         return visibleLinks.some(link =>
             (link.source.id === activeNodeId && link.target.id === n.id) ||
             (link.target.id === activeNodeId && link.source.id === n.id)
-        ) && n.id !== activeNodeId && n.id !== homeNode;
+        ) && n.id !== activeNodeId;
     });
 
     // Group children by type
@@ -463,7 +459,7 @@ function ticked() {
 function clusteringForce() {
     // Create an array of unique node types, excluding the home node type
     var types = [...new Set(graphData.nodes
-        .filter(node => node.id !== homeNode)
+        .filter(node => node.id !== activeNodeId)
         .map(node => node.type))];
 
     // Set up the structure for positioning cluster centers
@@ -493,9 +489,9 @@ function clusteringForce() {
             }));
 
             // If the node is connected to multiple unique centers, allow it to float freely
-            if (uniqueCenters.size > 1) {
-                return;
-            }
+            // if (uniqueCenters.size > 1) {
+            //     return;
+            // }
 
             // Otherwise, apply clustering force
             if (d.id !== activeNodeId && d.id !== homeNode) {
@@ -578,7 +574,7 @@ function clusterCollideForce() {
 
     // Same type extraction as in clusteringForce()
     var types = [...new Set(graphData.nodes
-        .filter(node => node.id !== homeNode)
+        // .filter(node => node.id !== homeNode)
         .map(node => node.type))];
 
     // Same cluster center calculation as in clusteringForce()
@@ -714,7 +710,7 @@ function resetToInitialState() {
     depthValueDisplay.textContent = 1;
 
     // Reset graph to the home node with depth 1
-    resetGraph(1, homeNode);
+    resetGraph(1, activeNodeId);
 }
 
 /*****************************************************
@@ -789,7 +785,7 @@ depthSlider.addEventListener('input', () => {
 // Ensure the SVG element is fully loaded before starting
 window.onload = function() {
     fetchGraphData().then(() => {
-        resetGraph(2, homeNode);  // Set initial depth to 2
+        resetGraph(2, activeNodeId);  // Set initial depth to 2
     });
 };
 
