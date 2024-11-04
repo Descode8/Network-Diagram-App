@@ -111,7 +111,6 @@ function assignColors(data) {
     });
 }
 
-
 /*************************************
  * RENDERING THE GRAPH VISUALIZATION *
 *************************************/
@@ -191,7 +190,7 @@ function renderGraph(data) {
     // Adds a link force to connect nodes based on visibleLinks.
     .force("link", d3.forceLink(visibleLinks)
         .id(d => d.id)
-        .distance(50)                        // Preferred length of links; increase to space nodes farther apart
+        .distance(20)                        // Preferred length of links; increase to space nodes farther apart
         .strength(0.2))                       // Rigidity of links; higher value = stiffer connections
 
     // Adds a repulsive force between nodes to prevent overlap.
@@ -204,15 +203,12 @@ function renderGraph(data) {
 
     // Adds a collision force to prevent nodes from overlapping by enforcing a minimum distance.
     .force("collide", d3.forceCollide()
-        .radius(40)                           // Minimum separation distance between nodes; increase to space nodes farther
+        .radius(10)                           // Minimum separation distance between nodes; increase to space nodes farther
         .strength(0.01))                       // Strength of collision force; higher value increases force's effect
-
-    // .force("collide", d3.forceCollide(5)
-    //     .radius(40))    // Prevents node overlap; increase radius for more space between nodes
     .alphaDecay(0.01)                         // Controls the simulation decay rate; lower value makes simulation run longer
 
     // Adds custom cluster repulsion to separate clusters based on types.
-    .force("clusterRepulsion", clusterRepulsionForce())
+    //.force("clusterRepulsion", clusterRepulsionForce())
 
     // Adds a clustering force to group nodes of the same type.
     .force("cluster", clusteringForce())
@@ -235,9 +231,45 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = activeNodeId) 
     var nodeObj = nodeById.get(nodeId);
     expandNodeByDepth(nodeObj, depth);
 
+    // Update force settings based on the depth value
+    if (depth > 2) {
+        setTreeForces();
+    } else {
+        setGraphForces();
+    }
+
     updateNodePositions();
     updateGraph();
     updateRightContainer();
+}
+
+function setTreeForces() {
+    simulation
+        .force("link", d3.forceLink(visibleLinks)
+            .id(d => d.id)
+            .distance(100)     // Longer distance for tree-like branches
+            .strength(1))      // Stronger link force for tree structure
+        .force("charge", d3.forceManyBody()
+            .strength(-30))    // Reduced repulsion for a tree layout
+        .force("center", null) // Remove centering force for tree layout
+        .force("y", d3.forceY()   // Pull nodes downwards for tree hierarchy
+            .strength(0.2))
+        .force("x", d3.forceX(width / 2)   // Center nodes horizontally
+            .strength(0.1));
+}
+
+function setGraphForces() {
+    simulation
+        .force("link", d3.forceLink(visibleLinks)
+            .id(d => d.id)
+            .distance(75)   // Lower the distance value to bring nodes closer
+            .strength(1)) // Adjust strength to balance link rigidity
+        .force("charge", d3.forceManyBody()
+            .strength(-50)) // Set this to a less negative value for less repulsion
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collide", d3.forceCollide()
+            .radius(25)    // Lower radius for smaller gaps between nodes
+            .strength(0.2)); // Increase strength if you want collision to be stricter
 }
 
 /******************************
@@ -340,7 +372,7 @@ function updateGraph() {
 
     node.select("text")
         .attr("stroke-width", d => (d.id === activeNodeId ? 1 : 0)) // Outline text for active node
-        .attr("font-size", d => (d.id === activeNodeId ? 1.5 : 1) + "em"); // Ensure active node has larger font size
+        .attr("font-size", d => (d.id === activeNodeId ? 1.5 : .7) + "em"); // Ensure active node has larger font size
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
@@ -781,7 +813,6 @@ depthSlider.addEventListener('input', () => {
 /*****************************************************
  * INITIALIZING AND FETCHING GRAPH DATA ON PAGE LOAD *
  *****************************************************/
-
 // Ensure the SVG element is fully loaded before starting
 window.onload = function() {
     fetchGraphData().then(() => {
