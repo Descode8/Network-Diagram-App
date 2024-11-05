@@ -21,7 +21,6 @@ const typeColorMap = new Map([
     ['Facilities', fcltyNodeClr] 
 ]);
 
-let homeNode;
 let activeNodeId;
 const svg = d3.select("svg");
 var rightContainer = d3.select(".right-pane");
@@ -44,13 +43,24 @@ let visibleLinks = [];
 let node;
 let link;
 
+/******************************************
+* FUNCTIONS FOR CONTROLS AND INTERACTIONS *
+*******************************************/
+function resetToInitialState() {
+    // Set the depth slider to its initial value
+    depthSlider.value = 2;
+    depthValueDisplay.textContent = 2;
+
+    // Reset graph to the home node with depth 1
+    resetGraph(2, activeNodeId = graphData.nodes[0].id);
+}
+
 /*******************************
 * EVENT LISTENERS FOR CONTROLS *
 ********************************/
 // Modify the home button event listener to use the current slider depth
 homeButton.addEventListener('click', () => {
-    var depth = parseInt(depthSlider.value);  
-    resetGraph(depth, homeNode);  
+    resetToInitialState();  
 });
 
 refreshButton.addEventListener('click', () => {
@@ -114,16 +124,16 @@ window.onload = function() {
 
 
 var slider = document.getElementById('depthSlider');
-        // Function to update the gradient and the displayed value
-        function updateSlider() {
-            var value = (slider.value - slider.min) / (slider.max - slider.min) * 100;
-            slider.style.setProperty('--value', `${value}%`);
-            depthValue.textContent = slider.value; // Update the displayed value
-        }
-        // Initialize the slider with the default value on page load
-        updateSlider();
-        // Update the slider whenever its value changes
-        slider.addEventListener('input', updateSlider);
+    // Function to update the gradient and the displayed value
+    function updateSlider() {
+        var value = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+        slider.style.setProperty('--value', `${value}%`);
+        depthValue.textContent = slider.value; // Update the displayed value
+    }
+    // Initialize the slider with the default value on page load
+    updateSlider();
+    // Update the slider whenever its value changes
+    slider.addEventListener('input', updateSlider);
 
 var zoom = d3.zoom()
     .scaleExtent([0.5, 2.5])
@@ -146,13 +156,12 @@ async function fetchGraphData() {
     }
 
     graphData = await response.json();
-
-    // Dynamically assign home and active nodes from the graph data
-    var homeLink = graphData.links.find(link => link.target === 'Home') || graphData.links[0];
-    homeNode = activeNodeId = homeLink ? homeLink.target : 'Home';
-
-    console.log("Active Node:", activeNodeId);
     console.log("Graph data fetched successfully:", graphData);
+
+    console.log("Home NODE", graphData.nodes[0].id);
+    // Dynamically assign home and active nodes from the graph data
+    // var homeLink = graphData.links.find(link => link.target === 'Home') || graphData.links[0];
+    activeNodeId = graphData.nodes[0].id;
 
     assignColors(graphData);
     renderGraph(graphData);
@@ -164,19 +173,14 @@ async function fetchGraphData() {
 function assignColors(data) {
     // Iterate through each node in the dataset
     data.nodes.forEach(node => {
-        if (node.id === activeNodeId) {
-            var color = typeColorMap.get('Home');
+        // Get the color associated with the node's type from the type-color mapping
+        var color = typeColorMap.get(node.type);
+        if (color) {
+            // If a color exists for this type, use it
             nodeColorMap.set(node.id, color);
         } else {
-            // Get the color associated with the node's type from the type-color mapping
-            var color = typeColorMap.get(node.type);
-            if (color) {
-                // If a color exists for this type, use it
-                nodeColorMap.set(node.id, color);
-            } else {
-                // If no color is defined for this type, use gray as default
-                nodeColorMap.set(node.id, 'yellow');
-            }
+            // If no color is defined for this type, use gray as default
+            nodeColorMap.set(node.id, 'yellow');
         }
     });
 }
@@ -222,7 +226,7 @@ function renderGraph(data) {
 
     // Append circles to each node
     node.append("circle")
-        .attr("r", d => (d.id === activeNodeId ? 5 : 5)) // Increased radius for active node
+        .attr("r", 5) // Increased radius for active node
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked);
 
@@ -235,7 +239,7 @@ function renderGraph(data) {
         .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(50).strength(1))
         .force("charge", d3.forceManyBody().strength(-50))
         .force("collide", d3.forceCollide()
-            .radius(25)                         // Minimum separation distance
+            .radius(30)                         // Minimum separation distance
             .strength(0.01))                    // Strength of collision force
         .force("cluster", clusteringForce())    // Custom clustering force
         .on("tick", ticked);                    // Event listener for each tick
@@ -284,7 +288,7 @@ function setGraphForces() {
         .force("charge", d3.forceManyBody().strength(-50)) // Set this to a less negative value for less repulsion
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("collide", d3.forceCollide()
-            .radius(25)    // Lower radius for smaller gaps between nodes
+            .radius(30)    // Lower radius for smaller gaps between nodes
             .strength(0.2)); // Increase strength if you want collision to be stricter
 }
 
@@ -367,7 +371,7 @@ function updateGraph() {
 
     // Append circles with conditional radius for active node
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === activeNodeId ? 5 : 5)) // Increased radius for active node
+        .attr("r", 5) // Increased radius for active node
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked);
 
@@ -381,11 +385,11 @@ function updateGraph() {
 
     // Update the circle and text attributes for both new and existing nodes
     node.select("circle")
-        .attr("r", d => (d.id === activeNodeId ? 5 : 5)); // Update radius based on active node
+        .attr("r", 5); // Update radius based on active node
 
     node.select("text")
-        .attr("stroke-width", d => (d.id === activeNodeId ? 0 : 0)) // Outline text for active node
-        .attr("font-size", d => (d.id === activeNodeId ? .7 : .7) + "em"); // Ensure active node has larger font size
+        .attr("stroke-width", 0) // Outline text for active node
+        .attr("font-size", .7 + "em"); // Ensure active node has larger font size
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
@@ -436,14 +440,14 @@ function updateRightContainer() {
         return visibleLinks.some(link =>
             (link.source.id === activeNodeId && link.target.id === n.id) ||
             (link.target.id === activeNodeId && link.source.id === n.id)
-        ) && n.id !== activeNodeId;
+        );
     });
 
     // Group children by type
     var types = d3.group(immediateChildren, d => d.type);
 
     // Define the desired display order
-    var orderedTypes = ["People", "Technology"];
+    var orderedTypes = ["Home", "People", "Technology"];
 
     // Display "People" and "Technology" first, in that order
     orderedTypes.forEach(type => {
@@ -514,7 +518,6 @@ function ticked() {
 function clusteringForce() {
     // Create an array of unique node types, excluding the home node type
     var types = [...new Set(graphData.nodes
-        .filter(node => node.id !== activeNodeId)
         .map(node => node.type))];
 
     // Set up the structure for positioning cluster centers
@@ -534,29 +537,18 @@ function clusteringForce() {
     // Return the force function
     return function(alpha) {
         visibleNodes.forEach(function(d) {
-            // Exclude nodes connected to multiple center nodes (shared nodes)
-            const connections = visibleLinks.filter(link =>
-                link.source.id === d.id || link.target.id === d.id
-            ).map(link => link.source.id === d.id ? link.target.id : link.source.id);
-
-            const uniqueCenters = new Set(connections.filter(nodeId => {
-                return visibleNodes.some(n => n.id === nodeId && n.id !== d.id);
-            }));
-
-            // If the node is connected to multiple unique centers, allow it to float freely
-            // if (uniqueCenters.size > 1) {
-            //     return;
-            // }
-
-            // Otherwise, apply clustering force
-            if (d.id !== activeNodeId && d.id !== homeNode) {
+            if (d.id !== activeNodeId) {
                 var cluster = clusterCenters[d.type];
-                var clusterStrength = 0.05; // Change strength of groups (higher number = closer together)
-                d.vx -= (d.x - cluster.x) * alpha * clusterStrength;
-                d.vy -= (d.y - cluster.y) * alpha * clusterStrength;
+                if (cluster) { // Check if the cluster exists
+                    var clusterStrength = 0.1; // Change strength of groups (higher number = closer together)
+                    d.vx -= (d.x - cluster.x) * alpha * clusterStrength;
+                    d.vy -= (d.y - cluster.y) * alpha * clusterStrength;
+                } else {
+                    console.warn("Cluster center for type", d.type, "is undefined");
+                }
             }
         });
-    };
+    };    
 }
 
 /*******************************************************
@@ -635,18 +627,6 @@ function searchNode(nodeId) {
     } else {
         alert("Node not found!");
     }
-}
-
-/******************************************
-* FUNCTIONS FOR CONTROLS AND INTERACTIONS *
-*******************************************/
-function resetToInitialState() {
-    // Set the depth slider to its initial value
-    depthSlider.value = 1;
-    depthValueDisplay.textContent = 1;
-
-    // Reset graph to the home node with depth 1
-    resetGraph(1, activeNodeId);
 }
 
 /*****************************************************
