@@ -35,10 +35,14 @@ Right Pane: Displays details for the selected node.
 <body>
     <div class="left-pane">
         <h2>CIO Dashboard</h2>
-        <button id="homeButton" title="Go Home">
-            <img src="{{ url_for('static', filename='images/house.svg') }}" alt="Home Icon" class="home-icon">
-        </button>
-    
+        <div class="button-container">
+            <button id="homeButton" title="Go Home">
+                <img src="{{ url_for('static', filename='images/house.svg') }}" alt="Home Icon" class="home-icon">
+            </button>
+            <button id="refreshButton" title="Release Nodes">
+                <img src="{{ url_for('static', filename='images/refresh.svg') }}" alt="Refresh Icon" class="refresh-icon">
+            </button>
+        </div>
         <div class="input-and-button">
             <button id="searchButton" title="Search">
                 <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon">

@@ -28,6 +28,7 @@ var rightContainer = d3.select(".right-pane");
 var searchInput = document.getElementById('searchInput');
 var searchButton = document.getElementById('searchButton');
 var homeButton = document.getElementById('homeButton');
+var refreshButton = document.getElementById('refreshButton');
 var depthSlider = document.getElementById('depthSlider');
 var depthValueDisplay = document.getElementById('depthValue');
 var svgElement = svg.node();
@@ -43,6 +44,75 @@ let visibleLinks = [];
 let node;
 let link;
 
+/*******************************
+* EVENT LISTENERS FOR CONTROLS *
+********************************/
+// Modify the home button event listener to use the current slider depth
+homeButton.addEventListener('click', () => {
+    var depth = parseInt(depthSlider.value);  
+    resetGraph(depth, homeNode);  
+});
+
+refreshButton.addEventListener('click', () => {
+    // Clear fixed positions of all nodes
+    graphData.nodes.forEach(node => {
+        node.fx = null;
+        node.fy = null;
+    });
+
+    // Reset positions of visible nodes to their initial positions
+    visibleNodes.forEach(d => {
+        if (d.initialX !== undefined && d.initialY !== undefined) {
+            d.x = d.initialX;
+            d.y = d.initialY;
+            d.fx = null;
+            d.fy = null;
+        }
+    });
+
+    // Restart the simulation
+    simulation.alpha(1).restart();
+
+    // Reset the graph to the initial state
+    resetGraph(parseInt(depthSlider.value), activeNodeId);
+});
+
+// Add event listener for the search button
+searchButton.addEventListener('click', () => {
+    var searchTerm = searchInput.value.trim();
+    if (searchTerm) {
+        searchNode(searchTerm);
+    }
+});
+
+// Add event listener for 'Enter' key press on the input field
+searchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        var searchTerm = searchInput.value.trim();
+        if (searchTerm) {
+            searchNode(searchTerm);
+        }
+    }
+});
+
+// Add event listener for the depth slider
+depthSlider.addEventListener('input', () => {
+    var depth = parseInt(depthSlider.value);
+    depthValueDisplay.textContent = depth;
+    resetGraph(depth, activeNodeId);
+});
+
+/*****************************************************
+ * INITIALIZING AND FETCHING GRAPH DATA ON PAGE LOAD *
+ *****************************************************/
+// Ensure the SVG element is fully loaded before starting
+window.onload = function() {
+    fetchGraphData().then(() => {
+        resetGraph(2, activeNodeId);  // Set initial depth to 2
+    });
+};
+
+
 var slider = document.getElementById('depthSlider');
         // Function to update the gradient and the displayed value
         function updateSlider() {
@@ -56,7 +126,7 @@ var slider = document.getElementById('depthSlider');
         slider.addEventListener('input', updateSlider);
 
 var zoom = d3.zoom()
-    .scaleExtent([0.5, 1.5])
+    .scaleExtent([0.5, 2.5])
     .on('zoom', (event) => {
         g.attr('transform', event.transform);
     });
@@ -142,7 +212,7 @@ function renderGraph(data) {
     node = g.append("g")
         .attr("class", "nodes")
         .style("stroke", textClr)           // Outline color for nodes
-        .style("stroke-width", 2)           // Outline thickness for nodes
+        .style("stroke-width", 1)           // Outline thickness for nodes
         .style("text-anchor", "middle")     // Centers text inside nodes
         .selectAll("g")
         .data(visibleNodes, d => d.id)
@@ -152,7 +222,7 @@ function renderGraph(data) {
 
     // Append circles to each node
     node.append("circle")
-        .attr("r", d => (d.id === activeNodeId ? 8 : 5)) // Increased radius for active node
+        .attr("r", d => (d.id === activeNodeId ? 5 : 5)) // Increased radius for active node
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked);
 
@@ -162,10 +232,10 @@ function renderGraph(data) {
 
     // Initialize the force simulation with visible nodes
     simulation = d3.forceSimulation(visibleNodes)
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(10).strength(1))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(50).strength(1))
         .force("charge", d3.forceManyBody().strength(-50))
         .force("collide", d3.forceCollide()
-            .radius(20)                         // Minimum separation distance
+            .radius(25)                         // Minimum separation distance
             .strength(0.01))                    // Strength of collision force
         .force("cluster", clusteringForce())    // Custom clustering force
         .on("tick", ticked);                    // Event listener for each tick
@@ -199,10 +269,10 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = activeNodeId) 
 
 function setTreeForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(10).strength(1))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(100).strength(1))
         .force("charge", d3.forceManyBody().strength(-50))
         .force("center", null) // Remove centering force for tree layout
-        .force("y", d3.forceY()   // Pull nodes downwards for tree hierarchy
+        .force("y", d3.forceY(width / 2)   // Pull nodes downwards for tree hierarchy
             .strength(0.2))
         .force("x", d3.forceX(width / 2)   // Center nodes horizontally
             .strength(0.1));
@@ -210,11 +280,11 @@ function setTreeForces() {
 
 function setGraphForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(10).strength(1))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(100).strength(1))
         .force("charge", d3.forceManyBody().strength(-50)) // Set this to a less negative value for less repulsion
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("collide", d3.forceCollide()
-            .radius(20)    // Lower radius for smaller gaps between nodes
+            .radius(25)    // Lower radius for smaller gaps between nodes
             .strength(0.2)); // Increase strength if you want collision to be stricter
 }
 
@@ -297,7 +367,7 @@ function updateGraph() {
 
     // Append circles with conditional radius for active node
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === activeNodeId ? 7 : 4)) // Increased radius for active node
+        .attr("r", d => (d.id === activeNodeId ? 5 : 5)) // Increased radius for active node
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked);
 
@@ -311,15 +381,15 @@ function updateGraph() {
 
     // Update the circle and text attributes for both new and existing nodes
     node.select("circle")
-        .attr("r", d => (d.id === activeNodeId ? 7 : 4)); // Update radius based on active node
+        .attr("r", d => (d.id === activeNodeId ? 5 : 5)); // Update radius based on active node
 
     node.select("text")
-        .attr("stroke-width", d => (d.id === activeNodeId ? 1 : 0)) // Outline text for active node
-        .attr("font-size", d => (d.id === activeNodeId ? 1.2 : .7) + "em"); // Ensure active node has larger font size
+        .attr("stroke-width", d => (d.id === activeNodeId ? 0 : 0)) // Outline text for active node
+        .attr("font-size", d => (d.id === activeNodeId ? .7 : .7) + "em"); // Ensure active node has larger font size
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
-    simulation.force("link").id(d => d.id).distance(10).strength(1);
+    simulation.force("link").id(d => d.id).distance(100).strength(1);
     simulation.alpha(0.3).restart();
 }
 
@@ -414,17 +484,28 @@ function updateRightContainer() {
 /****************************************************************
 * SIMULATION TICK FUNCTION: UPDATE POSITIONS OF NODES AND LINKS *
 *****************************************************************/
+let initialPositionsSaved = false;
+
 function ticked() {
     link.attr("x1", d => d.source.x)
         .attr("y1", d => d.source.y)
         .attr("x2", d => d.target.x)
         .attr("y2", d => d.target.y);
-    node
-        .attr("transform", d => {
+
+    node.attr("transform", d => {
         d.x = Math.max(0, Math.min(width, d.x)); // Ensure nodes stay within width
         d.y = Math.max(0, Math.min(height, d.y)); // Ensure nodes stay within height
         return `translate(${d.x},${d.y})`;
-    });    
+    });
+
+    // Save initial positions after the simulation stabilizes
+    if (!initialPositionsSaved && simulation.alpha() < 0.05) {
+        visibleNodes.forEach(d => {
+            d.initialX = d.x;
+            d.initialY = d.y;
+        });
+        initialPositionsSaved = true;
+    }
 }
 
 /********************************************************************
@@ -439,7 +520,7 @@ function clusteringForce() {
     // Set up the structure for positioning cluster centers
     var clusterCenters = {};
     var numTypes = types.length;
-    var clusterRadius = Math.min(width, height) / 2;
+    var clusterRadius = Math.min(width, height);
 
     // Calculate position for each cluster type's center
     types.forEach((type, index) => {
@@ -585,9 +666,9 @@ const drag = simulation => {
 
     function dragended(event, d) {
         if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
-    }
+        d.fx = event.x;
+        d.fy = event.y;
+    }    
 
     return d3.drag()
         .on("start", dragstarted)
@@ -604,49 +685,4 @@ function calculateCentroid(nodes) {
     });
     return { x: x / n, y: y / n };
 }
-
-
-/*******************************
-* EVENT LISTENERS FOR CONTROLS *
-********************************/
-// Modify the home button event listener to use the current slider depth
-homeButton.addEventListener('click', () => {
-    var depth = parseInt(depthSlider.value);  
-    resetGraph(depth, homeNode);  
-});
-
-// Add event listener for the search button
-searchButton.addEventListener('click', () => {
-    var searchTerm = searchInput.value.trim();
-    if (searchTerm) {
-        searchNode(searchTerm);
-    }
-});
-
-// Add event listener for 'Enter' key press on the input field
-searchInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        var searchTerm = searchInput.value.trim();
-        if (searchTerm) {
-            searchNode(searchTerm);
-        }
-    }
-});
-
-// Add event listener for the depth slider
-depthSlider.addEventListener('input', () => {
-    var depth = parseInt(depthSlider.value);
-    depthValueDisplay.textContent = depth;
-    resetGraph(depth, activeNodeId);
-});
-
-/*****************************************************
- * INITIALIZING AND FETCHING GRAPH DATA ON PAGE LOAD *
- *****************************************************/
-// Ensure the SVG element is fully loaded before starting
-window.onload = function() {
-    fetchGraphData().then(() => {
-        resetGraph(2, activeNodeId);  // Set initial depth to 2
-    });
-};
 

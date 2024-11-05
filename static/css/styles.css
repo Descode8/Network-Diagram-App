@@ -190,7 +190,12 @@ text, circle text {
     margin: 0px 2px; 
 }
 
-#homeButton {
+.button-container {
+    display: flex;
+    justify-content: center;
+}
+
+#homeButton, #refreshButton {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -199,7 +204,7 @@ text, circle text {
     cursor: pointer;
 }
 
-.home-icon {
+.home-icon, .refresh-icon {
     width: 30px;
     height: 30px;
 }
