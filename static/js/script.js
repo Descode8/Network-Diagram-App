@@ -138,31 +138,6 @@ function renderGraph(data) {
         .selectAll("line")
         .data(visibleLinks, d => `${d.source.id}-${d.target.id}`);
 
-    // Define the drag behavior function
-    const drag = simulation => {
-        function dragstarted(event, d) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        }
-
-        function dragged(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        }
-
-        function dragended(event, d) {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-        }
-
-        return d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended);
-    };
-
     // Create node elements
     node = g.append("g")
         .attr("class", "nodes")
@@ -187,15 +162,10 @@ function renderGraph(data) {
 
     // Initialize the force simulation with visible nodes
     simulation = d3.forceSimulation(visibleNodes)
-        .force("link", d3.forceLink(visibleLinks)
-            .id(d => d.id)
-            .distance(100)                       // Preferred link length
-            .strength(0.2))                     // Rigidity of links
-        .force("charge", d3.forceManyBody()
-            .strength(-200)                     // Repulsion strength
-            .distanceMax(100))                  // Max range for repulsion
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(10).strength(1))
+        .force("charge", d3.forceManyBody().strength(-50))
         .force("collide", d3.forceCollide()
-            .radius(30)                         // Minimum separation distance
+            .radius(20)                         // Minimum separation distance
             .strength(0.01))                    // Strength of collision force
         .force("cluster", clusteringForce())    // Custom clustering force
         .on("tick", ticked);                    // Event listener for each tick
@@ -229,12 +199,8 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = activeNodeId) 
 
 function setTreeForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks)
-            .id(d => d.id)
-            .distance(100)     // Longer distance for tree-like branches
-            .strength(1))      // Stronger link force for tree structure
-        .force("charge", d3.forceManyBody()
-            .strength(-30))    // Reduced repulsion for a tree layout
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(10).strength(1))
+        .force("charge", d3.forceManyBody().strength(-50))
         .force("center", null) // Remove centering force for tree layout
         .force("y", d3.forceY()   // Pull nodes downwards for tree hierarchy
             .strength(0.2))
@@ -244,15 +210,11 @@ function setTreeForces() {
 
 function setGraphForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks)
-            .id(d => d.id)
-            .distance(75)   // Lower the distance value to bring nodes closer
-            .strength(1)) // Adjust strength to balance link rigidity
-        .force("charge", d3.forceManyBody()
-            .strength(-50)) // Set this to a less negative value for less repulsion
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(10).strength(1))
+        .force("charge", d3.forceManyBody().strength(-50)) // Set this to a less negative value for less repulsion
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("collide", d3.forceCollide()
-            .radius(30)    // Lower radius for smaller gaps between nodes
+            .radius(20)    // Lower radius for smaller gaps between nodes
             .strength(0.2)); // Increase strength if you want collision to be stricter
 }
 
@@ -357,8 +319,7 @@ function updateGraph() {
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
-    simulation.force("link")
-        .links(visibleLinks);
+    simulation.force("link").id(d => d.id).distance(10).strength(1);
     simulation.alpha(0.3).restart();
 }
 
@@ -478,7 +439,7 @@ function clusteringForce() {
     // Set up the structure for positioning cluster centers
     var clusterCenters = {};
     var numTypes = types.length;
-    var clusterRadius = Math.min(width, height);
+    var clusterRadius = Math.min(width, height) / 2;
 
     // Calculate position for each cluster type's center
     types.forEach((type, index) => {
@@ -513,125 +474,6 @@ function clusteringForce() {
                 d.vx -= (d.x - cluster.x) * alpha * clusterStrength;
                 d.vy -= (d.y - cluster.y) * alpha * clusterStrength;
             }
-        });
-    };
-}
-
-/*************************************************
- * CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
- **************************************************/
-function clusterRepulsionForce() {
-    return function(alpha) {
-        // Step 1: Identify center nodes (nodes with more than one connection)
-        var centerNodes = visibleNodes.filter(node => {
-            var connectedLinks = visibleLinks.filter(link => 
-                link.source.id === node.id || link.target.id === node.id
-            );
-            return connectedLinks.length > 1; // Center node if degree > 1
-        });
-
-        // Step 2: For each center node, collect its cluster (center node + connected nodes)
-        var clusters = [];
-        centerNodes.forEach(centerNode => {
-            var clusterNodes = [centerNode];
-            visibleLinks.forEach(link => {
-                if (link.source.id === centerNode.id && link.target.id !== centerNode.id) {
-                    clusterNodes.push(link.target);
-                } else if (link.target.id === centerNode.id && link.source.id !== centerNode.id) {
-                    clusterNodes.push(link.source);
-                }
-            });
-            clusters.push({ center: centerNode, nodes: clusterNodes });
-        });
-
-        // Step 3: Apply repulsion between clusters
-        for (var i = 0; i < clusters.length; i++) {
-            var clusterA = clusters[i];
-            // Calculate centroid of cluster A
-            var centroidA = calculateCentroid(clusterA.nodes);
-            for (var j = i + 1; j < clusters.length; j++) {
-                var clusterB = clusters[j];
-                // Calculate centroid of cluster B
-                var centroidB = calculateCentroid(clusterB.nodes);
-                var dx = centroidB.x - centroidA.x;
-                var dy = centroidB.y - centroidA.y;
-                var distance = Math.sqrt(dx * dx + dy * dy);
-                var minDistance = 150; // Minimum distance between clusters
-                var strength = .9;    // Strength of the repulsive force
-
-                if (distance < minDistance) {
-                    var force = (minDistance - distance) * strength * alpha;
-                    var fx = (dx / distance) * force;
-                    var fy = (dy / distance) * force;
-
-                    // Distribute the force among the nodes in each cluster
-                    clusterA.nodes.forEach(node => {
-                        node.vx -= fx / clusterA.nodes.length;
-                        node.vy -= fy / clusterA.nodes.length;
-                    });
-                    clusterB.nodes.forEach(node => {
-                        node.vx += fx / clusterB.nodes.length;
-                        node.vy += fy / clusterB.nodes.length;
-                    });
-                }
-            }
-        }
-    };
-}
-
-/*************************************************
-* CUSTOM FORCE TO REPEL CLUSTERS FROM EACH OTHER *
-**************************************************/
-function clusterCollideForce() {
-    var padding = 20;  // Minimum pixels between cluster centers
-
-    // Same type extraction as in clusteringForce()
-    var types = [...new Set(graphData.nodes
-        // .filter(node => node.id !== homeNode)
-        .map(node => node.type))];
-
-    // Same cluster center calculation as in clusteringForce()
-    var clusterCenters = {};
-    var numTypes = types.length;
-    var clusterRadius = Math.min(width, height);
-
-    // Calculate initial positions of cluster centers
-    types.forEach((type, index) => {
-        var angle = (index / numTypes) * 2 * Math.PI;
-        clusterCenters[type] = {
-            x: width / 2 + clusterRadius * Math.cos(angle),
-            y: height / 2 + clusterRadius * Math.sin(angle)
-        };
-    });
-
-    // Return the force function that prevents cluster overlap
-    return function() {
-        // Compare each cluster with every other cluster
-        types.forEach((typeA, i) => {
-            var clusterA = clusterCenters[typeA];
-            // Only compare with clusters we haven't checked yet (slice(i + 1))
-            types.slice(i + 1).forEach(typeB => {
-                var clusterB = clusterCenters[typeB];
-                // Calculate distance between clusters
-                let dx = clusterB.x - clusterA.x;  // X distance
-                let dy = clusterB.y - clusterA.y;  // Y distance
-                let distance = Math.sqrt(dx * dx + dy * dy);  // Pythagorean theorem
-                let minDistance = padding;  // Minimum allowed distance
-
-                // If clusters are too close, push them apart
-                if (distance < minDistance) {
-                    // Calculate how far to move each cluster
-                    // Movement is proportional to how much they overlap
-                    let moveX = dx / distance * (minDistance - distance);
-                    let moveY = dy / distance * (minDistance - distance);
-
-                    // Move clusters in opposite directions
-                    clusterA.x -= moveX;  // Move cluster A left
-                    clusterA.y -= moveY;  // Move cluster A up
-                    clusterB.x += moveX;  // Move cluster B right
-                    clusterB.y += moveY;  // Move cluster B down
-                }
-            });
         });
     };
 }
