@@ -47,12 +47,34 @@ let link;
 * FUNCTIONS FOR CONTROLS AND INTERACTIONS *
 *******************************************/
 function resetToInitialState() {
-    // Set the depth slider to its initial value
-    depthSlider.value = 2;
-    depthValueDisplay.textContent = 2;
+    const targetValue = 2; // The value you always want to set
+    const maxValue = depthSlider.max; // Get the current maximum value from the slider
+
+    // Set the slider's value to the target value
+    depthSlider.value = targetValue;
+    depthValueDisplay.textContent = targetValue;
+
+    // Calculate the percentage position based on the target and maximum values
+    const percentage = (targetValue - depthSlider.min) / (maxValue - depthSlider.min) * 100;
+
+    // Update the custom CSS property to reflect the calculated percentage
+    depthSlider.style.setProperty('--value', `${percentage}%`);
 
     // Reset graph to the home node with depth 1
-    resetGraph(2, activeNodeId = graphData.nodes[0].id);
+    resetGraph(targetValue, activeNodeId = graphData.nodes[0].id);
+}
+
+
+/*************************
+* FUNCTIONS FOR CONTROLS *
+**************************/
+function searchNode(nodeId) {
+    if (nodeById.has(nodeId)) {
+        var node = nodeById.get(nodeId); // Get the node object
+        nodeClicked(null, node); // Trigger the same logic as a click
+    } else {
+        alert("Node not found!");
+    }
 }
 
 /*******************************
@@ -81,7 +103,7 @@ refreshButton.addEventListener('click', () => {
     });
 
     // Restart the simulation
-    simulation.alpha(1).restart();
+    simulation.alpha(0.3).restart();
 
     // Reset the graph to the initial state
     resetGraph(parseInt(depthSlider.value), activeNodeId);
@@ -158,11 +180,9 @@ async function fetchGraphData() {
     graphData = await response.json();
     console.log("Graph data fetched successfully:", graphData);
 
-    console.log("Home NODE", graphData.nodes[0].id);
-    // Dynamically assign home and active nodes from the graph data
-    // var homeLink = graphData.links.find(link => link.target === 'Home') || graphData.links[0];
+    console.log("Home Node", graphData.nodes[0].id);
     activeNodeId = graphData.nodes[0].id;
-
+    
     assignColors(graphData);
     renderGraph(graphData);
 }
@@ -239,13 +259,109 @@ function renderGraph(data) {
         .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(50).strength(1))
         .force("charge", d3.forceManyBody().strength(-50))
         .force("collide", d3.forceCollide()
-            .radius(30)                         // Minimum separation distance
-            .strength(0.01))                    // Strength of collision force
+            .radius(20)                         // Minimum separation distance
+            .strength(0.1))                    // Strength of collision force
         .force("cluster", clusteringForce())    // Custom clustering force
         .on("tick", ticked);                    // Event listener for each tick
 
     // Set initial depth from slider and render graph layout
     resetGraph(parseInt(depthSlider.value));
+}
+
+/********************************************************************
+ * CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
+ *********************************************************************/
+function clusteringForce() {
+    // console.log("Clustering force initialized");
+    // Create an array of unique node types, excluding the home node type
+    var types = [...new Set(graphData.nodes
+        .map(node => node.type))];
+
+    // Set up the structure for positioning cluster centers
+    var clusterCenters = {};
+    var numTypes = types.length;
+    var clusterRadius = Math.min(width, height);
+
+    // Calculate position for each cluster type's center
+    types.forEach((type, index) => {
+        // Skip creating a cluster center for the type of the active node
+        if (type === nodeById.get(activeNodeId).type) {
+            console.log("Skipping cluster center for active node type:", type);
+            return;
+        }
+    
+        var angle = (index / numTypes) * 2 * Math.PI;
+        console.log("Cluster center for type", type);
+        clusterCenters[type] = {
+            x: width / 2 + clusterRadius * Math.cos(angle),
+            y: height / 2 + clusterRadius * Math.sin(angle)
+        };
+    });    
+
+    // Return the force function
+    return function(alpha) {
+        visibleNodes.forEach(function(d) {
+            // if (d.id !== activeNodeId) {
+                var cluster = clusterCenters[d.type];
+                if (cluster) { // Check if the cluster exists
+                    // console.log("Cluster center for type", d.type);
+                    var clusterStrength = 0.1; // Change strength of groups (higher number = closer together)
+                    d.vx -= (d.x - cluster.x) * alpha * clusterStrength;
+                    d.vy -= (d.y - cluster.y) * alpha * clusterStrength;
+                } else {
+                    // console.warn("Cluster center for type", d.type, "is undefined");
+                }
+            // }
+        });
+    };    
+}
+
+/*******************************************************
+* NODE CLICK EVENT HANDLERS FOR ACTIVE NODE MANAGEMENT *
+********************************************************/
+function nodeClicked(event, d) {
+    if (d.id === activeNodeId) return;  // Do nothing if the clicked node is already active
+
+    activeNodeId = d.id;  // Update active node ID
+    console.log("Active Node:", activeNodeId);
+
+    var depth = parseInt(depthSlider.value);  // Get current depth from slider
+    visibleNodes = [];  // Clear visible nodes
+    visibleLinks = [];  // Clear visible links
+
+    // Expand nodes based on new active node and depth
+    expandNodeByDepth(d, depth); 
+    simulation
+        .force("cluster", clusteringForce())
+    // Center the active node
+    updateNodePositions();
+    updateGraph();
+    updateRightContainer();  // Update info pane
+}
+
+/**************************************
+ * EXPAND NODES BASED ON SEARCH INPUT *
+ * ************************************/
+function expandNode(node) {
+    // Find immediate children of the node
+    var newLinks = graphData.links.filter(
+        link => (link.source.id === node.id || link.target.id === node.id)
+    );
+
+    newLinks.forEach(link => {
+        // Ensure the link isn't already visible
+        if (!visibleLinks.includes(link)) {
+            visibleLinks.push(link);
+
+            // Get the connected node
+            var otherNode = link.source.id === node.id ? link.target : link.source;
+
+            // Add the connected node if it's not already visible
+            if (otherNode && !visibleNodes.includes(otherNode)) {
+                visibleNodes.push(otherNode);
+            }
+        }
+    });
 }
 
 /****************************************
@@ -276,7 +392,7 @@ function setTreeForces() {
         .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(100).strength(1))
         .force("charge", d3.forceManyBody().strength(-50))
         .force("center", null) // Remove centering force for tree layout
-        .force("y", d3.forceY(width / 2)   // Pull nodes downwards for tree hierarchy
+        .force("y", d3.forceY(height / 2)   // Pull nodes downwards for tree hierarchy
             .strength(0.2))
         .force("x", d3.forceX(width / 2)   // Center nodes horizontally
             .strength(0.1));
@@ -285,12 +401,15 @@ function setTreeForces() {
 function setGraphForces() {
     simulation
         .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(100).strength(1))
-        .force("charge", d3.forceManyBody().strength(-50)) // Set this to a less negative value for less repulsion
+        .force("charge", d3.forceManyBody()
+            .strength(d => d.id === activeNodeId ? -300 : -50) // Stronger repulsion for the active node
+        )
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("collide", d3.forceCollide()
-            .radius(30)    // Lower radius for smaller gaps between nodes
-            .strength(0.2)); // Increase strength if you want collision to be stricter
+            .radius(20) // Minimum distance between nodes
+            .strength(0.05)); // Increase strength for stronger collision enforcement
 }
+
 
 /******************************
 * EXPAND ACTIVE NODE BY DEPTH *
@@ -382,11 +501,6 @@ function updateGraph() {
         .text(d => d.id);
 
     node = nodeEnter.merge(node);
-
-    // Update the circle and text attributes for both new and existing nodes
-    node.select("circle")
-        .attr("r", 5); // Update radius based on active node
-
     node.select("text")
         .attr("stroke-width", 0) // Outline text for active node
         .attr("font-size", .7 + "em"); // Ensure active node has larger font size
@@ -503,130 +617,13 @@ function ticked() {
     });
 
     // Save initial positions after the simulation stabilizes
-    if (!initialPositionsSaved && simulation.alpha() < 0.05) {
-        visibleNodes.forEach(d => {
-            d.initialX = d.x;
-            d.initialY = d.y;
-        });
-        initialPositionsSaved = true;
-    }
-}
-
-/********************************************************************
- * CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
- *********************************************************************/
-function clusteringForce() {
-    // Create an array of unique node types, excluding the home node type
-    var types = [...new Set(graphData.nodes
-        .map(node => node.type))];
-
-    // Set up the structure for positioning cluster centers
-    var clusterCenters = {};
-    var numTypes = types.length;
-    var clusterRadius = Math.min(width, height);
-
-    // Calculate position for each cluster type's center
-    types.forEach((type, index) => {
-        var angle = (index / numTypes) * 2 * Math.PI;
-        clusterCenters[type] = {
-            x: width / 2 + clusterRadius * Math.cos(angle),
-            y: height / 2 + clusterRadius * Math.sin(angle)
-        };
-    });
-
-    // Return the force function
-    return function(alpha) {
-        visibleNodes.forEach(function(d) {
-            if (d.id !== activeNodeId) {
-                var cluster = clusterCenters[d.type];
-                if (cluster) { // Check if the cluster exists
-                    var clusterStrength = 0.1; // Change strength of groups (higher number = closer together)
-                    d.vx -= (d.x - cluster.x) * alpha * clusterStrength;
-                    d.vy -= (d.y - cluster.y) * alpha * clusterStrength;
-                } else {
-                    console.warn("Cluster center for type", d.type, "is undefined");
-                }
-            }
-        });
-    };    
-}
-
-/*******************************************************
-* NODE CLICK EVENT HANDLERS FOR ACTIVE NODE MANAGEMENT *
-********************************************************/
-function nodeClicked(event, d) {
-    if (d.id === activeNodeId) return;  // Do nothing if the clicked node is already active
-
-    activeNodeId = d.id;  // Update active node ID
-    console.log("Active Node:", activeNodeId);
-
-    var depth = parseInt(depthSlider.value);  // Get current depth from slider
-    visibleNodes = [];  // Clear visible nodes
-    visibleLinks = [];  // Clear visible links
-
-    // Expand nodes based on new active node and depth
-    expandNodeByDepth(d, depth); 
-
-    // Center the active node
-    updateNodePositions();
-    updateGraph();
-    updateRightContainer();  // Update info pane
-}
-
-/**************************************
- * EXPAND NODES BASED ON SEARCH INPUT *
- * ************************************/
-function expandNode(node) {
-    /*
-    Step 1: Identify Immediate Children
-    - Filter the links in `graphData` to find those connected directly to the specified `node`.
-    - A link is considered a match if the source or target of the link matches the `node`'s ID.
-
-    Step 2: Iterate Through Each Link
-    - For each link connected to `node`, check if it is already in `visibleLinks`.
-    - If the link is not already visible, add it to `visibleLinks`.
-
-    Step 3: Find and Add Connected Nodes
-    - Determine the "other" node connected by this link (the node at the opposite end).
-    - If this `otherNode` is not already in `visibleNodes`, add it to `visibleNodes`.
-    - This ensures that any node directly connected to `node` becomes visible in the graph.
-
-    Result:
-    - This function expands the visibility of nodes and links around the specified `node`,
-        gradually revealing the network structure as nodes are expanded.
-    */
-    
-    // Find immediate children of the node
-    var newLinks = graphData.links.filter(
-        link => (link.source.id === node.id || link.target.id === node.id)
-    );
-
-    newLinks.forEach(link => {
-        // Ensure the link isn't already visible
-        if (!visibleLinks.includes(link)) {
-            visibleLinks.push(link);
-
-            // Get the connected node
-            var otherNode = link.source.id === node.id ? link.target : link.source;
-
-            // Add the connected node if it's not already visible
-            if (otherNode && !visibleNodes.includes(otherNode)) {
-                visibleNodes.push(otherNode);
-            }
-        }
-    });
-}
-
-/*************************
-* FUNCTIONS FOR CONTROLS *
-**************************/
-function searchNode(nodeId) {
-    if (nodeById.has(nodeId)) {
-        var node = nodeById.get(nodeId); // Get the node object
-        nodeClicked(null, node); // Trigger the same logic as a click
-    } else {
-        alert("Node not found!");
-    }
+    // if (!initialPositionsSaved && simulation.alpha() < 0.05) {
+    //     visibleNodes.forEach(d => {
+    //         d.initialX = d.x;
+    //         d.initialY = d.y;
+    //     });
+    //     initialPositionsSaved = true;
+    // }
 }
 
 /*****************************************************
