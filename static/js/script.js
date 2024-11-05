@@ -119,7 +119,6 @@ function renderGraph(data) {
     nodeById = new Map(data.nodes.map(node => [node.id, node]));
 
     // Convert string IDs to actual node objects in the links array.
-    // This is necessary for D3's force simulation to understand the link connections between nodes.
     data.links.forEach(link => {
         if (typeof link.source === 'string') {
             link.source = nodeById.get(link.source);
@@ -129,95 +128,80 @@ function renderGraph(data) {
         }
     });
 
-    // --- New Code Starts Here ---
-    // Create a map to store the count of links per node, allowing for analysis or display of node connectivity.
-    var nodeLinkCount = new Map();
-
-    // Initialize counts to zero for each node, starting the counting process.
-    data.nodes.forEach(node => {
-        nodeLinkCount.set(node.id, 0);
-    });
-
-    // Count the number of links for each node, to identify nodes with multiple connections.
-    data.links.forEach(link => {
-        nodeLinkCount.set(link.source.id, nodeLinkCount.get(link.source.id) + 1);
-        nodeLinkCount.set(link.target.id, nodeLinkCount.get(link.target.id) + 1);
-    });
-
-    // Log nodes that have more than one link, helping to identify key nodes with higher connectivity.
-    nodeLinkCount.forEach((count, nodeId) => {
-        if (count > 1) {
-            simulation = d3.forceSimulation(visibleNodes)
-                .force("collision", d3.forceCollide()
-                .radius(1000)                           // Minimum separation distance between nodes; increase to space nodes farther
-                .strength(10)) 
-            console.log("Node with more than 1 link:", nodeId, "has", count, "links");
-        }
-    });
-
-    // Clear the arrays that track visible elements, removing any previous data before rendering the graph.
+    // Track visible nodes and links
     visibleNodes = [];
     visibleLinks = [];
 
-    // Create a container group for link elements, setting up a structure for links in the SVG.
+    // Create link elements
     link = g.append("g")
         .attr("class", "links")
         .selectAll("line")
         .data(visibleLinks, d => `${d.source.id}-${d.target.id}`);
 
-    // Create a container group for node elements, styling the nodes with text and outlines.
+    // Define the drag behavior function
+    const drag = simulation => {
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        return d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended);
+    };
+
+    // Create node elements
     node = g.append("g")
         .attr("class", "nodes")
-        .style("stroke", textClr)               // Outline color for nodes
-        .style("stroke-width", 2)             // Outline thickness for nodes, increase for thicker outlines
-        .style("text-anchor", "middle")         // Centers text inside nodes
+        .style("stroke", textClr)           // Outline color for nodes
+        .style("stroke-width", 2)           // Outline thickness for nodes
+        .style("text-anchor", "middle")     // Centers text inside nodes
         .selectAll("g")
         .data(visibleNodes, d => d.id)
         .enter()
         .append("g")
-        .call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended)
-        );
+        .call(drag(simulation));            // Apply drag behavior here
 
-    // Append text to each node, with default position and no outline.
+    // Append circles to each node
+    node.append("circle")
+        .attr("r", d => (d.id === activeNodeId ? 8 : 5)) // Increased radius for active node
+        .attr("fill", d => nodeColorMap.get(d.id))
+        .on("click", nodeClicked);
+
+    // Append text to each node
     node.append("text")
-        .text(d => d.id);                     // Sets text content to node ID
+        .text(d => d.id);
 
-    // Initialize the force simulation with visible nodes.
+    // Initialize the force simulation with visible nodes
     simulation = d3.forceSimulation(visibleNodes)
-    // Adds a link force to connect nodes based on visibleLinks.
-    .force("link", d3.forceLink(visibleLinks)
-        .id(d => d.id)
-        .distance(20)                        // Preferred length of links; increase to space nodes farther apart
-        .strength(0.2))                       // Rigidity of links; higher value = stiffer connections
+        .force("link", d3.forceLink(visibleLinks)
+            .id(d => d.id)
+            .distance(100)                       // Preferred link length
+            .strength(0.2))                     // Rigidity of links
+        .force("charge", d3.forceManyBody()
+            .strength(-200)                     // Repulsion strength
+            .distanceMax(100))                  // Max range for repulsion
+        .force("collide", d3.forceCollide()
+            .radius(30)                         // Minimum separation distance
+            .strength(0.01))                    // Strength of collision force
+        .force("cluster", clusteringForce())    // Custom clustering force
+        .on("tick", ticked);                    // Event listener for each tick
 
-    // Adds a repulsive force between nodes to prevent overlap.
-    .force("charge", d3.forceManyBody()
-        .strength(-200)                       // Repulsion strength; more negative values push nodes apart more strongly
-        .distanceMax(100))                    // Maximum range for repulsion; increase to apply repulsion over larger distances
-
-    // Centers the simulation, positioning nodes around the center of the SVG.
-    .force("center", d3.forceCenter(width / 2, height / 2)) // comment out to make graph float
-
-    // Adds a collision force to prevent nodes from overlapping by enforcing a minimum distance.
-    .force("collide", d3.forceCollide()
-        .radius(10)                           // Minimum separation distance between nodes; increase to space nodes farther
-        .strength(0.01))                       // Strength of collision force; higher value increases force's effect
-    .alphaDecay(0.01)                         // Controls the simulation decay rate; lower value makes simulation run longer
-
-    // Adds custom cluster repulsion to separate clusters based on types.
-    //.force("clusterRepulsion", clusterRepulsionForce())
-
-    // Adds a clustering force to group nodes of the same type.
-    .force("cluster", clusteringForce())
-
-    // Event listener to update the graph layout on each simulation tick (iteration).
-    .on("tick", ticked);
-
-    // Start the simulation with initial node positions before rendering links.
-    resetGraph(parseInt(depthSlider.value));  // Depth value from slider determines how many levels are expanded initially.
+    // Set initial depth from slider and render graph layout
+    resetGraph(parseInt(depthSlider.value));
 }
 
 /****************************************
@@ -268,7 +252,7 @@ function setGraphForces() {
             .strength(-50)) // Set this to a less negative value for less repulsion
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("collide", d3.forceCollide()
-            .radius(25)    // Lower radius for smaller gaps between nodes
+            .radius(30)    // Lower radius for smaller gaps between nodes
             .strength(0.2)); // Increase strength if you want collision to be stricter
 }
 
@@ -335,7 +319,7 @@ function updateGraph() {
     link.exit().remove();
 
     var linkEnter = link.enter().append("line")
-        .attr("stroke-width", 1)
+        .attr("stroke-width", .75)
         .attr("stroke", lineClr);
 
     link = linkEnter.merge(link);
@@ -347,14 +331,11 @@ function updateGraph() {
     node.exit().remove();
 
     var nodeEnter = node.enter().append("g")
-        .call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended));
+        .call(drag(simulation)); // Apply the drag behavior here using the drag function
 
     // Append circles with conditional radius for active node
     nodeEnter.append("circle")
-        .attr("r", d => (d.id === activeNodeId ? 8 : 5)) // Increased radius for active node
+        .attr("r", d => (d.id === activeNodeId ? 7 : 4)) // Increased radius for active node
         .attr("fill", d => nodeColorMap.get(d.id))
         .on("click", nodeClicked);
 
@@ -368,11 +349,11 @@ function updateGraph() {
 
     // Update the circle and text attributes for both new and existing nodes
     node.select("circle")
-        .attr("r", d => (d.id === activeNodeId ? 8 : 5)); // Update radius based on active node
+        .attr("r", d => (d.id === activeNodeId ? 7 : 4)); // Update radius based on active node
 
     node.select("text")
         .attr("stroke-width", d => (d.id === activeNodeId ? 1 : 0)) // Outline text for active node
-        .attr("font-size", d => (d.id === activeNodeId ? 1.5 : .7) + "em"); // Ensure active node has larger font size
+        .attr("font-size", d => (d.id === activeNodeId ? 1.2 : .7) + "em"); // Ensure active node has larger font size
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
@@ -748,22 +729,29 @@ function resetToInitialState() {
 /*****************************************************
 * DRAG FUNCTIONS TO ENABLE INTERACTIVE NODE MOVEMENT *
 ******************************************************/
-function dragstarted(event) {
-    if (!event.active) simulation.alphaTarget(0.3).restart();
-    event.subject.fx = event.subject.x;
-    event.subject.fy = event.subject.y;
-}
+const drag = simulation => {
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
 
-function dragged(event) {
-    event.subject.fx = event.x;
-    event.subject.fy = event.y;
-}
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
 
-function dragended(event) {
-    if (!event.active) simulation.alphaTarget(0);
-    event.subject.fx = null;
-    event.subject.fy = null;
-}
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+
+    return d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended);
+};
 
 // Helper function to calculate the centroid of a set of nodes
 function calculateCentroid(nodes) {
