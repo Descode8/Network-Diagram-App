@@ -256,10 +256,10 @@ function renderGraph(data) {
 
     // Initialize the force simulation with visible nodes
     simulation = d3.forceSimulation(visibleNodes)
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(50).strength(1))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(1))
         .force("charge", d3.forceManyBody().strength(-50))
         .force("collide", d3.forceCollide()
-            .radius(20)                         // Minimum separation distance
+            .radius(25)                         // Minimum separation distance
             .strength(0.1))                    // Strength of collision force
         .force("cluster", clusteringForce())    // Custom clustering force
         .on("tick", ticked);                    // Event listener for each tick
@@ -272,9 +272,9 @@ function renderGraph(data) {
  * CUSTOM CLUSTERING FORCE TO ATTRACT NODES TO THEIR CLUSTER CENTERS *
  *********************************************************************/
 function clusteringForce() {
-    // console.log("Clustering force initialized");
-    // Create an array of unique node types, excluding the home node type
+    // Create an array of unique node types, excluding the active node type
     var types = [...new Set(graphData.nodes
+        .filter(node => node.id !== activeNodeId)
         .map(node => node.type))];
 
     // Set up the structure for positioning cluster centers
@@ -301,7 +301,7 @@ function clusteringForce() {
     // Return the force function
     return function(alpha) {
         visibleNodes.forEach(function(d) {
-            // if (d.id !== activeNodeId) {
+            if (d.id !== activeNodeId) {
                 var cluster = clusterCenters[d.type];
                 if (cluster) { // Check if the cluster exists
                     // console.log("Cluster center for type", d.type);
@@ -311,7 +311,7 @@ function clusteringForce() {
                 } else {
                     // console.warn("Cluster center for type", d.type, "is undefined");
                 }
-            // }
+            }
         });
     };    
 }
@@ -389,7 +389,7 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = activeNodeId) 
 
 function setTreeForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(100).strength(1))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(1))
         .force("charge", d3.forceManyBody().strength(-50))
         .force("center", null) // Remove centering force for tree layout
         .force("y", d3.forceY(height / 2)   // Pull nodes downwards for tree hierarchy
@@ -400,14 +400,14 @@ function setTreeForces() {
 
 function setGraphForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(100).strength(1))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(1))
         .force("charge", d3.forceManyBody()
             .strength(d => d.id === activeNodeId ? -300 : -50) // Stronger repulsion for the active node
         )
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("collide", d3.forceCollide()
-            .radius(20) // Minimum distance between nodes
-            .strength(0.05)); // Increase strength for stronger collision enforcement
+            .radius(25) // Minimum distance between nodes
+            .strength(1)); // Increase strength for stronger collision enforcement
 }
 
 
@@ -503,11 +503,11 @@ function updateGraph() {
     node = nodeEnter.merge(node);
     node.select("text")
         .attr("stroke-width", 0) // Outline text for active node
-        .attr("font-size", .7 + "em"); // Ensure active node has larger font size
+        .attr("font-size", .8 + "em"); // Ensure active node has larger font size
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
-    simulation.force("link").id(d => d.id).distance(100).strength(1);
+    simulation.force("link").id(d => d.id).distance(75).strength(1);
     simulation.alpha(0.3).restart();
 }
 
@@ -615,15 +615,6 @@ function ticked() {
         d.y = Math.max(0, Math.min(height, d.y)); // Ensure nodes stay within height
         return `translate(${d.x},${d.y})`;
     });
-
-    // Save initial positions after the simulation stabilizes
-    // if (!initialPositionsSaved && simulation.alpha() < 0.05) {
-    //     visibleNodes.forEach(d => {
-    //         d.initialX = d.x;
-    //         d.initialY = d.y;
-    //     });
-    //     initialPositionsSaved = true;
-    // }
 }
 
 /*****************************************************
@@ -653,13 +644,4 @@ const drag = simulation => {
         .on("end", dragended);
 };
 
-// Helper function to calculate the centroid of a set of nodes
-function calculateCentroid(nodes) {
-    var x = 0, y = 0, n = nodes.length;
-    nodes.forEach(d => {
-        x += d.x;
-        y += d.y;
-    });
-    return { x: x / n, y: y / n };
-}
 
