@@ -256,11 +256,11 @@ function renderGraph(data) {
 
     // Initialize the force simulation with visible nodes
     simulation = d3.forceSimulation(visibleNodes)
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(1))
-        .force("charge", d3.forceManyBody().strength(-50))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(.5))
+        //.force("charge", d3.forceManyBody().strength(-50))
         .force("collide", d3.forceCollide()
             .radius(25)                         // Minimum separation distance
-            .strength(0.1))                    // Strength of collision force
+            .strength(.5))                    // Strength of collision force
         .force("cluster", clusteringForce())    // Custom clustering force
         .on("tick", ticked);                    // Event listener for each tick
 
@@ -389,25 +389,25 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = activeNodeId) 
 
 function setTreeForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(1))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(.5))
         .force("charge", d3.forceManyBody().strength(-50))
         .force("center", null) // Remove centering force for tree layout
         .force("y", d3.forceY(height / 2)   // Pull nodes downwards for tree hierarchy
-            .strength(0.2))
+            .strength(.5))
         .force("x", d3.forceX(width / 2)   // Center nodes horizontally
-            .strength(0.1));
+            .strength(.5));
 }
 
 function setGraphForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(1))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(.5))
         .force("charge", d3.forceManyBody()
             .strength(d => d.id === activeNodeId ? -300 : -50) // Stronger repulsion for the active node
         )
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("collide", d3.forceCollide()
             .radius(25) // Minimum distance between nodes
-            .strength(1)); // Increase strength for stronger collision enforcement
+            .strength(.5)); // Increase strength for stronger collision enforcement
 }
 
 
@@ -507,7 +507,7 @@ function updateGraph() {
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
-    simulation.force("link").id(d => d.id).distance(75).strength(1);
+    simulation.force("link").id(d => d.id).distance(75).strength(.5);
     simulation.alpha(0.3).restart();
 }
 
