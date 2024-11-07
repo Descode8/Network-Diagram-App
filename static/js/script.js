@@ -291,7 +291,7 @@ function clusteringForce() {
         }
     
         var angle = (index / numTypes) * 2 * Math.PI;
-        console.log("Cluster center for type", type);
+        // console.log("Cluster center for type", type);
         clusterCenters[type] = {
             x: width / 2 + clusterRadius * Math.cos(angle),
             y: height / 2 + clusterRadius * Math.sin(angle)
@@ -301,7 +301,7 @@ function clusteringForce() {
     // Return the force function
     return function(alpha) {
         visibleNodes.forEach(function(d) {
-            if (d.id !== activeNodeId) {
+            // if (d.id !== activeNodeId) {
                 var cluster = clusterCenters[d.type];
                 if (cluster) { // Check if the cluster exists
                     // console.log("Cluster center for type", d.type);
@@ -311,7 +311,7 @@ function clusteringForce() {
                 } else {
                     // console.warn("Cluster center for type", d.type, "is undefined");
                 }
-            }
+            // }
         });
     };    
 }
@@ -622,26 +622,45 @@ function ticked() {
 ******************************************************/
 const drag = simulation => {
     function dragstarted(event, d) {
+        // Fix all other nodes in place when a drag starts
+        visibleNodes.forEach(node => {
+            if (node !== d) {
+                node.fx = node.x;
+                node.fy = node.y;
+            }
+        });
+
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
     }
 
     function dragged(event, d) {
+        // Only the dragged node moves
         d.fx = event.x;
         d.fy = event.y;
     }
 
     function dragended(event, d) {
+        // Release the dragged node but keep it in place unless dragged again
         if (!event.active) simulation.alphaTarget(0);
-        d.fx = event.x;
-        d.fy = event.y;
-    }    
+        d.fx = d.x;
+        d.fy = d.y;
+        
+        // Optionally: allow other nodes to move again (or keep them fixed as desired)
+        visibleNodes.forEach(node => {
+            if (node !== d) {
+                node.fx = null;
+                node.fy = null;
+            }
+        });
+    }
 
     return d3.drag()
         .on("start", dragstarted)
         .on("drag", dragged)
         .on("end", dragended);
 };
+
 
 

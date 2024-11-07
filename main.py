@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, render_template, request
-from data_extractor import fetch_graph_data
+from data_extractor import fetch_graph_data_with_centrality
 
 app = Flask(__name__)
 
@@ -9,7 +9,7 @@ def index():
     Serve the index page or return JSON if requested.
     """
     if request.headers.get("Accept") == "application/json":
-        data = fetch_graph_data()  # Fetch the graph data from Excel
+        data = fetch_graph_data_with_centrality()  # Fetch the graph data from Excel
         return jsonify(data)  # Return as JSON
     else:
         return render_template('index.html')  # Serve HTML page

@@ -1,64 +1,60 @@
 import pandas as pd
 import os
+import networkx as nx
 
-def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
+def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
     """
-    Data Extraction and Preparation
-    File Check: Verifies if the network diagram data (network_diagram.xlsx) exists. If missing, raises a FileNotFoundError.
-    Data Cleaning: Loads data from Excel, stripping whitespace and handling empty values.
-    Node and Link Initialization:
-    Creates lists to store nodes and links and uses a set to track unique node IDs.
-    Data Parsing: Iterates over each row in the data:
-    Node Creation: Adds nodes if they are not duplicates.
-    Link Creation: Connects each CI_Name to its dependencies, organizing relationships.
+    Data Extraction with Centrality and Community Detection
     """
-
-    # Check if Excel file exists
     if not os.path.exists(excel_file):
         raise FileNotFoundError(f"{excel_file} not found.")
 
-    # Load and clean the data
+    # Load and clean data
     df = pd.read_excel(excel_file).fillna('None')
     df = df.apply(lambda col: col.str.strip() if col.dtype == 'object' else col)
 
-    # Initialize structures to hold graph components
-    nodes = []  # All nodes
-    links = []  # All links between nodes
-    node_ids = set()  # Track nodes to avoid duplication
+    # Initialize NetworkX graph
+    G = nx.Graph()
 
-    # Iterate over the Excel rows to populate nodes and links
     for _, row in df.iterrows():
         ci_name = row['CI_Name']
-        ci_type = row['CI_Type']
-        ci_description = row['CI_Descrip']
         dependency_name = row['Dependency_Name']
-        dependency_type = row['Dependency_Type']
-        dependency_description = row['Dependency_Descrip']
 
-        # Add CI node if not already present
-        if ci_name != 'None' and ci_name not in node_ids:
-            nodes.append({
-                'id': ci_name,
-                'type': ci_type,
-                'description': ci_description
-            })
-            node_ids.add(ci_name)
-
-        # Add dependency node if not already present
-        if dependency_name != 'None' and dependency_name not in node_ids:
-            nodes.append({
-                'id': dependency_name,
-                'type': dependency_type,
-                'description': dependency_description
-            })
-            node_ids.add(dependency_name)
-
-        # Add link between CI and its dependency (if valid)
+        # Add nodes with attributes
+        G.add_node(ci_name, type=row['CI_Type'], description=row['CI_Descrip'])
+        G.add_node(dependency_name, type=row['Dependency_Type'], description=row['Dependency_Descrip'])
+        
+        # Add edge for dependencies
         if dependency_name != 'None':
-            links.append({
-                'source': dependency_name,
-                'target': ci_name
-            })
+            G.add_edge(ci_name, dependency_name)
 
-    # Return the final graph structure
+    # Calculate centrality metrics
+    degree_centrality = nx.degree_centrality(G)
+    closeness_centrality = nx.closeness_centrality(G)
+    betweenness_centrality = nx.betweenness_centrality(G)
+
+    # Assign centrality and type data to nodes
+    for node in G.nodes:
+        G.nodes[node]['degree_centrality'] = degree_centrality.get(node, 0)
+        G.nodes[node]['closeness_centrality'] = closeness_centrality.get(node, 0)
+        G.nodes[node]['betweenness_centrality'] = betweenness_centrality.get(node, 0)
+
+    # Convert graph to JSON-friendly format for frontend
+    nodes = [
+        {
+            'id': node,
+            'type': G.nodes[node]['type'],
+            'description': G.nodes[node]['description'],
+            'degree_centrality': G.nodes[node]['degree_centrality'],
+            'closeness_centrality': G.nodes[node]['closeness_centrality'],
+            'betweenness_centrality': G.nodes[node]['betweenness_centrality'],
+        }
+        for node in G.nodes
+    ]
+    
+    links = [
+        {'source': source, 'target': target}
+        for source, target in G.edges
+    ]
+
     return {'nodes': nodes, 'links': links}
