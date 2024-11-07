@@ -13,8 +13,8 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
     df = pd.read_excel(excel_file).fillna('None')
     df = df.apply(lambda col: col.str.strip() if col.dtype == 'object' else col)
 
-    # Initialize NetworkX graph
-    G = nx.Graph()
+    # Initialize NetworkX directed graph
+    G = nx.DiGraph()
 
     for _, row in df.iterrows():
         ci_name = row['CI_Name']
@@ -39,6 +39,21 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
         G.nodes[node]['closeness_centrality'] = closeness_centrality.get(node, 0)
         G.nodes[node]['betweenness_centrality'] = betweenness_centrality.get(node, 0)
 
+    # Identify nodes that are depended on by more than one CI_Type
+    multi_dependents = {}  # key: node, value: set of CI_Types that depend on it
+
+    for node in G.nodes:
+        predecessors = list(G.predecessors(node))
+        ci_types = set()
+        for pred in predecessors:
+            ci_type = G.nodes[pred]['type']
+            ci_types.add(ci_type)
+        if len(ci_types) > 1:
+            multi_dependents[node] = ci_types
+            G.nodes[node]['is_multi_dependent'] = True  # Add flag to node
+        else:
+            G.nodes[node]['is_multi_dependent'] = False  # Add flag to node
+
     # Convert graph to JSON-friendly format for frontend
     nodes = [
         {
@@ -48,6 +63,7 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
             'degree_centrality': G.nodes[node]['degree_centrality'],
             'closeness_centrality': G.nodes[node]['closeness_centrality'],
             'betweenness_centrality': G.nodes[node]['betweenness_centrality'],
+            'is_multi_dependent': G.nodes[node]['is_multi_dependent'],  # Include the flag
         }
         for node in G.nodes
     ]

@@ -29,6 +29,7 @@ var searchButton = document.getElementById('searchButton');
 var homeButton = document.getElementById('homeButton');
 var refreshButton = document.getElementById('refreshButton');
 var depthSlider = document.getElementById('depthSlider');
+let currentDepth = 2;  // Initialize with default depth
 var depthValueDisplay = document.getElementById('depthValue');
 var svgElement = svg.node();
 const width = svgElement.getBoundingClientRect().width;
@@ -212,6 +213,11 @@ function renderGraph(data) {
     // Create a map for quick node lookups by ID, enabling faster access to nodes by their ID.
     nodeById = new Map(data.nodes.map(node => [node.id, node]));
 
+     // Include the 'is_multi_dependent' attribute
+    data.nodes.forEach(node => {
+        node.is_multi_dependent = node.is_multi_dependent || false;
+    });
+
     // Convert string IDs to actual node objects in the links array.
     data.links.forEach(link => {
         if (typeof link.source === 'string') {
@@ -256,12 +262,12 @@ function renderGraph(data) {
 
     // Initialize the force simulation with visible nodes
     simulation = d3.forceSimulation(visibleNodes)
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(.5))
-        //.force("charge", d3.forceManyBody().strength(-50))
-        .force("collide", d3.forceCollide()
-            .radius(25)                         // Minimum separation distance
-            .strength(.5))                    // Strength of collision force
-        .force("cluster", clusteringForce())    // Custom clustering force
+        // .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(.5))
+        // //.force("charge", d3.forceManyBody().strength(-50))
+        // .force("collide", d3.forceCollide()
+        //     .radius(25)                         // Minimum separation distance
+        //     .strength(.5))                    // Strength of collision force
+        // .force("cluster", clusteringForce())    // Custom clustering force
         .on("tick", ticked);                    // Event listener for each tick
 
     // Set initial depth from slider and render graph layout
@@ -301,19 +307,16 @@ function clusteringForce() {
     // Return the force function
     return function(alpha) {
         visibleNodes.forEach(function(d) {
-            // if (d.id !== activeNodeId) {
-                var cluster = clusterCenters[d.type];
-                if (cluster) { // Check if the cluster exists
-                    // console.log("Cluster center for type", d.type);
-                    var clusterStrength = 0.1; // Change strength of groups (higher number = closer together)
-                    d.vx -= (d.x - cluster.x) * alpha * clusterStrength;
-                    d.vy -= (d.y - cluster.y) * alpha * clusterStrength;
-                } else {
-                    // console.warn("Cluster center for type", d.type, "is undefined");
-                }
-            // }
+            if (d.is_multi_dependent) return;  // Skip multi_dependents nodes
+
+            var cluster = clusterCenters[d.type];
+            if (cluster) {
+                var clusterStrength = 0.1;
+                d.vx -= (d.x - cluster.x) * alpha * clusterStrength;
+                d.vy -= (d.y - cluster.y) * alpha * clusterStrength;
+            }
         });
-    };    
+    };
 }
 
 /*******************************************************
@@ -368,6 +371,7 @@ function expandNode(node) {
 * Unified logic for resetting the graph *
 *****************************************/
 function resetGraph(depth = parseInt(depthSlider.value), nodeId = activeNodeId) {
+    currentDepth = depth;
     activeNodeId = nodeId;
     visibleNodes = [];
     visibleLinks = [];
@@ -395,7 +399,7 @@ function setTreeForces() {
         .force("y", d3.forceY(height / 2)   // Pull nodes downwards for tree hierarchy
             .strength(.5))
         .force("x", d3.forceX(width / 2)   // Center nodes horizontally
-            .strength(.5));
+            .strength(.01));
 }
 
 function setGraphForces() {
@@ -507,9 +511,34 @@ function updateGraph() {
 
     // Restart the simulation
     simulation.nodes(visibleNodes);
-    simulation.force("link").id(d => d.id).distance(75).strength(.5);
+
+    // Modify link force to exclude multi_dependents nodes
+    simulation.force("link", d3.forceLink(visibleLinks)
+        .id(d => d.id)
+        .distance(75)
+        .strength(link => 
+            (link.source.is_multi_dependent || link.target.is_multi_dependent) ? 0.1 : 0.5
+        )
+    );
+
+
+    // Modify other forces to exclude multi_dependents nodes
+    simulation.force("charge", d3.forceManyBody()
+        .strength(d => (d.is_multi_dependent ? -10 : -50))
+    );
+
+    simulation.force("collide", d3.forceCollide()
+        .radius(d => d.is_multi_dependent ? 5 : 25)
+        .strength(0.5)
+    );
+
+    // Remove clustering force from multi_dependents nodes
+    simulation.force("cluster", clusteringForce());
+
+    // Restart the simulation
     simulation.alpha(0.3).restart();
 }
+    
 
 /**********************************************
 * UPDATE right-pane WITH NODE ATTRIBUTES *
@@ -611,8 +640,14 @@ function ticked() {
         .attr("y2", d => d.target.y);
 
     node.attr("transform", d => {
-        d.x = Math.max(0, Math.min(width, d.x)); // Ensure nodes stay within width
-        d.y = Math.max(0, Math.min(height, d.y)); // Ensure nodes stay within height
+        if (isNaN(d.x) || isNaN(d.y)) {
+            d.x = width / 2;
+            d.y = height / 2;
+        }
+        if (!d.is_multi_dependent) {
+            d.x = Math.max(0, Math.min(width, d.x));
+            d.y = Math.max(0, Math.min(height, d.y));
+        }
         return `translate(${d.x},${d.y})`;
     });
 }
@@ -620,11 +655,53 @@ function ticked() {
 /*****************************************************
 * DRAG FUNCTIONS TO ENABLE INTERACTIVE NODE MOVEMENT *
 ******************************************************/
+// const drag = simulation => {
+//     function dragstarted(event, d) {
+//         if (d.is_multi_dependent) return;
+//         // When drag starts, fix the current position of all nodes to prevent them from moving
+//         visibleNodes.forEach(node => {
+//             if (!node.fx || !node.fy) {
+//                 node.fx = node.x;
+//                 node.fy = node.y;
+//             }
+//         });
+
+//         if (!event.active) simulation.alphaTarget(0.3).restart();
+//         d.fx = d.x;
+//         d.fy = d.y;
+//     }
+
+//     function dragged(event, d) {
+//         if (d.is_multi_dependent) {
+//             d.x = event.x;
+//             d.y = event.y;
+//         } else {
+//             d.fx = event.x;
+//             d.fy = event.y;
+//         }
+//     }
+
+//     function dragended(event, d) {
+//         if (d.is_multi_dependent) return;
+//         if (!event.active) simulation.alphaTarget(0);
+
+//         // Leave the dragged node fixed in its new position
+//         d.fx = d.x;
+//         d.fy = d.y;
+//     }
+
+//     return d3.drag()
+//         .on("start", dragstarted)
+//         .on("drag", dragged)
+//         .on("end", dragended);
+// };
+
 const drag = simulation => {
     function dragstarted(event, d) {
-        // Fix all other nodes in place when a drag starts
+        if (d.is_multi_dependent) return;
+        // When drag starts, fix the current position of all nodes to prevent them from moving
         visibleNodes.forEach(node => {
-            if (node !== d) {
+            if (!node.fx || !node.fy) {
                 node.fx = node.x;
                 node.fy = node.y;
             }
@@ -636,24 +713,22 @@ const drag = simulation => {
     }
 
     function dragged(event, d) {
-        // Only the dragged node moves
-        d.fx = event.x;
-        d.fy = event.y;
+        if (d.is_multi_dependent) {
+            d.x = event.x;
+            d.y = event.y;
+        } else {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
     }
 
     function dragended(event, d) {
-        // Release the dragged node but keep it in place unless dragged again
+        if (d.is_multi_dependent) return;
         if (!event.active) simulation.alphaTarget(0);
+
+        // Leave the dragged node fixed in its new position
         d.fx = d.x;
         d.fy = d.y;
-        
-        // Optionally: allow other nodes to move again (or keep them fixed as desired)
-        visibleNodes.forEach(node => {
-            if (node !== d) {
-                node.fx = null;
-                node.fy = null;
-            }
-        });
     }
 
     return d3.drag()
@@ -661,6 +736,5 @@ const drag = simulation => {
         .on("drag", dragged)
         .on("end", dragended);
 };
-
 
 
