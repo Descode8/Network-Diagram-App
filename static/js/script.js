@@ -43,8 +43,43 @@ let graphData;
 let nodeById;
 let visibleNodes = [];
 let visibleLinks = [];
+let centerNodesArray = [];
 let node;
 let link;
+
+/*****************************************************
+ * INITIALIZING AND FETCHING GRAPH DATA ON PAGE LOAD *
+ *****************************************************/
+// Ensure the SVG element is fully loaded before starting
+window.onload = function() {
+    fetchGraphData().then(() => {
+        resetGraph(2, activeNodeId);  // Set initial depth to 2
+    });
+};
+
+/**********************************
+ * FETCHING DATA FROM THE BACKEND *
+ **********************************/
+async function fetchGraphData() {
+    var response = await fetch("/", {
+        headers: { "Accept": "application/json" }
+    });
+
+    if (!response.ok) {
+        console.error("Failed to fetch graph data:", response.statusText);
+        return;
+    }
+
+    graphData = await response.json();
+    console.log("Graph data fetched successfully:", graphData);
+    centerNodesArray = graphData.center_nodes;
+
+    console.log("Home Node", graphData.nodes[0].id);
+    activeNodeId = graphData.nodes[0].id;
+
+    assignColors(graphData);
+    renderGraph(graphData);
+}
 
 /******************************************
 * FUNCTIONS FOR CONTROLS AND INTERACTIONS *
@@ -66,7 +101,6 @@ function resetToInitialState() {
     // Reset graph to the home node with depth 1
     resetGraph(targetValue, activeNodeId = graphData.nodes[0].id);
 }
-
 
 /*************************
 * FUNCTIONS FOR CONTROLS *
@@ -137,17 +171,6 @@ depthSlider.addEventListener('input', () => {
     resetGraph(depth, activeNodeId);
 });
 
-/*****************************************************
- * INITIALIZING AND FETCHING GRAPH DATA ON PAGE LOAD *
- *****************************************************/
-// Ensure the SVG element is fully loaded before starting
-window.onload = function() {
-    fetchGraphData().then(() => {
-        resetGraph(2, activeNodeId);  // Set initial depth to 2
-    });
-};
-
-
 var slider = document.getElementById('depthSlider');
     // Function to update the gradient and the displayed value
     function updateSlider() {
@@ -166,29 +189,6 @@ var zoom = d3.zoom()
         g.attr('transform', event.transform);
     });
 svg.call(zoom);
-
-/**********************************
- * FETCHING DATA FROM THE BACKEND *
- **********************************/
-async function fetchGraphData() {
-    var response = await fetch("/", {
-        headers: { "Accept": "application/json" }
-    });
-
-    if (!response.ok) {
-        console.error("Failed to fetch graph data:", response.statusText);
-        return;
-    }
-
-    graphData = await response.json();
-    console.log("Graph data fetched successfully:", graphData);
-
-    console.log("Home Node", graphData.nodes[0].id);
-    activeNodeId = graphData.nodes[0].id;
-    
-    assignColors(graphData);
-    renderGraph(graphData);
-}
 
 /*************************************************
  * ASSIGNING COLORS TO NODES BASED ON THEIR TYPE *
@@ -264,12 +264,6 @@ function renderGraph(data) {
 
     // Initialize the force simulation with visible nodes
     simulation = d3.forceSimulation(visibleNodes)
-        // .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(.5))
-        // //.force("charge", d3.forceManyBody().strength(-50))
-        // .force("collide", d3.forceCollide()
-        //     .radius(25)                         // Minimum separation distance
-        //     .strength(.5))                    // Strength of collision force
-        // .force("cluster", clusteringForce())    // Custom clustering force
         .on("tick", ticked);                    // Event listener for each tick
 
     // Set initial depth from slider and render graph layout
@@ -305,8 +299,6 @@ function clusteringForce() {
 
     // Return the force function
     return function(alpha) {
-        // if (currentDepth > 2) return;  // Do not apply clustering force when depth > 2
-
         visibleNodes.forEach(function(d) {
             if (d.is_multi_dependent && currentDepth > 2) return;  // Skip multi_dependents nodes
 
@@ -395,25 +387,25 @@ function resetGraph(depth = parseInt(depthSlider.value), nodeId = activeNodeId) 
 
 function setTreeForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(.5))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(5).strength(1))
         .force("charge", d3.forceManyBody().strength(-50))
         .force("center", null) // Remove centering force for tree layout
         .force("y", d3.forceY(centerY)   // Pull nodes downwards for tree hierarchy
-            .strength(.5))
+            .strength(1))
         .force("x", d3.forceX(centerX)   // Center nodes horizontally
             .strength(.01));
 }
 
 function setGraphForces() {
     simulation
-        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(75).strength(.5))
+        .force("link", d3.forceLink(visibleLinks).id(d => d.id).distance(5).strength(0.5))
         .force("charge", d3.forceManyBody()
             .strength(d => d.id === activeNodeId ? -300 : -50) // Stronger repulsion for the active node
         )
         .force("center", d3.forceCenter(centerX, centerY))
-        .force("collide", d3.forceCollide()
+        .force("collide", d3.forceCollide() // Prevent node overlap
             .radius(25) // Minimum distance between nodes
-            .strength(.5)); // Increase strength for stronger collision enforcement
+            .strength(0.5)); // Increase strength for stronger collision enforcement
 }
 
 
@@ -513,50 +505,27 @@ function updateGraph() {
 
     // Update force simulation
     simulation.nodes(visibleNodes);
+    // Depth less than or equal to 2: Apply normal forces
+    simulation.force("link", d3.forceLink(visibleLinks)
+        .id(d => d.id)
+        .distance(5)
+        .strength(1)
+    );
 
-    if (currentDepth > 2) {
-        // Depth greater than 2: Remove forces on multi_dependents nodes
-        simulation.force("link", d3.forceLink(visibleLinks)
-            .id(d => d.id)
-            .distance(75)
-            .strength(link => 
-                (link.source.is_multi_dependent || link.target.is_multi_dependent) ? 0.01 : 0.5
-            )
-        );
+    simulation.force("charge", d3.forceManyBody()
+        .strength(d => d.id === activeNodeId ? -300 : -50)
+    );
 
-        simulation.force("charge", d3.forceManyBody()
-            .strength(d => d.is_multi_dependent ? 0 : -50)
-        );
+    simulation.force("center", null);
 
-        simulation.force("center", null);
-
-        simulation.force("x", d3.forceX(centerX)
-            .strength(0.01));
-        simulation.force("y", d3.forceY(centerY)
-            .strength(0.5));
-    } else {
-        // Depth less than or equal to 2: Apply normal forces
-        simulation.force("link", d3.forceLink(visibleLinks)
-            .id(d => d.id)
-            .distance(75)
-            .strength(0.5)
-        );
-
-        simulation.force("charge", d3.forceManyBody()
-            .strength(d => d.id === activeNodeId ? -300 : -50)
-        );
-
-        simulation.force("center", d3.forceCenter(centerX, centerY));
-
-        // Remove positional forces
-        simulation.force("x", null);
-        simulation.force("y", null);
-    }
+    // Remove positional forces
+    simulation.force("x", null);
+    simulation.force("y", null);
 
     // Always apply collision force to prevent overlap
     simulation.force("collide", d3.forceCollide()
         .radius(25)
-        .strength(0.5)
+        .strength(1)
     );
 
     // Adjust clustering force
@@ -683,16 +652,18 @@ function ticked() {
 ******************************************************/
 const drag = simulation => {
     function dragstarted(event, d) {
+        // console.log(centerNodesArray);
         // Fix all nodes at their current positions
         visibleNodes.forEach(node => {
-            node.fx = node.x;
-            node.fy = node.y;
+            if(centerNodesArray.includes(activeNodeId)){
+                console.log("Center Node");
+                d.fx = null; // Unfix x position, allowing the simulation to adjust it
+                d.fy = null; // Unfix y position, allowing the simulation to adjust it
+            }else{
+                d.fx = d.x; // Fix the node's x position at the cursor's x-coordinate
+                d.fy = d.y; // Fix the node's y position at the cursor's y-coordinate
+            }
         });
-
-        // Immediately set the dragged node's fx and fy to the cursor position
-        d.fx = event.x;
-        d.fy = event.y;
-
         // Lower the simulation’s influence but keep it running
         simulation.alphaTarget(0.1).restart();
     }
