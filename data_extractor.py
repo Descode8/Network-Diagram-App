@@ -76,7 +76,7 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
             'closeness_centrality': G.nodes[node]['closeness_centrality'],
             # Betweenness centrality, indicating the importance of the node in connecting different parts of the graph
             'betweenness_centrality': G.nodes[node]['betweenness_centrality'],
-            # Flag to indicate if the node depends on multiple other nodes
+            # Flag to indicate if the node is dependent on by more than one CI_Type
             'is_multi_dependent': G.nodes[node]['is_multi_dependent'],
         }
         
