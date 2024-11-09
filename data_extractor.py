@@ -71,11 +71,11 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
             # A textual description or summary of the node's purpose
             'description': G.nodes[node]['description'],
             # The degree centrality value, representing the number of direct connections the node has
-            'degree_centrality': G.nodes[node]['degree_centrality'],
+            # 'degree_centrality': G.nodes[node]['degree_centrality'],
             # Closeness centrality, measuring how close the node is to all other nodes in the graph
-            'closeness_centrality': G.nodes[node]['closeness_centrality'],
+            #'closeness_centrality': G.nodes[node]['closeness_centrality'],
             # Betweenness centrality, indicating the importance of the node in connecting different parts of the graph
-            'betweenness_centrality': G.nodes[node]['betweenness_centrality'],
+            #'betweenness_centrality': G.nodes[node]['betweenness_centrality'],
             # Flag to indicate if the node is dependent on by more than one CI_Type
             'is_multi_dependent': G.nodes[node]['is_multi_dependent'],
         }
@@ -87,5 +87,6 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
         {'source': source, 'target': target}
         for source, target in G.edges
     ]
+    print("Backend called")
 
     return {'nodes': nodes, 'links': links, 'center_nodes': list(center_nodes)}

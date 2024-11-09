@@ -28,9 +28,7 @@ var rightContainer = d3.select(".right-pane");
 var onSearchInput = document.getElementById('searchInput');
 var onSearchButton = document.getElementById('searchButton');
 var onHomeButton = document.getElementById('homeButton');
-let isHomeButtonClicked = false;
 var onRefreshButton = document.getElementById('refreshButton');
-var isRefreshButtonClicked = false;
 var onDepthSlider = document.getElementById('depthSlider');
 let currentDepth = 2;  // Initialize with default depth
 var depthValueLabel = document.getElementById('depthValue');
@@ -49,16 +47,15 @@ let visibleLinks = [];
 let centralNodes = [];
 let node;
 let link;
-let linkDistance = 150; // Default value on page load
 let call = 0;
-let nodesDependOnMoreThanOneCI_Type = [];
+let nodeWithMultiCI_Type = [];
 
 /*******************************
 * EVENT LISTENERS FOR CONTROLS *
 ********************************/
 // Modify the home button event listener to use the current slider depth
 onHomeButton.addEventListener('click', () => {
-    resetToInitialState();  
+    location.reload(); 
 });
 
 onRefreshButton.addEventListener('click', () => {
@@ -106,6 +103,10 @@ onSearchInput.addEventListener('keydown', (event) => {
 // Add event listener for the depth slider
 onDepthSlider.addEventListener('input', () => {
     var depth = parseInt(onDepthSlider.value);
+
+    if(depth < 3) {
+        location.reload(); 
+    }
     depthValueLabel.textContent = depth;
     renderActiveNodeGraph(depth, activeNodeId);
 });
@@ -148,32 +149,46 @@ window.onload = function() {
  * FETCHING DATA FROM THE BACKEND *
  **********************************/
 async function fetchGraphData() {
-    ////console.log(`(${++call}) FetchGraphData`);
-    var response = await fetch("/", {
-        headers: { "Accept": "application/json" }
-    });
+    // Check if `graphData` is already in localStorage
+    const storedData = localStorage.getItem('graphData');
+    
+    if (storedData) {
+        // Parse and use stored graphData from localStorage
+        graphData = JSON.parse(storedData);
+        console.log("Loaded graph data from localStorage:", graphData);
+    } else {
+        // If not in localStorage, fetch it from the backend
+        try {
+            const response = await fetch("/", {
+                headers: { "Accept": "application/json" }
+            });
 
-    if (!response.ok) {
-        ////console.error("Failed to fetch graph data:", response.statusText);
-        return;
+            if (!response.ok) {
+                console.error("Failed to fetch graph data:", response.statusText);
+                return;
+            }
+
+            // Parse the fetched data
+            graphData = await response.json();
+            console.log("Graph data fetched successfully from backend:", graphData);
+
+            // Store the fetched data in localStorage for future use
+            localStorage.setItem('graphData', JSON.stringify(graphData));
+        } catch (error) {
+            console.error("Error fetching graph data:", error);
+        }
     }
 
-    graphData = await response.json();
-    console.log("Graph data fetched successfully:", graphData);
-    
     centralNodes = graphData.center_nodes;
     console.log("Central Nodes:", centralNodes);
 
-    const multi_dependent_nodes = graphData.nodes.filter(node => 
-        node.is_multi_dependent === true ? node : null);
+    graphData.nodes.forEach(node => {
+        if (node.is_multi_dependent === true) {
+            nodeWithMultiCI_Type.push(node.id);  // Push only the ID if the condition is true
+        }
+    });
 
-    if(node.is_multi_dependent === true){
-        nodesDependOnMoreThanOneCI_Type.push(multi_dependent_nodes);
-        console.log("Multi Dependent Nodes:", nodesDependOnMoreThanOneCI_Type);
-    }
-
-    // ////console.log("Home Node", graphData.nodes[0].id);
-    activeNodeId = graphData.nodes[0].id;
+    console.log("Nodes with Multi CI Type:", nodeWithMultiCI_Type);
 
     assignColors(graphData);
     initializeGraph(graphData);
@@ -205,11 +220,6 @@ function initializeGraph(data) {
     ////console.log(`(${++call}) initializeGraph`);
     // Create a map for quick node lookups by ID, enabling faster access to nodes by their ID.
     nodeById = new Map(data.nodes.map(node => [node.id, node]));
-
-     // Include the 'is_multi_dependent' attribute
-    data.nodes.forEach(node => {
-        node.is_multi_dependent = node.is_multi_dependent || false;
-    });
 
     // Convert string IDs to actual node objects in the links array.
     data.links.forEach(link => {
@@ -283,10 +293,8 @@ function renderActiveNodeGraph(depth = parseInt(onDepthSlider.value), nodeId = a
 
     // Update force settings based on the depth value
     if (depth > 2) {
-        ////console.log(`(${++call}) setTreeForces`);
         setTreeForces();
     } else {
-        ////console.log(`(${++call}) setGraphForces`);
         setGraphForces();
     }
 
@@ -352,15 +360,12 @@ function setTreeForces() {
                 let minDistance;
                 let repulsionStrength;
                 
+                // Define the desired minimum distance between central nodes to keep clusters separate
                 if(centralNodes.includes(activeNodeId)){
                     //console.log("Central Nodes");
                     // Define the desired minimum distance between central nodes
                     minDistance = 400; // Adjust this value as needed
-                    repulsionStrength = (minDistance - distance) / distance * 1;
-                }else{
-                    //console.log("Not Central Nodes");
-                    minDistance = 10; // Adjust this value as needed
-                    repulsionStrength = (minDistance - distance) / distance * .01; 
+                    repulsionStrength = (minDistance - distance) / distance * .5;
                 }
 
                 if (distance < minDistance) {
@@ -387,48 +392,28 @@ function setTreeForces() {
         simulation.on("tick", ticked);
     }
 
-    // // Compute maximum closeness centrality
-    // const maxCloseness = d3.max(visibleNodes, n => n.closeness_centrality);
-    // const closenessScale = d3.scaleLinear()
-    //     .domain([0, maxCloseness])
-    //     .range([1, 5]); // Adjust the range as needed
+    if(centralNodes.includes(activeNodeId)){
+        simulation
+            .force("link", d3.forceLink(visibleLinks)
+            .id(d => d.id)
+            .distance(10)
+            .strength(1))
 
-    // // Continue with setting up other forces
-    // simulation
-    //     .force("charge", d3.forceManyBody()
-    //         .strength(d => {
-    //             const baseStrength = -50;
-    //             return baseStrength * closenessScale(d.closeness_centrality);
-    //         })
-    //     )
-    //     .force("center", null)
-    //     .force("y", d3.forceY(centerY)
-    //         .strength(0.1))
-    //     .force("x", d3.forceX(centerX)
-    //         .strength(0.01))
-        
-        if(centralNodes.includes(activeNodeId)){
-            simulation
-                .force("link", d3.forceLink(visibleLinks)
-                .id(d => d.id)
-                .distance(linkDistance)
-                .strength(1))
+            .force("collide", d3.forceCollide()
+            .strength(0.05)
+            .radius(200));
+    }
+    if(!centralNodes.includes(activeNodeId)){
+        simulation
+            .force("link", d3.forceLink(visibleLinks)
+            .id(d => d.id)
+            .distance(0)
+            .strength(.1))
 
-                .force("collide", d3.forceCollide()
-                .strength(0.05)
-                .radius(200));
-        }
-        if(!centralNodes.includes(activeNodeId)){
-            simulation
-                .force("link", d3.forceLink(visibleLinks)
-                .id(d => d.id)
-                .distance(linkDistance = 0)
-                .strength(.1))
-
-                .force("collide", d3.forceCollide()
-                .strength(0.05)
-                .radius(10));
-        }
+            .force("collide", d3.forceCollide()
+            .strength(0.05)
+            .radius(25));
+    }
 }
 
 /****************************************************
@@ -439,7 +424,7 @@ function setGraphForces() {
     simulation
     .force("link", d3.forceLink(visibleLinks)
         .id(d => d.id)
-        .distance(linkDistance)
+        .distance(10)
         .strength(1))
         .force("charge", d3.forceManyBody()
             .strength(d => d.id === activeNodeId ? -300 : -50) // Stronger repulsion for the active node
@@ -512,28 +497,13 @@ function renderGraph() {
         .attr("stroke-width", 0)
         .attr("font-size", ".8em");
 
-    
-
     // Update force simulation
     simulation.nodes(visibleNodes);
     simulation.force("link", d3.forceLink(visibleLinks)
         .id(d => d.id)
-        .distance(linkDistance)
+        .distance(50)
         .strength(1)
     );
-
-    // // Adjust charge force based on closeness centrality
-    // const maxCloseness = d3.max(visibleNodes, n => n.closeness_centrality);
-    // const closenessScale = d3.scaleLinear()
-    //     .domain([0, maxCloseness])
-    //     .range([1, 5]); // Adjust the range as needed
-
-    // simulation.force("charge", d3.forceManyBody()
-    //     .strength(d => {
-    //         const baseStrength = -50;
-    //         return baseStrength * closenessScale(d.closeness_centrality);
-    //     })
-    // );
 
     simulation.force("center", null);
 
@@ -583,20 +553,13 @@ function clusteringForce() {
     // Return the force function
     return function(alpha) {
         visibleNodes.forEach(function(d) {
-            // Include 'is_multi_dependent' nodes when depth < 3 or if the node is the active node
-            if ((currentDepth < 3 || d.id === activeNodeId) || !d.is_multi_dependent) {
+            // Include 'nodeWithMultiCI_Type' nodes when depth < 3 or if the node is the active node
+            if ((currentDepth < 3 || d.id === activeNodeId) || !nodeWithMultiCI_Type) {
                 var cluster = clusterCenters[d.type];
                 if (cluster) {
-                    var clusterStrength = 0.1;
-                    // Optionally adjust cluster strength based on centrality
-                    const betweennessScale = d3.scaleLinear()
-                        .domain([0, d3.max(visibleNodes, n => n.betweenness_centrality)])
-                        .range([1, 0.5]);
-
-                    var adjustedStrength = clusterStrength * betweennessScale(d.betweenness_centrality);
-
-                    d.vx -= (d.x - cluster.x) * alpha * adjustedStrength;
-                    d.vy -= (d.y - cluster.y) * alpha * adjustedStrength;
+                    var clusterStrength = .1;
+                    d.vx -= clusterStrength * (d.x - cluster.x) * alpha;
+                    d.vy -= clusterStrength * (d.y - cluster.y) * alpha;
                 }
             }
         });
@@ -706,8 +669,8 @@ function ticked() {
             d.x = centerX;
             d.y = centerY;
         }
-        // Include 'is_multi_dependent' nodes when depth < 3 or if the node is the active node
-        if ((currentDepth < 3 || d.id === activeNodeId) || !d.is_multi_dependent) {
+        // Include 'nodeWithMultiCI_Type' nodes when depth < 3 or if the node is the active node
+        if ((currentDepth < 3 || d.id === activeNodeId) || !nodeWithMultiCI_Type) {
             d.x = Math.max(0, Math.min(width, d.x));
             d.y = Math.max(0, Math.min(height, d.y));
         }
@@ -741,45 +704,6 @@ function handleNodeClick(event, d) {
     updateRightContainer();  // Update info pane
 }
 
-/******************************************
-* FUNCTIONS FOR CONTROLS AND INTERACTIONS *
-*******************************************/
-function resetToInitialState() {
-    //console.log(`(${++call}) resetToInitialState`);
-    call = 0;
-    const targetValue = 2; // The initial depth value
-    const maxValue = onDepthSlider.max; // Get the maximum value from the slider
-
-    // Reset the slider's value and update the display
-    onDepthSlider.value = targetValue;
-    depthValueLabel.textContent = targetValue;
-
-    // Update the slider's visual representation
-    const percentage = (targetValue - onDepthSlider.min) / (maxValue - onDepthSlider.min) * 100;
-    onDepthSlider.style.setProperty('--value', `${percentage}%`);
-
-    // Reset activeNodeId to the initial node
-    activeNodeId = graphData.nodes[0].id;
-
-    // Reset linkDistance to its initial value
-    linkDistance = 175;
-
-    // **Reset node positions and fixings**
-    graphData.nodes.forEach(node => {
-        node.fx = null;
-        node.fy = null;
-        node.x = null;
-        node.y = null;
-    });
-
-    // **Reinitialize the simulation forces to their initial state**
-    simulation.alpha(1).restart(); // Reset the simulation's alpha for a fresh start
-
-    // **Re-render the graph with initial settings**
-    renderActiveNodeGraph(targetValue, activeNodeId);
-}
-
-
 /*************************
 * FUNCTIONS FOR CONTROLS *
 **************************/
@@ -794,17 +718,14 @@ function searchNode(nodeId) {
     }
 }
 
-
 /*****************************************************
 * DRAG FUNCTIONS TO ENABLE INTERACTIVE NODE MOVEMENT *
 ******************************************************/
 const drag = simulation => {
     function dragstarted(event, d) {
-        // ////console.log(centralNodes);
         // Fix all nodes at their current positions
         visibleNodes.forEach(node => {
             if(centralNodes.includes(activeNodeId)){
-                ////console.log("Center Node");
                 d.fx = null; // Unfix x position, allowing the simulation to adjust it
                 d.fy = null; // Unfix y position, allowing the simulation to adjust it
             }else{
