@@ -195,7 +195,7 @@ text, circle text {
     justify-content: center;
 }
 
-#homeButton, #refreshButton {
+#homeButton, #refreshButton, #screenshot {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -204,7 +204,7 @@ text, circle text {
     cursor: pointer;
 }
 
-.home-icon, .refresh-icon {
+.home-icon, .refresh-icon, .screenshot-icon {
     width: 30px;
     height: 30px;
 }

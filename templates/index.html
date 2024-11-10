@@ -36,6 +36,9 @@ Right Pane: Displays details for the selected node.
     <div class="left-pane">
         <h2>CIO Dashboard</h2>
         <div class="button-container">
+            <button id="screenshot" title="Take Screenshot">
+                <img src="{{ url_for('static', filename='images/screenshot.svg') }}" alt="Screenshot Icon" class="screenshot-icon">
+            </button>
             <button id="homeButton" title="Go Home">
                 <img src="{{ url_for('static', filename='images/house.svg') }}" alt="Home Icon" class="home-icon">
             </button>
@@ -56,14 +59,19 @@ Right Pane: Displays details for the selected node.
         </div>
         <span id="depthValue">2</span>
     </div>
-
-    <div class="graph-container">
-        <svg></svg>
+    <div class="screenshot-container" style="display: flex;">
+        <div class="graph-container">
+            <svg></svg>
+        </div>
+        <div class="tooltip" id="tooltip"></div>
+        <div class="right-pane"></div>
     </div>
-    <div class="tooltip" id="tooltip"></div>
-    <div class="right-pane"></div>
 
     <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+    <script src="https://unpkg.com/html-to-image@1.6.0/dist/html-to-image.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
 </body>
 </html>
