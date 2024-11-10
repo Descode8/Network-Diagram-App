@@ -58,16 +58,25 @@ document.addEventListener("DOMContentLoaded", () => {
     onScreenShot.addEventListener("click", () => {
         html2canvas(document.querySelector(".screenshot-container")).then(canvas => {
             const dataUrl = canvas.toDataURL("image/png");
+    
+            // Get the current date
+            const date = new Date();
+            const day = String(date.getDate()).padStart(2, '0'); // Day with leading zero
+            const month = String(date.getMonth() + 1).padStart(2, '0'); // Month with leading zero
+            const year = String(date.getFullYear()); // Last two digits of the year
+    
+            // Construct the filename
+            const filename = `network_diagram_${year}-${month}-${day}.png`;
+    
+            // Create a link to download the image
             const downloadLink = document.createElement("a");
             downloadLink.href = dataUrl;
-            downloadLink.download = "screenshot.png";
+            downloadLink.download = filename;
             downloadLink.click();
         }).catch(error => {
             console.error("Screenshot failed:", error);
         });
-    });
-    
-
+    });    
 
     // Modify the home button event listener to use the current slider depth
     onHomeButton.addEventListener('click', () => {

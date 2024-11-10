@@ -93,10 +93,6 @@ text, circle text {
     border-bottom: none;
 }
 
-/* .dependency-type {
-    border-radius: 5px;
-} */
-
 .right-pane .dependency-node {
     padding: 3px;
     margin: 0;
