@@ -12,6 +12,7 @@ Right Pane: Displays details for the selected node.
     <meta charset="UTF-8">
     <title>Network Diagram</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wdth,wght@100..151;00..1000&display=swap" rel="stylesheet">
 </head>
 <style>
     :root {
@@ -53,11 +54,23 @@ Right Pane: Displays details for the selected node.
             <input type="text" id="searchInput" placeholder="Search Node...">
         </div>                
     
-        <label for="depthSlider">Depth</label>
+
+
+        <label for="depthSlider">Depth<span id="depthValue">2</span></label>
         <div class="custom-slider">
             <input type="range" id="depthSlider" min="1" max="5" value="2" step="1">
         </div>
-        <span id="depthValue">2</span>
+
+        <label for="nodeSlider">Node Size<span id="nodeValue">5</span></label>
+        <div class="custom-slider">
+            <input type="range" id="nodeSlider" min="1" max="10" value="5" step="1">
+        </div>
+
+
+
+
+
+
     </div>
     <div class="screenshot-container" style="display: flex;">
         <div class="graph-container">
