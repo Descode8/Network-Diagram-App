@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'charge' force from the simulation **** simulation.force("charge", null);
+document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' force from the simulation **** simulation.force("charge", null);
     
     /*******************************************
      * VARIABLE DECLARATIONS AND INITIAL SETUP *
@@ -27,20 +27,15 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
     let activeNodeId;
     const svg = d3.select("svg");
     const rightContainer = d3.select(".right-pane");
-    const onScreenShot = document.getElementById("screenshot");
+    // const onScreenShot = document.getElementById("screenshot");
     const onSearchInput = document.getElementById('searchInput');
     const onSearchButton = document.getElementById('searchButton');
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
-
     const onDepthSlider = document.getElementById('depthSlider');
-    let currentDepth = 2;  // Initialize with default depth
     const depthValueLabel = document.getElementById('depthValue');
-
-    const onNodeSizeSlider = document.getElementById("nodeSlider");
-    const nodeValueLabel = document.getElementById("nodeValue");
-    let nodeSize = 5;
-
+    // const onNodeSizeSlider = document.getElementById("nodeSlider");
+    // const nodeValueLabel = document.getElementById("nodeValue");
     const svgElement = svg.node();
     const width = svgElement.getBoundingClientRect().width;
     const height = svgElement.getBoundingClientRect().height;
@@ -48,6 +43,8 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
     let centerY = height / 2;
     const graph = svg.append("g");
     const nodeColorMap = new Map();
+    let currentDepth = 2;
+    let nodeSize = 5;
     let simulation;
     let graphData;
     let nodeById;
@@ -58,9 +55,8 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
     let link;
     let nodeWithMultiCI_Type = [];
     let graphLinkLength = 100;
-    let treeGraphCentralNodeLinkLength = 5;
-    let treeGraphNodeLinkLength = 50;
-
+    // let treeGraphCentralNodeLinkLength = 5;
+    // let treeGraphNodeLinkLength = 50;
 
     /*******************************
     * EVENT LISTENERS FOR CONTROLS *
@@ -86,28 +82,28 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
         });
     };
 
-    onScreenShot.addEventListener("click", () => {
-        html2canvas(document.querySelector(".screenshot-container")).then(canvas => {
-            const dataUrl = canvas.toDataURL("image/png");
+    // onScreenShot.addEventListener("click", () => {
+    //     html2canvas(document.querySelector(".screenshot-container")).then(canvas => {
+    //         const dataUrl = canvas.toDataURL("image/png");
     
-            // Get the current date
-            const date = new Date();
-            const day = String(date.getDate()).padStart(2, '0'); // Day with leading zero
-            const month = String(date.getMonth() + 1).padStart(2, '0'); // Month with leading zero
-            const year = String(date.getFullYear()); // Last two digits of the year
+    //         // Get the current date
+    //         const date = new Date();
+    //         const day = String(date.getDate()).padStart(2, '0'); // Day with leading zero
+    //         const month = String(date.getMonth() + 1).padStart(2, '0'); // Month with leading zero
+    //         const year = String(date.getFullYear()); // Last two digits of the year
     
-            // Construct the filename
-            const filename = `network_diagram_${year}-${month}-${day}.png`;
+    //         // Construct the filename
+    //         const filename = `network_diagram_${year}-${month}-${day}.png`;
     
-            // Create a link to download the image
-            const downloadLink = document.createElement("a");
-            downloadLink.href = dataUrl;
-            downloadLink.download = filename;
-            downloadLink.click();
-        }).catch(error => {
-            console.error("Screenshot failed:", error);
-        });
-    });    
+    //         // Create a link to download the image
+    //         const downloadLink = document.createElement("a");
+    //         downloadLink.href = dataUrl;
+    //         downloadLink.download = filename;
+    //         downloadLink.click();
+    //     }).catch(error => {
+    //         console.error("Screenshot failed:", error);
+    //     });
+    // });    
 
        // Function to update the gradient and the displayed value
     function updateDepthSlider() {
@@ -117,11 +113,11 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
     }
 
     // Function to update the gradient and the displayed value
-    function updateNodeSizeSlider() {
-        var value = (onNodeSizeSlider.value - onNodeSizeSlider.min) / (onNodeSizeSlider.max - onNodeSizeSlider.min) * 100;
-        onNodeSizeSlider.style.setProperty('--value', `${value}%`);
-        nodeValue.textContent = onNodeSizeSlider.value; // Update the displayed value
-    }
+    // function updateNodeSizeSlider() {
+    //     var value = (onNodeSizeSlider.value - onNodeSizeSlider.min) / (onNodeSizeSlider.max - onNodeSizeSlider.min) * 100;
+    //     onNodeSizeSlider.style.setProperty('--value', `${value}%`);
+    //     nodeValue.textContent = onNodeSizeSlider.value; // Update the displayed value
+    // }
 
     // Initialize the slider with the default value on page load
     updateDepthSlider();
@@ -129,9 +125,9 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
     onDepthSlider.addEventListener('input', updateDepthSlider);
 
     // Initialize the slider with the default value on page load
-    updateNodeSizeSlider();
-    // Update the slider whenever its value changes
-    onNodeSizeSlider.addEventListener('input', updateNodeSizeSlider);
+    // updateNodeSizeSlider();
+    // // Update the slider whenever its value changes
+    // onNodeSizeSlider.addEventListener('input', updateNodeSizeSlider);
 
     // Add event listener for the depth slider
     onDepthSlider.addEventListener('input', () => {
@@ -146,12 +142,12 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
     });
 
     
-    onNodeSizeSlider.addEventListener('input', () => {
-        nodeSize = parseInt(onNodeSizeSlider.value);
-        console.log(nodeSize);
-        nodeValueLabel.textContent = nodeSize;
-        renderGraph();
-    });
+    // onNodeSizeSlider.addEventListener('input', () => {
+    //     nodeSize = parseInt(onNodeSizeSlider.value);
+    //     console.log(nodeSize);
+    //     nodeValueLabel.textContent = nodeSize;
+    //     renderGraph();
+    // });
 
     // Modify the home button event listener to use the current slider depth
     onHomeButton.addEventListener('click', () => {
@@ -186,13 +182,13 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
      **********************************/
     async function fetchGraphData() {
         // Check if `graphData` is already in localStorage
-        const storedData = localStorage.getItem('graphData');
+        // const storedData = localStorage.getItem('graphData');
         
-        if (storedData) {
-            // Parse and use stored graphData from localStorage
-            graphData = JSON.parse(storedData);
-            console.log("Loaded graph data from localStorage:", graphData);
-        } else {
+        // if (storedData) {
+        //     // Parse and use stored graphData from localStorage
+        //     graphData = JSON.parse(storedData);
+        //     console.log("Loaded graph data from localStorage:", graphData);
+        // } else {
             // If not in localStorage, fetch it from the backend
             try {
                 const response = await fetch("/", {
@@ -213,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
             } catch (error) {
                 console.error("Error fetching graph data:", error);
             }
-        }
+        // }
 
         centralNodes = graphData.center_nodes;
         console.log("Central Nodes:", centralNodes);
@@ -709,41 +705,35 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
     * UPDATE right-pane WITH NODE ATTRIBUTES *
     ***********************************************/
     function updateRightContainer() {
-        ////console.log(`(${++call}) updateRightContainer`);
         // Clear the existing content
         rightContainer.html("");
-
+    
         // Get the active node object
         var activeNode = nodeById.get(activeNodeId);
-
+    
         // Display the active node's ID at the top
-        var color = typeColorMap.get(activeNode.id);
-                nodeColorMap.set(node.id, color);
         rightContainer.append("h2")
-        .style("background-color", typeColorMap.get(activeNode.type) || '#000')
-        .html(`${activeNode.id}`);
-
-        // Display the active node's name
-        // rightContainer.append("h3").text("Name:");
-
+            .style("background-color", typeColorMap.get(activeNode.type) || '#000')
+            .html(`${activeNode.id}`);
+    
         // Display the active node's type
         rightContainer.append("p").html(`<strong>Type: </strong>${activeNode.type}`);
-
+    
         // Display the active node's description
         var description = activeNode.description ? activeNode.description : 'No description available';
         // Add the Description header with a specific class
-            rightContainer.append("h3")
+        rightContainer.append("h3")
             .attr("class", "description-header")
             .html(`Description`);
-
-            // Add the description text
-            rightContainer.append("p").html(`${description}`);
-
-            // Add the Dependencies header with a different class
-            rightContainer.append("h3")
+    
+        // Add the description text
+        rightContainer.append("p").html(`${description}`);
+    
+        // Add the Dependencies header with a different class
+        rightContainer.append("h3")
             .attr("class", "dependencies-header")
             .html("Dependencies");
-
+    
         // Get the types of the active node's immediate children
         var immediateChildren = visibleNodes.filter(n => {
             return visibleLinks.some(link =>
@@ -751,49 +741,32 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
                 (link.target.id === activeNodeId && link.source.id === n.id)
             );
         });
-
+    
         // Group children by type
         var types = d3.group(immediateChildren, d => d.type);
-
-        // Define the desired display order
-        var orderedTypes = ["Home", "People", "Technology"];
-
-        // Display "People" and "Technology" first, in that order
-        orderedTypes.forEach(type => {
-            if (types.has(type)) {
-                var nodes = types.get(type);
+    
+        // Convert types map to an array, sort alphabetically by type, and then iterate
+        Array.from(types.entries())
+        .sort(([typeA], [typeB]) => typeA.localeCompare(typeB)) // Sort alphabetically by type
+        .forEach(([type, nodes]) => {
+            rightContainer.append("p")
+                .style("background-color", typeColorMap.get(type) || '#000')
+                .attr("class", "dependency-type")
+                .html(`${type}`);
+    
+            nodes.forEach(node => {
+                var nodeName = node.id;
                 rightContainer.append("p")
-                    .style("background-color", typeColorMap.get(type) || '#000')
-                    .attr("class", "dependency-type")
-                    .html(`${type}`);
-
-                nodes.forEach(node => {
-                    var nodeName = node.id;
-                    rightContainer.append("p")
-                        .attr("class", "dependency-node")
-                        .html(`${nodeName}`);
-                });
-            }
-        });
-
-        // Display remaining types 
-        types.forEach((nodes, type) => {
-            if (!orderedTypes.includes(type)) {
-                rightContainer.append("p")
-                    .style("background-color", typeColorMap.get(type) || '#000')
-                    .attr("class", "dependency-type")
-                    .html(`${type}`);
-
-                nodes.forEach(node => {
-                    var nodeName = node.id;
-                    rightContainer.append("p")
-                        .attr("class", "dependency-node")
-                        .html(`${nodeName}`);
-                });
-            }
+                    .attr("class", "dependency-node")
+                    .html(`${nodeName}`)
+                    .style("cursor", "pointer")
+                    .on("click", function(event) {
+                        handleNodeClicked(event, node);
+                    });
+            });
         });
     }
-
+    
     /****************************************************************
     * SIMULATION TICK FUNCTION: UPDATE POSITIONS OF NODES AND LINKS *
     *****************************************************************/
@@ -891,34 +864,34 @@ document.addEventListener("DOMContentLoaded", () => { //////////// Remove the 'c
     ******************************************************/
     const drag = simulation => {
         function dragstarted(event, d) {
-            // Fix all nodes at their current positions
+            // Fix positions of all other nodes except the dragged node
             visibleNodes.forEach(node => {
-                if(centralNodes.includes(activeNodeId)){
-                    d.fx = null; // Unfix x position, allowing the simulation to adjust it
-                    d.fy = null; // Unfix y position, allowing the simulation to adjust it
-                }else{
-                    d.fx = d.x; // Fix the node's x position at the cursor's x-coordinate
-                    d.fy = d.y; // Fix the node's y position at the cursor's y-coordinate
+                if (node !== d) {
+                    node.fx = node.x;
+                    node.fy = node.y;
+                } else {
+                    node.fx = null; // Allow the dragged node to move freely
+                    node.fy = null;
                 }
             });
-            // Lower the simulation’s influence but keep it running
+            // Restart the simulation with reduced alpha to allow smooth dragging
             simulation.alphaTarget(0.1).restart();
         }
-
+    
         function dragged(event, d) {
+            // Update the position of the dragged node
             d.fx = event.x;
             d.fy = event.y;
         }
-
+    
         function dragended(event, d) {
-            // Fix the dragged node in its final position
+            // Keep the dragged node fixed at its final position
             d.fx = event.x;
             d.fy = event.y;
-
-            // Restore the simulation’s alpha target to allow natural settling afterward
+            // Stop the simulation's influence
             simulation.alphaTarget(0);
         }
-
+    
         return d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
