@@ -13,3 +13,9 @@ We will also see “OIT” as a node around App 2 because it has a direct relati
 If we move the slider to a depth of 3, all other nodes will reappear because they have secondary relationships to App 2 through the “OIT” node. However, App 2 will continue to stay in the middle of the visualization.
 
 If we click “OIT” again, it will make OIT the center node with surrounding relationship nodes (depending on depth selection).
+
+
+Graph Container : Keep nodes and text the same size
+                : Place activeNodeID in the middle
+Right Container : Order Types by: Home, People, Technology
+                : Type content should be alphabetical order
