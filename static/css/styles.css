@@ -258,7 +258,7 @@ text, circle text {
     padding: 0px 10px 0px 0px;
 }
 
-#searchButton {
+#searchButton, #clearButton {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -270,13 +270,13 @@ text, circle text {
     cursor: pointer;
 }
 
-.search-icon {
+.search-icon, .clear-icon {
     width: 20px;
     height: 20px;
     opacity: 0.8;
 }
 
-.search-icon:hover {
+.search-icon:hover, .clear-icon:hover {
     opacity: 1;
 }
 

@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     const onSearchInput = document.getElementById('searchInput');
     const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
     const onSearchButton = document.getElementById('searchButton');
+    const onClearButton = document.getElementById('clearButton'); 
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
     const onDepthSlider = document.getElementById('depthSlider');
@@ -64,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     let initialFontSize = 12; // Initial font size in pixels
     let currentZoomScale = 1;
     let graphPadding = 100;
-    let linkWidth = 0.5;
+    let linkWidth = 0.75;
     let nodeStrokeWidth = 1;
 
     /*******************************
@@ -89,7 +90,6 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     /*****************************************************
      * INITIALIZING AND FETCHING GRAPH DATA ON PAGE LOAD *
      *****************************************************/
-    // Ensure the SVG element is fully loaded before starting
     window.onload = function() {
         fetchGraphData().then(() => {
             // Set initial link distance
@@ -98,38 +98,39 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             renderActiveNodeGraph(2, activeNodeId);  // Set initial depth to 2
         });
     };
-
+    
     window.addEventListener('resize', () => {
         fitGraphToContainer();
     });
-
-       // Function to update the gradient and the displayed value
+    
+    // Function to update the gradient and the displayed value
     function updateDepthSlider() {
         var value = (onDepthSlider.value - onDepthSlider.min) / (onDepthSlider.max - onDepthSlider.min) * 100;
         onDepthSlider.style.setProperty('--value', `${value}%`);
         depthValue.textContent = onDepthSlider.value; // Update the displayed value
     }
-
+    
     // Initialize the slider with the default value on page load
     updateDepthSlider();
+    
     // Update the slider whenever its value changes
     onDepthSlider.addEventListener('input', updateDepthSlider);
-
+    
     // Add event listener for the depth slider
     onDepthSlider.addEventListener('input', () => {
         var depth = parseInt(onDepthSlider.value);
-
-        if(depth < 2) {
+    
+        if (depth < 2) {
             setGraphForces();
         }
-
+    
         depthValueLabel.textContent = depth;
         renderActiveNodeGraph(depth, activeNodeId);
     });
-
+    
     // Modify the home button event listener to use the current slider depth
     onHomeButton.addEventListener('click', () => {
-        location.reload(); 
+        location.reload();
     });
 
     onRefreshButton.addEventListener('click', () => {
@@ -142,8 +143,14 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         var searchTerm = onSearchInput.value.trim();
         if (searchTerm) {
             searchNode(searchTerm);
+            toggleClearButton(); // Show the clear button after search button click
         }
     });
+
+    // Show the clear button only under specific conditions
+    function toggleClearButton() {
+        onClearButton.style.display = onSearchInput.value.trim() ? 'flex' : 'none';
+    }
 
     // Add event listener for 'Enter' key press on the input field
     onSearchInput.addEventListener('keydown', (event) => {
@@ -151,10 +158,25 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             var searchTerm = onSearchInput.value.trim();
             if (searchTerm) {
                 searchNode(searchTerm);
+                toggleClearButton(); // Show the clear button after pressing Enter
             }
         }
     });
 
+    // Show the clear button if the user clicks a suggestion
+    autocompleteSuggestions.addEventListener('click', (event) => {
+        if (event.target && event.target.matches('.autocomplete-suggestions')) {
+            toggleClearButton(); // Show the clear button when an option is clicked
+        }
+    });
+
+    // Clear input and reload the page when clear button is clicked
+    onClearButton.addEventListener('click', () => {
+        onSearchInput.value = ''; // Clear input field
+        onClearButton.style.display = 'none'; // Hide clear button
+        location.reload(); // Reload page
+    });
+        
     /**********************************
      * FETCHING DATA FROM THE BACKEND *
      **********************************/
@@ -768,6 +790,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     function createNodeElement(node) {
         rightContainer.append("p")
             .attr("class", "dependency-node")
+            .attr("title", `View ${node.id}`)
             .html(node.id)
             .style("cursor", "pointer")
             .on("click", (event) => handleNodeClicked(event, node));
@@ -868,6 +891,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             // Make the graph visible after fitting
             graph.style("visibility", "visible");
         }
+        fitGraphToContainer();
     }       
     
     function fitGraphToContainer() {
@@ -951,5 +975,5 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended);
-    };    
+    };  
 });

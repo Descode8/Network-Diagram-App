@@ -50,15 +50,18 @@ Right Pane: Displays details for the selected node.
         <div class="search-container">
             <div class="search-input-and-button">
                 <button id="searchButton" title="Search">
-                    <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon">
+                    <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon" title="Search Node">
                 </button>
                 <input type="text" id="searchInput" placeholder="Search Graph">
+                <button id="clearButton" title="Clear Search" style="display: none;">
+                    <img src="{{ url_for('static', filename='images/x.svg') }}" class="clear-icon" alt="Clear Icon">
+                </button>          
             </div>
             <div id="autocompleteSuggestions"></div>
         </div>                      
     
         <label for="depthSlider">Depth<span id="depthValue">2</span></label>
-        <div class="custom-slider">
+        <div class="custom-slider" title="Change Depth">
             <input type="range" id="depthSlider" min="1" max="5" value="2" step="1">
         </div>
 
