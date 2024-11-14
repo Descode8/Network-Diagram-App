@@ -47,12 +47,15 @@ Right Pane: Displays details for the selected node.
                 <img src="{{ url_for('static', filename='images/refresh.svg') }}" alt="Refresh Icon" class="refresh-icon">
             </button>
         </div>
-        <div class="input-and-button">
-            <button id="searchButton" title="Search">
-                <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon">
-            </button>
-            <input type="text" id="searchInput" placeholder="Search Node...">
-        </div>                
+        <div class="search-container">
+            <div class="search-input-and-button">
+                <button id="searchButton" title="Search">
+                    <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon">
+                </button>
+                <input type="text" id="searchInput" placeholder="Search Graph">
+            </div>
+            <div id="autocompleteSuggestions"></div>
+        </div>                      
     
         <label for="depthSlider">Depth<span id="depthValue">2</span></label>
         <div class="custom-slider">

@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     const rightContainer = d3.select(".right-pane");
     // const onScreenShot = document.getElementById("screenshot");
     const onSearchInput = document.getElementById('searchInput');
+    const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
     const onSearchButton = document.getElementById('searchButton');
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
@@ -39,9 +40,9 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     const svgElement = svg.node();
     const width = svgElement.getBoundingClientRect().width;
     const height = svgElement.getBoundingClientRect().height;
-    let centerX = width / 2;
-    let centerY = height / 2;
-    const graph = svg.append("g");
+    let centerX = svgElement.getBoundingClientRect().width / 2;
+    let centerY = svgElement.getBoundingClientRect().height / 2;
+    const graph = svg.append("g").style("visibility", "hidden");
     const nodeColorMap = new Map();
     let currentDepth = 2;
     let simulation;
@@ -59,9 +60,10 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     let maxLabelWidth = 0;
     let maxLabelHeight = 0;
     let nodeSize = 5; // Initial node size in pixels
+    let activeNodeSize = 6.5; // Active node size in pixels
     let initialFontSize = 12; // Initial font size in pixels
     let currentZoomScale = 1;
-    let graphPadding = 75;
+    let graphPadding = 100;
     let linkWidth = 0.5;
     let nodeStrokeWidth = 1;
 
@@ -69,19 +71,19 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     * EVENT LISTENERS FOR CONTROLS *
     ********************************/    
     var zoom = d3.zoom()
-        .scaleExtent([0.5, 1])
+        .scaleExtent([0.5, 10])
         .on('zoom', (event) => {
             currentZoomScale = event.transform.k;
             graph.attr('transform', event.transform);
 
             // Adjust node sizes inversely proportional to zoom scale
-            node.select('circle').attr('r', nodeSize / currentZoomScale);
+            node.select('circle').attr('r', d => d.id === activeNodeId ? activeNodeSize / currentZoomScale : nodeSize / currentZoomScale);
             node.select('text').attr('font-size', (initialFontSize / currentZoomScale) + 'px');
 
             // Adjust stroke-width inversely proportional to zoom scale using .attr()
             link.attr('stroke-width', linkWidth / currentZoomScale);
             node.select('circle').attr('stroke-width', nodeStrokeWidth / currentZoomScale); // Adjusted stroke-width
-        });
+    });
     svg.call(zoom);
 
     /*****************************************************
@@ -89,7 +91,6 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
      *****************************************************/
     // Ensure the SVG element is fully loaded before starting
     window.onload = function() {
-        ////console.log(`(${++call}) window.onload`);
         fetchGraphData().then(() => {
             // Set initial link distance
             // Set activeNodeId to initial node
@@ -158,56 +159,98 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
      * FETCHING DATA FROM THE BACKEND *
      **********************************/
     async function fetchGraphData() {
-        //Check if `graphData` is already in localStorage
         const storedData = localStorage.getItem('graphData');
-        
-        if (storedData) {
-            // Parse and use stored graphData from localStorage
+        const lastFetchedTime = localStorage.getItem('lastFetchedTime');
+        const expirationTime = 10 * 60 * 1000; // Set expiration time in milliseconds (e.g., 10 minutes)
+    
+        if (storedData && lastFetchedTime && (Date.now() - lastFetchedTime < expirationTime)) {
+            // Use cached data if it's within the expiration period
             graphData = JSON.parse(storedData);
             console.log("Loaded graph data from localStorage:", graphData);
         } else {
-            //If not in localStorage, fetch it from the backend
+            // Fetch data from the backend and store it
             try {
                 const response = await fetch("/", {
                     headers: { "Accept": "application/json" }
                 });
-
+    
                 if (!response.ok) {
                     console.error("Failed to fetch graph data:", response.statusText);
                     return;
                 }
-
+    
                 // Parse the fetched data
                 graphData = await response.json();
-                //console.log("Graph data fetched successfully from backend:", graphData);
-
-                // Store the fetched data in localStorage for future use
+    
+                // Store fetched data and timestamp in localStorage
                 localStorage.setItem('graphData', JSON.stringify(graphData));
+                localStorage.setItem('lastFetchedTime', Date.now());
+                console.log("Graph data fetched and stored successfully:", graphData);
+
+                // Listen for input events to trigger suggestions
+                onSearchInput.addEventListener("input", () => {
+                    const searchTerm = onSearchInput.value.toLowerCase();
+                    if (searchTerm) {
+                        const suggestions = graphData.nodes.filter(node =>
+                            node.id.toLowerCase().includes(searchTerm)
+                        );
+
+                        // Clear previous suggestions
+                        autocompleteSuggestions.innerHTML = '';
+                        autocompleteSuggestions.style.display = suggestions.length ? 'block' : 'none';
+
+                        // Append suggestions
+                        suggestions.forEach(suggestion => {
+                            const suggestionItem = document.createElement('div');
+                            suggestionItem.classList.add('autocomplete-suggestions');
+                            suggestionItem.textContent = suggestion.id;
+                            suggestionItem.onclick = () => {
+                                onSearchInput.value = suggestion.id;
+                                autocompleteSuggestions.style.display = 'none';
+                                searchNode(suggestion.id); // Call your search function with the selected suggestion
+                            };
+                            autocompleteSuggestions.appendChild(suggestionItem);
+                        });
+                    } else {
+                        autocompleteSuggestions.style.display = 'none';
+                    }
+                });
+
+                // Hide suggestions when clicking outside the input or suggestions
+                document.addEventListener('click', (event) => {
+                    if (!onSearchInput.contains(event.target) && !autocompleteSuggestions.contains(event.target)) {
+                        autocompleteSuggestions.style.display = 'none';
+                    }
+                });
             } catch (error) {
-                //console.error("Error fetching graph data:", error);
+                console.error("Error fetching graph data:", error);
             }
         }
-
+    
+        // Process graph data
         centralNodes = graphData.center_nodes;
-        //console.log("Central Nodes:", centralNodes);
-
+        console.log("Central Nodes:", centralNodes);
         graphData.nodes.forEach(node => {
             if (node.is_multi_dependent === true) {
-                nodeWithMultiCI_Type.push(node.id);  // Push only the ID if the condition is true
+                nodeWithMultiCI_Type.push(node.id);
             }
         });
-
-        //console.log("Nodes with Multi CI Type:", nodeWithMultiCI_Type);
-
+        console.log("Nodes with multiple CI types:", nodeWithMultiCI_Type);
+    
         assignColors(graphData);
         initializeGraph(graphData);
     }
+    
+    // Clear localStorage on tab close
+    window.addEventListener("beforeunload", () => {
+        localStorage.removeItem('graphData');
+        localStorage.removeItem('lastFetchedTime');
+    });    
 
     /*************************************************
      * ASSIGNING COLORS TO NODES BASED ON THEIR TYPE *
      *************************************************/
     function assignColors(data) {
-        ////console.log(`(${++call}) assignColors`);
         // Iterate through each node in the dataset
         data.nodes.forEach(node => {
             // Get the color associated with the node's type from the type-color mapping
@@ -267,10 +310,10 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         
         // Append circles to each node with increased stroke-width
         node.append("circle")
-            .attr("r", nodeSize)                 // Set initial radius for nodes
+            .attr("r", d => d.id === activeNodeId ? activeNodeSize : nodeSize) // Conditional radius
             .attr("fill", d => nodeColorMap.get(d.id))
-            .attr("stroke", textClr)             // Set stroke color
-            .attr("stroke-width", nodeStrokeWidth) // Increased stroke width
+            .attr("stroke", textClr)
+            .attr("stroke-width", nodeStrokeWidth)
             .on("click", handleNodeClicked);
         
         // Append text to each node
@@ -282,7 +325,9 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         
         // Initialize the force simulation with visible nodes
         simulation = d3.forceSimulation(visibleNodes)
-            .on("tick", ticked);                    // Event listener for each tick
+            .alpha(10) // Start with alpha = 1 for faster initial movement
+            .alphaDecay(0.05) // Increase alpha decay to speed up convergence (default is ~0.0228)
+            .on("tick", ticked); // Event listener for each tick
         
         // Apply graphClusteringForce during initialization
         simulation.force("cluster", graphClusteringForce());
@@ -295,6 +340,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     function renderActiveNodeGraph(depth = parseInt(onDepthSlider.value), nodeId = activeNodeId) {
         currentDepth = depth;
         activeNodeId = nodeId;
+        
         visibleNodes = [];
         visibleLinks = [];
     
@@ -311,9 +357,25 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             setGraphForces();
         }
     
-        updateNodePositions();
+        // Center the active node
+        centerActiveNode();
         renderGraph();
         updateRightContainer();
+    }
+    
+    // Center the active node by fixing it at the center
+    function centerActiveNode() {
+        // Set the active node's coordinates to the center of the SVG container
+        visibleNodes.forEach(n => {
+            if (n.id === activeNodeId) {
+                n.fx = centerX;
+                n.fy = centerY;
+            } else {
+                n.fx = null;
+                n.fy = null;
+            }
+        });
+        simulation.alpha(0.3).restart();
     }
     
     /******************************
@@ -353,86 +415,66 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     * SETTING UP FORCES BASED ON GRAPH LAYOUT (TREE) *
     ****************************************************/
     function setTreeForces() {
-        let minDistance;
-        let repulsionStrength;
-    
-        // Clear any existing 'tick' event handlers to prevent multiple handlers from stacking.
+        // Clear existing 'tick' event handlers
         simulation.on("tick", null);
     
-        // Define a custom repulsion force function to keep central nodes apart.
-        function centralNodesRepulsion() {
-            // Remove the 'charge' force
-            simulation.force("charge", null);
+        // Remove the 'charge' force as it's no longer needed
+        simulation.force("charge", null);
     
-            // Only apply the repulsion if the active node is a central node.
-            if (!centralNodes.includes(activeNodeId)) {
-                return;
-            }
+        const minDistance = 200; // Minimum desired distance between central nodes
     
-            // Iterate over each node in the visibleNodes array.
-            for (let i = 0; i < visibleNodes.length; i++) {
-                let nodeA = visibleNodes[i];
+        // Custom repulsion force for central nodes
+        function applyCentralRepulsion() {
+            // Only apply repulsion if the active node is a central node
+            if (!centralNodes.includes(activeNodeId)) return;
     
-                // Skip if nodeA is in nodeWithMultiCI_Type
-                if (nodeWithMultiCI_Type.includes(nodeA.id)) continue;
+            visibleNodes.forEach((nodeA, i) => {
+                // Skip if nodeA is not a central node or is in nodeWithMultiCI_Type
+                if (!centralNodes.includes(nodeA.id) || nodeWithMultiCI_Type.includes(nodeA.id)) return;
     
-                // Continue only if nodeA is a central node.
-                if (!centralNodes.includes(nodeA.id)) continue;
-                
-                for (let j = i + 1; j < visibleNodes.length; j++) {
-                    let nodeB = visibleNodes[j];
+                // Compare with subsequent nodes to avoid duplicate calculations
+                visibleNodes.slice(i + 1).forEach(nodeB => {
+                    // Skip if nodeB is not a central node or is in nodeWithMultiCI_Type
+                    if (!centralNodes.includes(nodeB.id) || nodeWithMultiCI_Type.includes(nodeB.id)) return;
     
-                    // Skip if nodeB is in nodeWithMultiCI_Type
-                    if (nodeWithMultiCI_Type.includes(nodeB.id)) continue;
+                    const dx = nodeB.x - nodeA.x;
+                    const dy = nodeB.y - nodeA.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
     
-                    // Continue only if nodeB is a central node.
-                    if (!centralNodes.includes(nodeB.id)) continue;
+                    // Only apply repulsion if nodes are closer than minDistance
+                    if (distance < minDistance && distance > 0) { // Added distance > 0 to avoid division by zero
+                        const repulsionStrength = (minDistance - distance) / distance;
+                        const fx = dx * repulsionStrength;
+                        const fy = dy * repulsionStrength;
     
-                    // Compute the differences in x and y positions between nodeA and nodeB.
-                    let dx = nodeB.x - nodeA.x;
-                    let dy = nodeB.y - nodeA.y;
-    
-                    // Calculate the Euclidean distance between nodeA and nodeB.
-                    let distance = Math.sqrt(dx * dx + dy * dy);
-    
-                    // Define the minimum desired distance between central nodes.
-                    minDistance = 250;
-                    repulsionStrength = (minDistance - distance) / distance;
-    
-                    // Apply the repulsion only if nodes are closer than the minimum distance.
-                    if (distance < minDistance) {
-                        // Calculate the force components along the x and y axes.
-                        let fx = dx * repulsionStrength;
-                        let fy = dy * repulsionStrength;
-    
-                        // Adjust the velocities of nodeA and nodeB to push them apart.
+                        // Adjust velocities to push nodes apart
                         nodeA.vx -= fx;
                         nodeA.vy -= fy;
                         nodeB.vx += fx;
                         nodeB.vy += fy;
                     }
-                }
-            }
+                });
+            });
         }
     
-        // Apply the custom centralNodesRepulsion force only when the depth is greater than 2.
         if (currentDepth > 2) {
+            // Apply custom repulsion on each tick and then update the graph
             simulation.on("tick", () => {
-                centralNodesRepulsion(); // Apply the custom repulsion force between central nodes.
-                ticked();                // Update positions and redraw the graph elements.
+                applyCentralRepulsion();
+                ticked();
             });
         } else {
-            // If depth is <= 2, revert to regular forces
+            // Use the default graph forces for depths <= 2
             setGraphForces();
         }
     
-        // Apply the treeClusteringForce
+        // Apply the tree clustering force
         simulation.force("cluster", treeClusteringForce());
-    }
+    }    
     
-    /****************************************************
+    /***************************************************
      * SETTING UP FORCES BASED ON GRAPH LAYOUT (GRAPH) *
-     * **************************************************/
+     * *************************************************/
     function setGraphForces() {
         simulation.on("tick", ticked); // Update positions and redraw the graph elements
         
@@ -465,10 +507,10 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
                 n.fy = null;
             }
         });
-
-        simulation.alpha(0.3).restart();
-    } 
-
+    
+        simulation.alpha(0.3).restart(); // Restart the simulation to reflect changes
+    }    
+    
     /**************************************
     * UPDATE THE GRAPH AFTER NODE CHANGES *
     ***************************************/
@@ -496,12 +538,12 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         var nodeEnter = node.enter().append("g")
             .call(drag(simulation)); // Apply the drag behavior here using the drag function
         
-        // Append circles with radius based on nodeSize
+        // Set size of nodes
         nodeEnter.append("circle")
-            .attr("r", nodeSize)                 // Set initial radius for new nodes
+            .attr("r", d => d.id === activeNodeId ? activeNodeSize : nodeSize) // Conditional radius
             .attr("fill", d => nodeColorMap.get(d.id))
-            .attr("stroke", textClr)             // Set stroke color
-            .attr("stroke-width", nodeStrokeWidth) // Increased stroke width
+            .attr("stroke", textClr)
+            .attr("stroke-width", nodeStrokeWidth)
             .on("click", handleNodeClicked);
         
         // Append text element for labels
@@ -513,10 +555,6 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         
         // Merge newly created nodes with existing ones
         node = nodeEnter.merge(node);
-        
-        // **Explicitly update the radius of all circles in the selection to match nodeSize**
-        node.select("circle")
-            .attr("r", nodeSize);
         
         // Ensure labels maintain their styles
         node.select("text")
@@ -634,8 +672,8 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
                 // to allow nodes to cluster more closely together.
                 simulation
                     .force("collide", d3.forceCollide()
-                    .radius(d => nodeWithMultiCI_Type.includes(d.id) ? 7 : 3) // Smaller radius for multi-CI nodes
-                    .strength(0.1) // Weaker collision force to allow tighter clustering
+                    .radius(d => nodeWithMultiCI_Type.includes(d.id) ? 60 : 60) // Smaller radius for multi-CI nodes
+                    .strength(1) // Weaker collision force to allow tighter clustering
                 );
         
                 // Skip nodes that are in nodeWithMultiCI_Type
@@ -652,7 +690,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
                 var cluster = clusterCenters[d.type];
                 if (cluster) {
                     // Calculate the clustering force for nodes to move towards their type's cluster center
-                    var clusterStrength = 0.01; // Adjust clustering strength
+                    var clusterStrength = 1; // Adjust clustering strength
                     d.vx -= clusterStrength * (d.x - cluster.x) * alpha; // Move node horizontally towards the cluster center
                     d.vy -= clusterStrength * (d.y - cluster.y) * alpha; // Move node vertically towards the cluster center
                 }
@@ -743,6 +781,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         if (d.id === activeNodeId) return;  // Do nothing if the clicked node is already active
     
         activeNodeId = d.id;  // Update active node ID
+        console.log("Active Node ID:", activeNodeId);
     
         var depth = parseInt(onDepthSlider.value);  // Get current depth from slider
         visibleNodes = [];  // Clear visible nodes
@@ -812,21 +851,12 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             .attr("y1", d => d.source.y)
             .attr("x2", d => d.target.x)
             .attr("y2", d => d.target.y);
-        
+    
         node.attr("transform", d => {
             if (isNaN(d.x) || isNaN(d.y)) {
                 d.x = centerX;
                 d.y = centerY;
             }
-    
-            // Calculate maximum allowed positions
-            var maxX = width - nodeSize - maxLabelWidth / 2;
-            var maxY = height - nodeSize - maxLabelHeight / 2;
-    
-            // Keep nodes within bounds
-            d.x = Math.max(nodeSize + maxLabelWidth / 2, Math.min(maxX, d.x));
-            d.y = Math.max(nodeSize + maxLabelHeight / 2, Math.min(maxY, d.y));
-    
             return `translate(${d.x},${d.y})`;
         });
     
@@ -834,16 +864,16 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         if ((!graphFitted && simulation.alpha() < 0.05) || isNodeClicked) {
             fitGraphToContainer();
             graphFitted = true;
-            
+    
             // Make the graph visible after fitting
             graph.style("visibility", "visible");
         }
-    }
+    }       
     
     function fitGraphToContainer() {
         const containerWidth = window.innerWidth * 0.7;
         const containerHeight = window.innerHeight;
-        
+    
         // Compute the bounding box of the nodes
         const nodesBBox = {
             xMin: d3.min(visibleNodes, d => d.x),
@@ -855,22 +885,31 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         const nodesWidth = nodesBBox.xMax - nodesBBox.xMin;
         const nodesHeight = nodesBBox.yMax - nodesBBox.yMin;
     
-        // Compute the scaling factor to fit the nodes into the container
-        const scale = Math.min(
-            (containerWidth - 2 * graphPadding) / nodesWidth,
-            (containerHeight - 2 * graphPadding) / nodesHeight
-        );
+        let scale, translateX, translateY;
     
-        // Compute the translation to center the nodes
-        const translateX = (containerWidth - nodesWidth * scale) / 2 - nodesBBox.xMin * scale;
-        const translateY = (containerHeight - nodesHeight * scale) / 2 - nodesBBox.yMin * scale;
+        if (nodesWidth === 0 && nodesHeight === 0) {
+            // Only one node present
+            scale = 1; // Default scale
+            translateX = (containerWidth / 2) - nodesBBox.xMin;
+            translateY = (containerHeight / 2) - nodesBBox.yMin;
+        } else {
+            // Compute the scaling factor to fit the nodes into the container
+            scale = Math.min(
+                (containerWidth - 2 * graphPadding) / nodesWidth,
+                (containerHeight - 2 * graphPadding) / nodesHeight
+            );
+    
+            // Compute the translation to center the nodes
+            translateX = (containerWidth - nodesWidth * scale) / 2 - nodesBBox.xMin * scale;
+            translateY = (containerHeight - nodesHeight * scale) / 2 - nodesBBox.yMin * scale;
+        }
     
         // Apply the transform to the graph using the zoom behavior without transition
-        svg.call(
+        svg.transition().duration(0).call(
             zoom.transform,
             d3.zoomIdentity.translate(translateX, translateY).scale(scale)
         );
-    }
+    }       
 
     /*****************************************************
     * DRAG FUNCTIONS TO ENABLE INTERACTIVE NODE MOVEMENT *

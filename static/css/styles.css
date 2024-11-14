@@ -1,4 +1,4 @@
-body, html {
+body, html{
     font-family: 'Roboto Flex', sans-serif;
     display: flex;
     flex-direction: row;
@@ -8,6 +8,10 @@ body, html {
     height: 100vh;
     overflow: hidden;
     background-color: var(--page-bg-clr);
+}
+
+input, button, select, textarea {
+    font-family: 'Roboto Flex', sans-serif;
 }
 
 circle {
@@ -209,19 +213,42 @@ text, circle text {
     width: 100%; 
 }
 
-.input-and-button {
+.search-input-and-button {
     display: flex;
-    align-items: center;
+    flex-direction: row;
     justify-content: center;
     margin: 0 auto;
-    background-color: #f2eef6; 
-    border-radius: 24px; 
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); 
+}
+
+.search-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
     width: 90%;
-    overflow: hidden;
+    margin: 0 auto;
+    background-color: #f2eef6;
+    border-radius: 15px; 
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0);
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-family: 'Roboto Flex', sans-serif;
+    max-height: 150px;
+}
+
+.autocomplete-suggestions {
+    font-size: .8rem;
+    position: relative;
+    padding: 5px 0 5px 10px;
+}
+
+.autocomplete-suggestions:hover {
+    background-color: var(--bdr-clr);
+    color: white;
+    cursor: pointer;
 }
 
 #searchInput {
+    font-size: .8rem;
     border: none;
     outline: none;
     background-color: transparent;
@@ -234,6 +261,7 @@ text, circle text {
 
 #searchButton {
     display: flex;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
     border: none;
@@ -269,4 +297,16 @@ span {
 
 .dependency-node:hover {
     font-weight: bold;
+}
+
+.brush .selection {
+    fill: var(--pane-bg-clr);
+    fill-opacity: 0.3;
+    stroke: var(--bdr-clr);
+    shape-rendering: crispEdges;
+}
+
+.brush .handle {
+    display: none; /* Hide the default handles */
+    border: var(--pane-ttle-bg-clr);
 }

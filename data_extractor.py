@@ -35,17 +35,6 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
         if dependency_name != 'None':
             G.add_edge(ci_name, dependency_name)
 
-    # Calculate centrality metrics
-    degree_centrality = nx.degree_centrality(G)
-    closeness_centrality = nx.closeness_centrality(G)
-    betweenness_centrality = nx.betweenness_centrality(G)
-
-    # Assign centrality and type data to nodes
-    for node in G.nodes:
-        G.nodes[node]['degree_centrality'] = degree_centrality.get(node, 0)
-        G.nodes[node]['closeness_centrality'] = closeness_centrality.get(node, 0)
-        G.nodes[node]['betweenness_centrality'] = betweenness_centrality.get(node, 0)
-
     # Identify nodes that are depended on by more than one CI_Type
     multi_dependents = {}  # key: node, value: set of center_nodes that depend on it
 
@@ -64,19 +53,9 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
     # Convert graph to JSON-friendly format for frontend
     nodes = [
         {
-            # The unique identifier of the node in the graph
             'id': node,
-            # The type or category of the node (e.g., person, organization)
             'type': G.nodes[node]['type'],
-            # A textual description or summary of the node's purpose
             'description': G.nodes[node]['description'],
-            # The degree centrality value, representing the number of direct connections the node has
-            # 'degree_centrality': G.nodes[node]['degree_centrality'],
-            # Closeness centrality, measuring how close the node is to all other nodes in the graph
-            #'closeness_centrality': G.nodes[node]['closeness_centrality'],
-            # Betweenness centrality, indicating the importance of the node in connecting different parts of the graph
-            #'betweenness_centrality': G.nodes[node]['betweenness_centrality'],
-            # Flag to indicate if the node is dependent on by more than one CI_Type
             'is_multi_dependent': G.nodes[node]['is_multi_dependent'],
         }
         
