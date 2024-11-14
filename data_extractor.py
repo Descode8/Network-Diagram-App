@@ -2,7 +2,8 @@ import pandas as pd
 import os
 import networkx as nx
 
-def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
+#def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
+def fetch_graph_data_with_centrality(excel_file='data/network_diagram2.xlsx'):
     """
     Data Extraction with Centrality and Community Detection
     """
