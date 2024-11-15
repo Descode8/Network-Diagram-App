@@ -16,21 +16,21 @@ Right Pane: Displays details for the selected node.
 </head>
 <style>
     :root {
-        --page-bg-clr: #fdfefe ;
+        --page-bg-clr: #ebedef;
         --pane-bg-clr: #D6DBDF;
-        --pane-ttle-bg-clr: #273746;
+        --pane-ttle-bg-clr: #2E4053;
         --descrip-clr: #4F81BD;
         --depend-hdr-clr: #4F81BD;
-        --bdr-clr: #273746;
+        --bdr-clr: #85929E;
         --text-clr: #17202A;
 
-        --home-nde-clr: #273746;
-        --app-nde-clr: #2471a3;
-        --ppl-nde-clr: #27ae60;
-        --tech-nde-clr: #c0392b;
-        --data-nde-clr: #7F7F7F;
-        --procure-nde-clr: #E36C09;
-        --fclty-nde-clr: #5f497a;
+        --home-nde-clr: #2E4053;
+        --app-nde-clr: #3498DB;
+        --ppl-nde-clr: #229954;
+        --tech-nde-clr: #C0504D;
+        --data-nde-clr: #A5A5A5;
+        --procure-nde-clr: #F79646;
+        --fclty-nde-clr: #8064A2;
     }
 </style>
 <body>
@@ -43,7 +43,7 @@ Right Pane: Displays details for the selected node.
             <button id="homeButton" title="Go Home">
                 <img src="{{ url_for('static', filename='images/house.svg') }}" alt="Home Icon" class="home-icon">
             </button>
-            <button id="refreshButton" title="Release Forces">
+            <button id="refreshButton" title="Reset Nodes">
                 <img src="{{ url_for('static', filename='images/refresh.svg') }}" alt="Refresh Icon" class="refresh-icon">
             </button>
         </div>
@@ -52,7 +52,7 @@ Right Pane: Displays details for the selected node.
                 <button id="searchButton" title="Search">
                     <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon" title="Search Node">
                 </button>
-                <input type="text" id="searchInput" placeholder="Search Graph">
+                <input type="text" id="searchInput" placeholder="Search in Graph">
                 <button id="clearButton" title="Clear Search" style="display: none;">
                     <img src="{{ url_for('static', filename='images/x.svg') }}" class="clear-icon" alt="Clear Icon">
                 </button>          

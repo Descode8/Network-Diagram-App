@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     var lineClr = rootStyles.getPropertyValue('--bdr-clr').trim();
 
     const typeColorMap = new Map([
-        ['Home', homeNodeClr],   
+        ['Organization', homeNodeClr],   
         ['Applications', appNodeClr], 
         ['People', pplNodeClr],           
         ['Technology', techNodeClr],  
@@ -161,11 +161,11 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     });
 
     // Add event listener to show random suggestions on input focus
-    onSearchInput.addEventListener('focus', () => {
-        if (graphData && graphData.nodes) {
-            showRandomSuggestions();
-        }
-    });
+    // onSearchInput.addEventListener('focus', () => {
+    //     if (graphData && graphData.nodes) {
+    //         showRandomSuggestions();
+    //     }
+    // });
 
     // Show the clear button only under specific conditions
     function toggleClearButton() {
@@ -804,7 +804,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     }
     
     // Helper function to sort types based on predefined order
-    const predefinedOrder = ['Home', 'People', 'Technology'];
+    const predefinedOrder = ['Organization', 'People', 'Technology'];
     function sortTypes([typeA], [typeB]) {
         const indexA = predefinedOrder.indexOf(typeA);
         const indexB = predefinedOrder.indexOf(typeB);

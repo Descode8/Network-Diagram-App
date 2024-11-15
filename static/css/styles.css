@@ -70,7 +70,7 @@ text, circle text {
 }
 
 .right-pane p {
-    text-align: center;
+    text-align: left;
     padding: 3px;
     margin: 0;
     border-bottom: 1px solid var(--bdr-clr);
@@ -177,7 +177,7 @@ text, circle text {
 }
 
 ::-webkit-scrollbar {
-    width: .9rem;
+    width: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
