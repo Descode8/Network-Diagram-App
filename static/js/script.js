@@ -58,15 +58,14 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     let graphLinkLength = 100;
     let graphFitted = false; // Add this at the top level
     let isNodeClicked = false;
-    let maxLabelWidth = 0;
-    let maxLabelHeight = 0;
     let nodeSize = 5; // Initial node size in pixels
     let activeNodeSize = 6.5; // Active node size in pixels
     let initialFontSize = 12; // Initial font size in pixels
     let currentZoomScale = 1;
     let graphPadding = 100;
-    let linkWidth = 0.75;
+    let linkWidth = 0.35;
     let nodeStrokeWidth = 1;
+    let searchListPreviewAmount = 5;
 
     /*******************************
     * EVENT LISTENERS FOR CONTROLS *
@@ -139,18 +138,15 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     });
 
     // Add event listener for the search button
+   // Add event listener for the search button
     onSearchButton.addEventListener('click', () => {
         var searchTerm = onSearchInput.value.trim();
         if (searchTerm) {
             searchNode(searchTerm);
             toggleClearButton(); // Show the clear button after search button click
+            autocompleteSuggestions.style.display = 'none'; // Hide dropdown suggestions after clicking search
         }
     });
-
-    // Show the clear button only under specific conditions
-    function toggleClearButton() {
-        onClearButton.style.display = onSearchInput.value.trim() ? 'flex' : 'none';
-    }
 
     // Add event listener for 'Enter' key press on the input field
     onSearchInput.addEventListener('keydown', (event) => {
@@ -159,14 +155,28 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             if (searchTerm) {
                 searchNode(searchTerm);
                 toggleClearButton(); // Show the clear button after pressing Enter
+                autocompleteSuggestions.style.display = 'none'; // Hide dropdown suggestions after pressing Enter
             }
         }
     });
+
+    // Add event listener to show random suggestions on input focus
+    onSearchInput.addEventListener('focus', () => {
+        if (graphData && graphData.nodes) {
+            showRandomSuggestions();
+        }
+    });
+
+    // Show the clear button only under specific conditions
+    function toggleClearButton() {
+        onClearButton.style.display = onSearchInput.value.trim() ? 'flex' : 'none';
+    }
 
     // Show the clear button if the user clicks a suggestion
     autocompleteSuggestions.addEventListener('click', (event) => {
         if (event.target && event.target.matches('.autocomplete-suggestions')) {
             toggleClearButton(); // Show the clear button when an option is clicked
+            autocompleteSuggestions.style.display = 'none'; // Hide dropdown suggestions when a suggestion is clicked
         }
     });
 
@@ -176,7 +186,38 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         onClearButton.style.display = 'none'; // Hide clear button
         location.reload(); // Reload page
     });
-        
+
+    // Function to display 10 random suggestions in the dropdown
+    function showRandomSuggestions() {
+        // Clear previous suggestions
+        autocompleteSuggestions.innerHTML = '';
+
+        // Show random nodes from graphData
+        var randomSuggestions = [];
+        while (randomSuggestions.length < searchListPreviewAmount && randomSuggestions.length < graphData.nodes.length) {
+            var randomNode = graphData.nodes[Math.floor(Math.random() * graphData.nodes.length)];
+            if (!randomSuggestions.includes(randomNode)) {
+                randomSuggestions.push(randomNode);
+            }
+        }
+
+        // Display the random suggestions
+        randomSuggestions.forEach(suggestion => {
+            const suggestionItem = document.createElement('div');
+            suggestionItem.classList.add('autocomplete-suggestions');
+            suggestionItem.textContent = suggestion.id;
+            suggestionItem.onclick = () => {
+                onSearchInput.value = suggestion.id;
+                autocompleteSuggestions.style.display = 'none'; // Hide dropdown after selecting a suggestion
+                searchNode(suggestion.id); // Call your search function with the selected suggestion
+            };
+            autocompleteSuggestions.appendChild(suggestionItem);
+        });
+
+        // Show suggestions dropdown
+        autocompleteSuggestions.style.display = randomSuggestions.length ? 'block' : 'none';
+    }
+
     /**********************************
      * FETCHING DATA FROM THE BACKEND *
      **********************************/
@@ -184,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         const storedData = localStorage.getItem('graphData');
         const lastFetchedTime = localStorage.getItem('lastFetchedTime');
         const expirationTime = 10 * 60 * 1000; // Set expiration time in milliseconds (e.g., 10 minutes)
-    
+
         if (storedData && lastFetchedTime && (Date.now() - lastFetchedTime < expirationTime)) {
             // Use cached data if it's within the expiration period
             graphData = JSON.parse(storedData);
@@ -195,15 +236,15 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
                 const response = await fetch("/", {
                     headers: { "Accept": "application/json" }
                 });
-    
+
                 if (!response.ok) {
                     console.error("Failed to fetch graph data:", response.statusText);
                     return;
                 }
-    
+
                 // Parse the fetched data
                 graphData = await response.json();
-    
+
                 // Store fetched data and timestamp in localStorage
                 localStorage.setItem('graphData', JSON.stringify(graphData));
                 localStorage.setItem('lastFetchedTime', Date.now());
@@ -228,7 +269,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
                             suggestionItem.textContent = suggestion.id;
                             suggestionItem.onclick = () => {
                                 onSearchInput.value = suggestion.id;
-                                autocompleteSuggestions.style.display = 'none';
+                                autocompleteSuggestions.style.display = 'none'; // Hide dropdown after selecting a suggestion
                                 searchNode(suggestion.id); // Call your search function with the selected suggestion
                             };
                             autocompleteSuggestions.appendChild(suggestionItem);
@@ -248,19 +289,19 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
                 console.error("Error fetching graph data:", error);
             }
         }
-    
-        // Process graph data
-        centralNodes = graphData.center_nodes;
-        console.log("Central Nodes:", centralNodes);
-        graphData.nodes.forEach(node => {
-            if (node.is_multi_dependent === true) {
-                nodeWithMultiCI_Type.push(node.id);
-            }
-        });
-        console.log("Nodes with multiple CI types:", nodeWithMultiCI_Type);
-    
-        assignColors(graphData);
-        initializeGraph(graphData);
+        
+            // Process graph data
+            centralNodes = graphData.center_nodes;
+            console.log("Central Nodes:", centralNodes);
+            graphData.nodes.forEach(node => {
+                if (node.is_multi_dependent === true) {
+                    nodeWithMultiCI_Type.push(node.id);
+                }
+            });
+            console.log("Nodes with multiple CI types:", nodeWithMultiCI_Type);
+        
+            assignColors(graphData);
+            initializeGraph(graphData);
     }
     
     // Clear localStorage on tab close
