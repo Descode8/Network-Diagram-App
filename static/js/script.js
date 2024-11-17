@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     var procureNodeClr = rootStyles.getPropertyValue('--procure-nde-clr').trim();
     var fcltyNodeClr = rootStyles.getPropertyValue('--fclty-nde-clr').trim();
     var textClr = rootStyles.getPropertyValue('--text-clr').trim();
-    var lineClr = rootStyles.getPropertyValue('--bdr-clr').trim();
+    var linkClr = rootStyles.getPropertyValue('--link-clr').trim();
 
     const typeColorMap = new Map([
         ['Organization', homeNodeClr],   
@@ -57,16 +57,15 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     let link;
     let nodeWithMultiCI_Type = [];
     let graphLinkLength = 100;
-    let graphFitted = false; // Add this at the top level
+    let graphFitted = false; 
     let isNodeClicked = false;
-    let nodeSize = 5; // Initial node size in pixels
-    let activeNodeSize = 6.5; // Active node size in pixels
-    let initialFontSize = 12; // Initial font size in pixels
+    let nodeSize = 5; 
+    let activeNodeSize = 6.5; 
+    let initialFontSize = 12; 
     let currentZoomScale = 1;
-    let graphPadding = 100;
-    let linkWidth = 0.35;
+    let graphPadding = 90;
+    let linkWidth = 0.3;
     let nodeStrokeWidth = 1;
-    let searchListPreviewAmount = 5;
 
     /*******************************
     * EVENT LISTENERS FOR CONTROLS *
@@ -187,37 +186,6 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         onClearButton.style.display = 'none'; // Hide clear button
         location.reload(); // Reload page
     });
-
-    // Function to display 10 random suggestions in the dropdown
-    function showRandomSuggestions() {
-        // Clear previous suggestions
-        autocompleteSuggestions.innerHTML = '';
-
-        // Show random nodes from graphData
-        var randomSuggestions = [];
-        while (randomSuggestions.length < searchListPreviewAmount && randomSuggestions.length < graphData.nodes.length) {
-            var randomNode = graphData.nodes[Math.floor(Math.random() * graphData.nodes.length)];
-            if (!randomSuggestions.includes(randomNode)) {
-                randomSuggestions.push(randomNode);
-            }
-        }
-
-        // Display the random suggestions
-        randomSuggestions.forEach(suggestion => {
-            const suggestionItem = document.createElement('div');
-            suggestionItem.classList.add('autocomplete-suggestions');
-            suggestionItem.textContent = suggestion.id;
-            suggestionItem.onclick = () => {
-                onSearchInput.value = suggestion.id;
-                autocompleteSuggestions.style.display = 'none'; // Hide dropdown after selecting a suggestion
-                searchNode(suggestion.id); // Call your search function with the selected suggestion
-            };
-            autocompleteSuggestions.appendChild(suggestionItem);
-        });
-
-        // Show suggestions dropdown
-        autocompleteSuggestions.style.display = randomSuggestions.length ? 'block' : 'none';
-    }
 
     /**********************************
      * FETCHING DATA FROM THE BACKEND *
@@ -359,7 +327,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         // Append initial links with styles
         link.enter().append("line")
             .attr("stroke-width", linkWidth)          // Set initial stroke-width for links
-            .attr("stroke", lineClr)                  // Set initial stroke color for links
+            .attr("stroke", linkClr)                  // Set initial stroke color for links
             .merge(link);
         
         // Create node elements
@@ -389,7 +357,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         
         // Initialize the force simulation with visible nodes
         simulation = d3.forceSimulation(visibleNodes)
-            .alpha(10) // Start with alpha = 1 for faster initial movement
+            .alpha(0.3) // Start with alpha = 1 for faster initial movement
             .alphaDecay(0.05) // Increase alpha decay to speed up convergence (default is ~0.0228)
             .on("tick", ticked); // Event listener for each tick
         
@@ -588,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         
         var linkEnter = link.enter().append("line")
             .attr("stroke-width", linkWidth)          // Set initial stroke-width for new links
-            .attr("stroke", lineClr);           // Set initial stroke color for new links
+            .attr("stroke", linkClr);           // Set initial stroke color for new links
         
         // Merge the new links with existing ones
         link = linkEnter.merge(link);
@@ -622,11 +590,10 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         
         // Ensure labels maintain their styles
         node.select("text")
-            .attr("stroke-width", 0)
-            .attr("font-size", ".5em");
+            .attr("font-size", initialFontSize + 'px');
     
         link.attr('stroke-width', linkWidth)        // Initial stroke-width for links
-            .attr('stroke', lineClr);          // Initial stroke color for links
+            .attr('stroke', linkClr);          // Initial stroke color for links
         
         // Update force simulation
         simulation.nodes(visibleNodes);
@@ -878,8 +845,8 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             var node = nodeById.get(nodeId); // Get the node object
             handleNodeClicked(null, node); // Trigger the same logic as a click
         } else {
-            failedSearch.style.display = 'block'; // Show the failed search message
-            failedSearch.textContent = `${nodeId} does not exist.`; // Update the message
+            failedSearch.style.display = 'inline-block'; // Show the failed search message
+            failedSearch.innerHTML = `${nodeId} does not exist`;
             timeout = setTimeout(() => {
                 failedSearch.style.display = 'none'; // Hide the message after 3 seconds
             }, 3000);
