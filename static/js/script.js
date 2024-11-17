@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     const onRefreshButton = document.getElementById('refreshButton');
     const onDepthSlider = document.getElementById('depthSlider');
     const depthValueLabel = document.getElementById('depthValue');
+    const failedSearch = document.querySelector('.failed-search');
     // const onNodeSizeSlider = document.getElementById("nodeSlider");
     // const nodeValueLabel = document.getElementById("nodeValue");
     const svgElement = svg.node();
@@ -877,7 +878,11 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             var node = nodeById.get(nodeId); // Get the node object
             handleNodeClicked(null, node); // Trigger the same logic as a click
         } else {
-            alert("Node not found!");
+            failedSearch.style.display = 'block'; // Show the failed search message
+            failedSearch.textContent = `${nodeId} does not exist.`; // Update the message
+            timeout = setTimeout(() => {
+                failedSearch.style.display = 'none'; // Hide the message after 3 seconds
+            }, 3000);
         }
     }
 
