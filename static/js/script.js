@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' force from the simulation **** simulation.force("charge", null);
+document.addEventListener("DOMContentLoaded", () => { 
     
     /*******************************************
      * VARIABLE DECLARATIONS AND INITIAL SETUP *
@@ -24,7 +24,8 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
         ['Facilities', fcltyNodeClr] 
     ]);
 
-    let activeNodeId;
+    let activeNodeId, simulation, graphData, nodeById, node, link;
+    let visibleNodes = [], visibleLinks = [], centralNodes = [], nodeWithMultiCI_Type = [];
     const svg = d3.select("svg");
     const rightContainer = d3.select(".right-pane");
     // const onScreenShot = document.getElementById("screenshot");
@@ -37,8 +38,6 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     const onDepthSlider = document.getElementById('depthSlider');
     const depthValueLabel = document.getElementById('depthValue');
     const failedSearch = document.querySelector('.failed-search');
-    // const onNodeSizeSlider = document.getElementById("nodeSlider");
-    // const nodeValueLabel = document.getElementById("nodeValue");
     const svgElement = svg.node();
     const width = svgElement.getBoundingClientRect().width;
     const height = svgElement.getBoundingClientRect().height;
@@ -47,15 +46,6 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
     const graph = svg.append("g").style("visibility", "hidden");
     const nodeColorMap = new Map();
     let currentDepth = 2;
-    let simulation;
-    let graphData;
-    let nodeById;
-    let visibleNodes = [];
-    let visibleLinks = [];
-    let centralNodes = [];
-    let node;
-    let link;
-    let nodeWithMultiCI_Type = [];
     let graphLinkLength = 100;
     let graphFitted = false; 
     let isNodeClicked = false;
@@ -159,13 +149,6 @@ document.addEventListener("DOMContentLoaded", () => { // Remove the 'charge' for
             }
         }
     });
-
-    // Add event listener to show random suggestions on input focus
-    // onSearchInput.addEventListener('focus', () => {
-    //     if (graphData && graphData.nodes) {
-    //         showRandomSuggestions();
-    //     }
-    // });
 
     // Show the clear button only under specific conditions
     function toggleClearButton() {
