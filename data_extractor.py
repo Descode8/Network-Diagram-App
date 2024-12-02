@@ -22,6 +22,7 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram2.xlsx'):
 
     for _, row in df.iterrows():
         ci_name = row['CI_Name']
+        
         dependency_name = row['Dependency_Name']
         
         # Capture the CI_Type for ci_name and dependency_name if they are not 'None'
@@ -67,6 +68,5 @@ def fetch_graph_data_with_centrality(excel_file='data/network_diagram2.xlsx'):
         {'source': source, 'target': target}
         for source, target in G.edges
     ]
-    print("Backend called")
 
     return {'nodes': nodes, 'links': links, 'center_nodes': list(center_nodes)}

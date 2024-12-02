@@ -26,9 +26,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let activeNodeId, simulation, graphData, nodeById, node, link;
     let visibleNodes = [], visibleLinks = [], centralNodes = [], nodeWithMultiCI_Type = [];
+    let graphFitted = false, isNodeClicked = false;
+    let currentDepth = 2;
+    let graphLinkLength = 100;
+    let nodeSize = 5; 
+    let activeNodeSize = 6.5; 
+    let initialFontSize = 12; 
+    let currentZoomScale = 1;
+    let graphPadding = 90;
+    let linkWidth = 0.3;
+    let nodeStrokeWidth = 1;
     const svg = d3.select("svg");
     const rightContainer = d3.select(".right-pane");
-    // const onScreenShot = document.getElementById("screenshot");
     const onSearchInput = document.getElementById('searchInput');
     const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
     const onSearchButton = document.getElementById('searchButton');
@@ -45,17 +54,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let centerY = svgElement.getBoundingClientRect().height / 2;
     const graph = svg.append("g").style("visibility", "hidden");
     const nodeColorMap = new Map();
-    let currentDepth = 2;
-    let graphLinkLength = 100;
-    let graphFitted = false; 
-    let isNodeClicked = false;
-    let nodeSize = 5; 
-    let activeNodeSize = 6.5; 
-    let initialFontSize = 12; 
-    let currentZoomScale = 1;
-    let graphPadding = 90;
-    let linkWidth = 0.3;
-    let nodeStrokeWidth = 1;
 
     /*******************************
     * EVENT LISTENERS FOR CONTROLS *
@@ -731,9 +729,10 @@ document.addEventListener("DOMContentLoaded", () => {
         rightContainer.append("p").html(`<strong>Type: </strong>${activeNode.type}`);
     
         // Display the active node's description
-        const description = activeNode.description || 'No description available';
+        const description = (activeNode.description || 'No description available').replace(/\n/g, '<br>');
         rightContainer.append("h3").attr("class", "description-header").html("Description");
         rightContainer.append("p").html(description);
+
     
         // Dependencies header
         rightContainer.append("h3").attr("class", "dependencies-header").html("Dependencies");
@@ -782,7 +781,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function createNodeElement(node) {
         rightContainer.append("p")
             .attr("class", "dependency-node")
-            .attr("title", `View ${node.id}`)
+            .attr("title", `${node.description}`)
             .html(node.id)
             .style("cursor", "pointer")
             .on("click", (event) => handleNodeClicked(event, node));
