@@ -17,45 +17,50 @@ def fetch_graph_data(excel_file='data/network_diagram2.xlsx'):
     # Initialize NetworkX directed graph
     G = nx.DiGraph()
     
-    # Initialize a set to store unique center_nodes
+    # Initialize sets to store unique center_nodes and types
     center_nodes = set()
     types = set()
 
     for _, row in df.iterrows():
         ci_name = row['CI_Name']
         dependency_name = row['Dependency_Name']
+        ci_type = row['CI_Type']
         dependency_type = row['Dependency_Type']
+        ci_description = row['CI_Descrip']
+        dependency_description = row['Dependency_Descrip']
         
         # Capture the CI_Type for ci_name and dependency_name if they are not 'None'
-        if row['CI_Type'] != 'None' and row['Rel_Type'] == 'Depends On':
-            center_nodes.add(row['CI_Name'])
+        if ci_type != 'None' and row['Rel_Type'] == 'Depends On':
+            center_nodes.add(ci_name)
             
         # Capture dependency_type for each node
-        if row['Dependency_Type'] != 'None':
-            types.add(row['Dependency_Type'])
+        if dependency_type != 'None':
+            types.add(dependency_type)
 
         # Add nodes with attributes
-        G.add_node(ci_name, type=row['CI_Type'], description=row['CI_Descrip'])
-        G.add_node(dependency_name, type=row['Dependency_Type'], description=row['Dependency_Descrip'])
-        
-        # Add edge for dependencies
-        if dependency_name != 'None':
-            G.add_edge(ci_name, dependency_name)
+        G.add_node(ci_name, type=ci_type, description=ci_description)
+        G.add_node(dependency_name, type=dependency_type, description=dependency_description, is_dependency_name=True)
+        G.add_node(dependency_type, type=dependency_type, description=f'Type Node for {dependency_type}')
+
+        # Add edges for both scenarios
+        # Edge from CI_Name to Dependency_Type
+        G.add_edge(ci_name, dependency_type, edge_type='with_type')
+
+        # Edge from Dependency_Type to Dependency_Name
+        G.add_edge(dependency_type, dependency_name, edge_type='with_type')
+
+        # Direct edge from CI_Name to Dependency_Name
+        G.add_edge(ci_name, dependency_name, edge_type='without_type')
 
     # Identify nodes that are depended on by more than one CI_Type
-    multi_dependents = {}  # key: node, value: set of center_nodes that depend on it
-
     for node in G.nodes:
         predecessors = list(G.predecessors(node))
-        center_nodes_for_node = set()
+        ci_types = set()
         for pred in predecessors:
-            ci_type = G.nodes[pred]['type']
-            center_nodes_for_node.add(ci_type)
-        if len(center_nodes_for_node) > 1:
-            multi_dependents[node] = center_nodes_for_node
-            G.nodes[node]['is_multi_dependent'] = True  # Add flag to node
-        else:
-            G.nodes[node]['is_multi_dependent'] = False  # Add flag to node
+            ci_type = G.nodes[pred].get('type')
+            if ci_type and ci_type != node:
+                ci_types.add(ci_type)
+        G.nodes[node]['is_multi_dependent'] = len(ci_types) > 1
 
     # Convert graph to JSON-friendly format for frontend
     nodes = [
@@ -64,14 +69,14 @@ def fetch_graph_data(excel_file='data/network_diagram2.xlsx'):
             'type': G.nodes[node]['type'],
             'description': G.nodes[node]['description'],
             'is_multi_dependent': G.nodes[node]['is_multi_dependent'],
+            'is_dependency_name': G.nodes[node].get('is_dependency_name', False),
         }
-        
         for node in G.nodes
     ]
     
     links = [
-        {'source': source, 'target': target}
-        for source, target in G.edges
+        {'source': source, 'target': target, 'edge_type': data['edge_type']}
+        for source, target, data in G.edges(data=True)
     ]
 
     return {
@@ -79,4 +84,4 @@ def fetch_graph_data(excel_file='data/network_diagram2.xlsx'):
         'links': links, 
         'center_nodes': list(center_nodes), 
         'types': list(types)
-        }
+    }

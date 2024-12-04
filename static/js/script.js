@@ -58,29 +58,21 @@ document.addEventListener("DOMContentLoaded", () => {
     // Variables for switches
     const typeNodesSwitch = document.getElementById("typeNodesSwitch");
     const labelNodesSwitch = document.getElementById("labelNodesSwitch");
-    const indirectRelationshipsSwitch = document.getElementById("indirectRelationshipsSwitch");
 
     // Initial states for switches
     let showTypeNodes = typeNodesSwitch.checked = true;
-    let showNodeLabels = labelNodesSwitch.checked = true;
-    let showIndirectRelationships = indirectRelationshipsSwitch.checked = false;
+    let showLabelNodes = labelNodesSwitch.checked = true;
 
-    // typeNodesSwitch.addEventListener("change", () => {
-    //     showTypeNodes = typeNodesSwitch.checked; // Update the state of the switch
-    //     //filterNodesForTypeNodes();              // Apply filtering logic
-    //     renderGraph();                          // Re-render the graph
-    // });    
+    // Event listeners
+    typeNodesSwitch.addEventListener("change", () => {
+        showTypeNodes = typeNodesSwitch.checked;
+        renderActiveNodeGraph(currentDepth, activeNodeId);
+    });
 
-    // labelNodesSwitch.addEventListener("change", () => {
-    //     showNodeLabels = labelNodesSwitch.checked;
-    //     renderGraph(); // Re-render the graph to toggle labels
-    // });
-
-    // indirectRelationshipsSwitch.addEventListener("change", () => {
-    //     showIndirectRelationships = indirectRelationshipsSwitch.checked;
-    //     //filterNodesByIndirectRelationships(); // Apply In. Relationships filtering logic
-    //     renderGraph();                        // Re-render the graph
-    // })
+    labelNodesSwitch.addEventListener("change", () => {
+        showLabelNodes = labelNodesSwitch.checked;
+        renderActiveNodeGraph(currentDepth, activeNodeId);
+    });
 
     /*******************************
     * EVENT LISTENERS FOR CONTROLS *
@@ -299,8 +291,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 // If a color exists for this type, use it
                 nodeColorMap.set(node.id, color);
             } else {
-                // If no color is defined for this type, use gray as default
-                nodeColorMap.set(node.id, 'yellow');
+                // If no color is defined for this type, use white as default
+                nodeColorMap.set(node.id, 'white');
             }
         });
     }
@@ -401,7 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
         centerActiveNode();
         renderGraph();
         updateRightContainer();
-    }
+    }    
     
     // Center the active node by fixing it at the center
     function centerActiveNode() {
@@ -423,33 +415,46 @@ document.addEventListener("DOMContentLoaded", () => {
     *******************************/
     function expandNodeByDepth(node, depth, currentDepth = 1) {
         if (currentDepth > depth) return;  // Stop recursion when the target depth is reached
-
+    
         if (!visibleNodes.includes(node)) {
             visibleNodes.push(node);  // Add the current node to the visible list
         }
-
+    
         // If the current depth is the maximum, stop expanding further
         if (currentDepth === depth) return;
-
+    
         // Find only the immediate children of the current node
-        var childLinks = graphData.links.filter(link => 
-            link.source.id === node.id || link.target.id === node.id
-        );
-
+        var childLinks = graphData.links.filter(link => {
+            // Filter links based on the switch state
+            if (showTypeNodes) {
+                // Include edges with 'with_type' edge_type
+                return (
+                    (link.source.id === node.id || link.target.id === node.id) &&
+                    link.edge_type === 'with_type'
+                );
+            } else {
+                // Include edges with 'without_type' edge_type
+                return (
+                    (link.source.id === node.id || link.target.id === node.id) &&
+                    link.edge_type === 'without_type'
+                );
+            }
+        });
+    
         childLinks.forEach(link => {
             if (!visibleLinks.includes(link)) {
                 visibleLinks.push(link);  // Add the link to visible links
-
+    
                 // Get the connected node (either source or target of the link)
                 var childNode = link.source.id === node.id ? link.target : link.source;
-
+    
                 // Recursively expand the graph if the connected node isn't already visible
                 if (!visibleNodes.includes(childNode)) {
                     expandNodeByDepth(childNode, depth, currentDepth + 1);
                 }
             }
         });
-    } 
+    }
 
     /****************************************************
     * SETTING UP FORCES BASED ON GRAPH LAYOUT (TREE) *
@@ -563,8 +568,8 @@ document.addEventListener("DOMContentLoaded", () => {
         link.exit().remove();
         
         var linkEnter = link.enter().append("line")
-            .attr("stroke-width", linkWidth)          // Set initial stroke-width for new links
-            .attr("stroke", linkClr);           // Set initial stroke color for new links
+            .attr("stroke-width", linkWidth)
+            .attr("stroke", linkClr);
         
         // Merge the new links with existing ones
         link = linkEnter.merge(link);
@@ -576,42 +581,78 @@ document.addEventListener("DOMContentLoaded", () => {
         node.exit().remove();
         
         var nodeEnter = node.enter().append("g")
-            .call(drag(simulation)); // Apply the drag behavior here using the drag function
-        
-        // Set size of nodes
-        nodeEnter.append("circle")
-            .attr("r", d => d.id === activeNodeId ? activeNodeSize : nodeSize) // Conditional radius
-            .attr("fill", d => nodeColorMap.get(d.id))
-            .attr("stroke", textClr)
-            .attr("stroke-width", nodeStrokeWidth)
+            .call(drag(simulation))
             .on("click", handleNodeClicked);
+        
+        // Conditionally append circles to nodes
+        nodeEnter.each(function(d) {
+            var nodeGroup = d3.select(this);
+            var hasLabelNode = !(d.is_dependency_name && !showLabelNodes);
+            if (hasLabelNode) {
+                nodeGroup.append("circle")
+                    .attr("r", d.id === activeNodeId ? activeNodeSize : nodeSize)
+                    .attr("fill", nodeColorMap.get(d.id))
+                    .attr("stroke", textClr)
+                    .attr("stroke-width", nodeStrokeWidth);
+            }
+        });
         
         // Append text element for labels
         nodeEnter.append("text")
-            .attr("dy", "-.85em") // Vertically center the text
+            .attr("dy", function(d) {
+                var hasLabelNode = !(d.is_dependency_name && !showLabelNodes);
+                return hasLabelNode ? "-.85em" : "0.35em";
+            })
             .text(d => d.id)
-            .attr("font-size", initialFontSize + 'px'); // Set initial font size
-        // Set initial font size
+            .attr("font-size", initialFontSize + 'px');
         
         // Merge newly created nodes with existing ones
         node = nodeEnter.merge(node);
         
-        // Ensure labels maintain their styles
+        // Update existing nodes to add or remove circles based on the switch
+        node.each(function(d) {
+            var nodeGroup = d3.select(this);
+            var circle = nodeGroup.select('circle');
+            var hasLabelNode = !(d.is_dependency_name && !showLabelNodes);
+            if (hasLabelNode && circle.empty()) {
+                // Append circle
+                nodeGroup.insert("circle", ":first-child")
+                    .attr("r", d.id === activeNodeId ? activeNodeSize : nodeSize)
+                    .attr("fill", nodeColorMap.get(d.id))
+                    .attr("stroke", textClr)
+                    .attr("stroke-width", nodeStrokeWidth);
+            } else if (!hasLabelNode && !circle.empty()) {
+                // Remove circle
+                circle.remove();
+            } else if (hasLabelNode && !circle.empty()) {
+                // Update circle attributes
+                circle
+                    .attr("r", d.id === activeNodeId ? activeNodeSize : nodeSize)
+                    .attr("fill", nodeColorMap.get(d.id))
+                    .attr("stroke", textClr)
+                    .attr("stroke-width", nodeStrokeWidth);
+            }
+        });
+        
+        // Update labels to adjust position based on circle presence
         node.select("text")
+            .attr("dy", function(d) {
+                var hasLabelNode = !(d.is_dependency_name && !showLabelNodes);
+                return hasLabelNode ? "-.85em" : "0em";
+            })
             .attr("font-size", initialFontSize + 'px');
-    
-        link.attr('stroke-width', linkWidth)        // Initial stroke-width for links
-            .attr('stroke', linkClr);          // Initial stroke color for links
+        
+        // Update link styles
+        link.attr('stroke-width', linkWidth)
+            .attr('stroke', linkClr);
         
         // Update force simulation
         simulation.nodes(visibleNodes);
-        
         simulation.force("link", d3.forceLink(visibleLinks)
             .id(d => d.id)
             .distance(graphLinkLength)
             .strength(1)
         );
-        
         simulation.force("center", null);
         
         // Remove positional forces
@@ -627,7 +668,8 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Restart simulation to apply changes
         simulation.alpha(0.3).restart();
-    }    
+    }
+    
 
     /*****************************************************************************************
     * CLUSTERING FORCE GRAPH TTHAT WILL GROUP NODES BASED ON TYPES AROUND THEIR CENTRAL NODE *
@@ -759,7 +801,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const description = (activeNode.description || 'No description available').replace(/\n/g, '<br>');
         rightContainer.append("h3").attr("class", "description-header").html("Description");
         rightContainer.append("p").html(description);
-
     
         // Dependencies header
         rightContainer.append("h3").attr("class", "dependencies-header").html("Dependencies");
@@ -780,18 +821,7 @@ document.addEventListener("DOMContentLoaded", () => {
         orderedTypes.forEach(([type, nodes]) => createTypeSection(type, nodes));
     }
     
-    // Helper function to sort types based on predefined order
-    const predefinedOrder = ['Organization', 'People', 'Technology'];
-    function sortTypes([typeA], [typeB]) {
-        const indexA = predefinedOrder.indexOf(typeA);
-        const indexB = predefinedOrder.indexOf(typeB);
     
-        // Sort predefined types first, in specified order
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        if (indexA !== -1) return -1;
-        if (indexB !== -1) return 1;
-        return 0;
-    }
     
     // Helper function to create a type section
     function createTypeSection(type, nodes) {
