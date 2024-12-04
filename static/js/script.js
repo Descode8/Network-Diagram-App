@@ -55,6 +55,33 @@ document.addEventListener("DOMContentLoaded", () => {
     const graph = svg.append("g").style("visibility", "hidden");
     const nodeColorMap = new Map();
 
+    // Variables for switches
+    const typeNodesSwitch = document.getElementById("typeNodesSwitch");
+    const labelNodesSwitch = document.getElementById("labelNodesSwitch");
+    const indirectRelationshipsSwitch = document.getElementById("indirectRelationshipsSwitch");
+
+    // Initial states for switches
+    let showTypeNodes = typeNodesSwitch.checked = true;
+    let showNodeLabels = labelNodesSwitch.checked = true;
+    let showIndirectRelationships = indirectRelationshipsSwitch.checked = false;
+
+    // typeNodesSwitch.addEventListener("change", () => {
+    //     showTypeNodes = typeNodesSwitch.checked; // Update the state of the switch
+    //     //filterNodesForTypeNodes();              // Apply filtering logic
+    //     renderGraph();                          // Re-render the graph
+    // });    
+
+    // labelNodesSwitch.addEventListener("change", () => {
+    //     showNodeLabels = labelNodesSwitch.checked;
+    //     renderGraph(); // Re-render the graph to toggle labels
+    // });
+
+    // indirectRelationshipsSwitch.addEventListener("change", () => {
+    //     showIndirectRelationships = indirectRelationshipsSwitch.checked;
+    //     //filterNodesByIndirectRelationships(); // Apply In. Relationships filtering logic
+    //     renderGraph();                        // Re-render the graph
+    // })
+
     /*******************************
     * EVENT LISTENERS FOR CONTROLS *
     ********************************/    

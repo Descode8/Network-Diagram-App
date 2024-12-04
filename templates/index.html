@@ -67,19 +67,37 @@ Right Pane: Displays details for the selected node.
             <input type="range" id="depthSlider" min="1" max="5" value="2" step="1">
         </div>
 
-        <!--<label for="nodeSlider">Node Size<span id="nodeValue">5</span></label>
-        <div class="custom-slider">
-            <input type="range" id="nodeSlider" min="1" max="10" value="5" step="1">
-        </div>-->
-
-    </div>
-    <div class="screenshot-container" style="display: flex;">
-        <div class="graph-container">
-            <svg></svg>
+        <div class="switches-container">
+            <label class="switch">
+                <input type="checkbox" id="typeNodesSwitch" checked>
+                <span class="slider round">
+                    <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
+                </span>
+                Type Nodes
+            </label>
+            <label class="switch">
+                <input type="checkbox" id="labelNodesSwitch" checked>
+                <span class="slider round">
+                    <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
+                </span>
+                Label Nodes
+            </label>
+            <label class="switch">
+                <input type="checkbox" id="indirectRelationshipsSwitch">
+                <span class="slider round">
+                    <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
+                </span>
+                In. Relationships
+            </label>
         </div>
-        <div class="tooltip" id="tooltip"></div>
-        <div class="right-pane"></div>
     </div>
+
+    <div class="graph-container">
+        <svg></svg>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+    <div class="right-pane"></div>
 
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>

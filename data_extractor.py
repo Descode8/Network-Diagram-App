@@ -2,8 +2,8 @@ import pandas as pd
 import os
 import networkx as nx
 
-#def fetch_graph_data_with_centrality(excel_file='data/network_diagram.xlsx'):
-def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
+#def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
+def fetch_graph_data(excel_file='data/network_diagram2.xlsx'):
     """
     Data Extraction with Centrality and Community Detection
     """
@@ -19,14 +19,20 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     
     # Initialize a set to store unique center_nodes
     center_nodes = set()
+    types = set()
 
     for _, row in df.iterrows():
         ci_name = row['CI_Name']
         dependency_name = row['Dependency_Name']
+        dependency_type = row['Dependency_Type']
         
         # Capture the CI_Type for ci_name and dependency_name if they are not 'None'
         if row['CI_Type'] != 'None' and row['Rel_Type'] == 'Depends On':
             center_nodes.add(row['CI_Name'])
+            
+        # Capture dependency_type for each node
+        if row['Dependency_Type'] != 'None':
+            types.add(row['Dependency_Type'])
 
         # Add nodes with attributes
         G.add_node(ci_name, type=row['CI_Type'], description=row['CI_Descrip'])
@@ -68,4 +74,9 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         for source, target in G.edges
     ]
 
-    return {'nodes': nodes, 'links': links, 'center_nodes': list(center_nodes)}
+    return {
+        'nodes': nodes, 
+        'links': links, 
+        'center_nodes': list(center_nodes), 
+        'types': list(types)
+        }

@@ -32,7 +32,7 @@ text, circle text {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 10px; 
+    gap: 15px; 
     width: 15vw;
     margin: 0 auto;
     padding: 3px;
@@ -309,7 +309,7 @@ label, span {
     font-weight: bold;
     color: var(--pane-ttle-bg-clr);
     font-size: .8rem;
-    margin-left: 10px;
+    margin-left: 15px;
 }
 
 span {
@@ -320,14 +320,77 @@ span {
     font-weight: bold;
 }
 
-.brush .selection {
-    fill: var(--pane-bg-clr);
-    fill-opacity: 0.3;
-    stroke: var(--bdr-clr);
-    shape-rendering: crispEdges;
+.switches-container {
+    margin-top: 10px;
 }
 
-.brush .handle {
-    display: none; /* Hide the default handles */
-    border: var(--pane-ttle-bg-clr);
+.switch {
+    display: flex;
+    align-items: center;
+    margin: 15px 0;
 }
+
+.switch input {
+    display: none;
+}
+
+.slider {
+    position: relative;
+    display: inline-block;
+    width: 37px;
+    height: 23px;
+    margin-right: 5px;
+}
+
+.slider.round {
+    border-radius: 15px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 12px;
+    width: 12px;
+    left: 4px;
+    bottom: 5.5px;
+    background-color: white;
+    transition: 0.4s;
+}
+
+input:checked + .slider {
+    background-color: var(--pane-ttle-bg-clr);
+}
+
+input:checked + .slider:before {
+    transform: translateX(14px);
+    height: 16px;
+    width: 16px;
+    right: 0px;
+    bottom: 3.5px;
+}
+
+input + .slider {
+    background-color: var(--bdr-clr);
+    transition: 0.4s;
+}
+
+.checkmark {
+    position: absolute;
+    top: 50%;
+    left: 70%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    opacity: 0; 
+    pointer-events: none;
+    transition: opacity 0s ease-out, transform 1s ease-in;
+}
+
+input:checked + .slider .checkmark {
+    opacity: 1;
+}
+
