@@ -14,7 +14,7 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     df[str_cols] = df[str_cols].apply(lambda x: x.str.strip())
 
     # Replace actual None values with 'No description available' in description columns
-    description_cols = ['CI_Descrip', 'Dependency_Descrip', 'Dependency_Type_Descrip']
+    description_cols = ['CI_Descrip', 'Dependency_Descrip']
     for col in description_cols:
         df[col] = df[col].fillna('No description available')
 
@@ -28,7 +28,6 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         dependency_type = row['Dependency_Type']
         ci_description = row['CI_Descrip'] or 'No description available'
         dependency_description = row['Dependency_Descrip'] or 'No description available'
-        dependency_type_description = row['Dependency_Type_Descrip'] or 'No description available'
 
         # Add ci_name node
         if not G.has_node(ci_name):
@@ -49,11 +48,7 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
 
         # Add dependency_type node (Type Node)
         if not G.has_node(dependency_type):
-            G.add_node(dependency_type, type=dependency_type, description=dependency_type_description, is_dependency_name=False)
-        else:
-            # Update description if necessary
-            if not G.nodes[dependency_type].get('description') or G.nodes[dependency_type]['description'] == 'No description available':
-                G.nodes[dependency_type]['description'] = dependency_type_description
+            G.add_node(dependency_type, type=dependency_type, description='No description available', is_dependency_name=False)
 
         # Add edges
         G.add_edge(ci_name, dependency_type, edge_type='with_type')

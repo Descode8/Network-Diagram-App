@@ -874,11 +874,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
     
-        // Append the type description if available
-        typeSection.append("p")
-            .attr("class", "type-description")
-            .html(typeNode && typeNode.description ? typeNode.description.replace(/\n/g, '<br>') : 'No description available');
-    
         // Filter out nodes where node.id === type to avoid redundancy
         const filteredNodes = nodes.filter(node => node.id !== type);
     
@@ -891,25 +886,24 @@ document.addEventListener("DOMContentLoaded", () => {
     function createNodeElement(parentContainer, node) {
         // Skip creating the node element if node.id === node.type
         if (node.id === node.type) return;
-
+    
         // Create a container for the node
         const nodeContainer = parentContainer.append("div")
             .attr("class", "dependency-node-container");
-
+    
         // Append the node name
         nodeContainer.append("p")
             .attr("class", "dependency-node")
             .html(`<strong>${node.id}</strong>`)
             .style("cursor", "pointer")
-            .style("text-align", "center")
             .style("border-bottom", `2px solid ${typeColorMap.get(node.type) || '#000'}`)
             .on("click", (event) => handleNodeClicked(event, node));
-
-        // Append the node description
-        nodeContainer.append("p")
-            .attr("class", "dependency-description")
+    
+        // Append the hover box
+        nodeContainer.append("div")
+            .attr("class", "hover-box")
             .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
-    }
+    }    
     
     /*******************************************************
     * NODE CLICK EVENT HANDLERS FOR ACTIVE NODE MANAGEMENT *
