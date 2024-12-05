@@ -423,17 +423,17 @@ document.addEventListener("DOMContentLoaded", () => {
     /******************************
     * EXPAND ACTIVE NODE BY DEPTH *
     *******************************/
-    function expandNodeByDepth(node, depth, currentDepth = 0) {
+    function expandNodeByDepth(node, depth, currentDepth = 1) {
         if (currentDepth > depth) return;  // Stop recursion when the target depth is reached
     
         if (!visibleNodes.includes(node)) {
             visibleNodes.push(node);  // Add the current node to the visible list
         }
     
-        // Stop expanding if depth limit is reached
+        // If the current depth is the maximum, stop expanding further
         if (currentDepth === depth) return;
     
-        // Find immediate children of the current node
+        // Find only the immediate children of the current node
         var childLinks = graphData.links.filter(link => {
             // Filter links based on the switch state
             if (showTypeNodes) {
@@ -458,22 +458,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Get the connected node (either source or target of the link)
                 var childNode = link.source.id === node.id ? link.target : link.source;
     
-                // Determine if the child node is a type node
-                var isTypeNode = childNode.id === childNode.type;
-    
-                // Only increment depth when moving to a CI_Name or Dependency_Name node
-                var nextDepth = currentDepth;
-                if (!isTypeNode) {
-                    nextDepth = currentDepth + 1;
-                }
-    
-                // Recursively expand the graph
+                // Recursively expand the graph if the connected node isn't already visible
                 if (!visibleNodes.includes(childNode)) {
-                    expandNodeByDepth(childNode, depth, nextDepth);
+                    expandNodeByDepth(childNode, depth, currentDepth + 1);
                 }
             }
         });
-    }    
+    }
 
     /****************************************************
     * SETTING UP FORCES BASED ON GRAPH LAYOUT (TREE) *
