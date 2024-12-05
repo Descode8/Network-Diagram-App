@@ -582,7 +582,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         var nodeEnter = node.enter().append("g")
             .call(drag(simulation))
-            .on("click", handleNodeClicked);
+            .on("click", handleNodeClicked); // Attach click event to the group
         
         // Conditionally append circles to nodes
         nodeEnter.each(function(d) {
@@ -604,11 +604,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 return hasLabelNode ? "-.85em" : "0.35em";
             })
             .text(d => d.id)
-            .attr("font-size", initialFontSize + 'px');
-        
+            .attr("font-size", initialFontSize + 'px')
+            .style("pointer-events", "auto") // Ensure text captures pointer events
+            .on("click", handleNodeClicked); // Attach click event to text
+    
         // Merge newly created nodes with existing ones
         node = nodeEnter.merge(node);
-        
+    
         // Update existing nodes to add or remove circles based on the switch
         node.each(function(d) {
             var nodeGroup = d3.select(this);
@@ -633,7 +635,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     .attr("stroke-width", nodeStrokeWidth);
             }
         });
-        
+    
         // Update labels to adjust position based on circle presence
         node.select("text")
             .attr("dy", function(d) {
@@ -641,7 +643,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return hasLabelNode ? "-.85em" : "0em";
             })
             .attr("font-size", initialFontSize + 'px');
-        
+    
         // Update link styles
         link.attr('stroke-width', linkWidth)
             .attr('stroke', linkClr);
@@ -668,7 +670,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Restart simulation to apply changes
         simulation.alpha(0.3).restart();
-    }
+    }    
     
 
     /*****************************************************************************************
@@ -785,63 +787,111 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateRightContainer() {
         // Clear the existing content
         rightContainer.html("");
-    
+
         // Get the active node object
         const activeNode = nodeById.get(activeNodeId);
-    
+
         // Display the active node's ID at the top
         rightContainer.append("h2")
             .style("background-color", typeColorMap.get(activeNode.type) || '#000')
             .html(`${activeNode.id}`);
-    
+
         // Display the active node's type
         rightContainer.append("p").html(`<strong>Type: </strong>${activeNode.type}`);
-    
+
         // Display the active node's description
         const description = (activeNode.description || 'No description available').replace(/\n/g, '<br>');
         rightContainer.append("h3").attr("class", "description-header").html("Description");
         rightContainer.append("p").html(description);
-    
+
         // Dependencies header
         rightContainer.append("h3").attr("class", "dependencies-header").html("Dependencies");
-    
-        // Get and group the types of the active node's immediate children
+
+        // Get immediate children nodes connected to the active node
         const immediateChildren = visibleNodes.filter(n =>
             visibleLinks.some(link =>
                 (link.source.id === activeNodeId && link.target.id === n.id) ||
                 (link.target.id === activeNodeId && link.source.id === n.id)
             )
         );
+
+        // Group the immediate children by their type
         const types = d3.group(immediateChildren, d => d.type);
-    
-        // Sort types with predefined ordering for specific types
-        const orderedTypes = Array.from(types.entries()).sort(sortTypes);
-    
+
+        // Define the desired order for types
+        const desiredOrder = ["Organization", "People", "Technology"];
+
+        // Sort types according to the desired order
+        const orderedTypes = Array.from(types.entries()).sort((a, b) => {
+            const indexA = desiredOrder.indexOf(a[0]);
+            const indexB = desiredOrder.indexOf(b[0]);
+
+            if (indexA === -1 && indexB === -1) {
+                return a[0].localeCompare(b[0]);
+            } else if (indexA === -1) {
+                return 1;
+            } else if (indexB === -1) {
+                return -1;
+            } else {
+                return indexA - indexB;
+            }
+        });
+
         // Add sorted types and nodes to the right container
         orderedTypes.forEach(([type, nodes]) => createTypeSection(type, nodes));
-    }
-    
-    
-    
+    } 
+
     // Helper function to create a type section
     function createTypeSection(type, nodes) {
-        rightContainer.append("p")
+        // Retrieve the type node to get its description
+        const typeNode = nodeById.get(type);
+
+        // Create a container for the type section
+        const typeSection = rightContainer.append("div")
+            .attr("class", "type-section");
+
+        // Append the type name and make it clickable
+        typeSection.append("p")
             .style("background-color", typeColorMap.get(type) || '#000')
             .attr("class", "dependency-type")
-            .html(type);
-    
-        // Sort nodes alphabetically and create elements for each
-        nodes.sort((a, b) => a.id.localeCompare(b.id)).forEach(createNodeElement);
-    }
-    
-    // Helper function to create a node element
-    function createNodeElement(node) {
-        rightContainer.append("p")
-            .attr("class", "dependency-node")
-            .attr("title", `${node.description}`)
-            .html(node.id)
+            .html(`<strong>${type}</strong>`)
             .style("cursor", "pointer")
-            .on("click", (event) => handleNodeClicked(event, node));
+            .style("text-align", "center")
+            .on("click", (event) => {
+                if (typeNode) {
+                    handleNodeClicked(event, typeNode);
+                }
+            });
+
+        // Append the type description
+        typeSection.append("p")
+            .attr("class", "type-description")
+            .html(typeNode && typeNode.description ? typeNode.description.replace(/\n/g, '<br>') : 'No description available');
+
+        // Sort nodes alphabetically and create elements for each Dependency_Name
+        nodes.sort((a, b) => a.id.localeCompare(b.id)).forEach(node => createNodeElement(typeSection, node));
+    }
+
+    // Helper function to create a node element
+    function createNodeElement(parentContainer, node) {
+        // Only create elements for Dependency_Names that are not the same as the type
+        if (node.id !== node.type) {
+            // Create a container for the dependency node
+            const nodeContainer = parentContainer.append("div")
+                .attr("class", "dependency-node-container");
+
+            // Append the dependency node name
+            nodeContainer.append("p")
+                .attr("class", "dependency-node")
+                .html(`<strong>${node.id}</strong>`)
+                .style("cursor", "pointer")
+                .on("click", (event) => handleNodeClicked(event, node));
+
+            // Append the description
+            nodeContainer.append("p")
+                .attr("class", "dependency-description")
+                .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
+        }
     }
     
     /*******************************************************

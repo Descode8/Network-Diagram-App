@@ -2,64 +2,75 @@ import pandas as pd
 import os
 import networkx as nx
 
-#def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
 def fetch_graph_data(excel_file='data/network_diagram2.xlsx'):
-    """
-    Data Extraction with Centrality and Community Detection
-    """
     if not os.path.exists(excel_file):
         raise FileNotFoundError(f"{excel_file} not found.")
 
-    # Load and clean data
-    df = pd.read_excel(excel_file).fillna('None')
-    df = df.apply(lambda col: col.str.strip() if col.dtype == 'object' else col)
+    # Load data without filling NA to preserve actual 'None' values
+    df = pd.read_excel(excel_file)
+
+    # Strip whitespace from string columns
+    str_cols = df.select_dtypes(include=['object']).columns
+    df[str_cols] = df[str_cols].apply(lambda x: x.str.strip())
+
+    # Replace actual None values with 'No description available' in description columns
+    description_cols = ['CI_Descrip', 'Dependency_Descrip', 'Dependency_Type_Descrip']
+    for col in description_cols:
+        df[col] = df[col].fillna('No description available')
 
     # Initialize NetworkX directed graph
     G = nx.DiGraph()
     
-    # Initialize sets to store unique center_nodes and types
-    center_nodes = set()
-    types = set()
-
     for _, row in df.iterrows():
         ci_name = row['CI_Name']
         dependency_name = row['Dependency_Name']
         ci_type = row['CI_Type']
         dependency_type = row['Dependency_Type']
-        ci_description = row['CI_Descrip']
-        dependency_description = row['Dependency_Descrip']
-        
-        # Capture the CI_Type for ci_name and dependency_name if they are not 'None'
-        if ci_type != 'None' and row['Rel_Type'] == 'Depends On':
-            center_nodes.add(ci_name)
-            
-        # Capture dependency_type for each node
-        if dependency_type != 'None':
-            types.add(dependency_type)
+        ci_description = row['CI_Descrip'] or 'No description available'
+        dependency_description = row['Dependency_Descrip'] or 'No description available'
+        dependency_type_description = row['Dependency_Type_Descrip'] or 'No description available'
 
-        # Add nodes with attributes
-        G.add_node(ci_name, type=ci_type, description=ci_description)
-        G.add_node(dependency_name, type=dependency_type, description=dependency_description, is_dependency_name=True)
-        G.add_node(dependency_type, type=dependency_type, description=f'Type Node for {dependency_type}')
+        # Add ci_name node
+        if not G.has_node(ci_name):
+            G.add_node(ci_name, type=ci_type, description=ci_description, is_dependency_name=False)
+        else:
+            # Update description if necessary
+            if not G.nodes[ci_name].get('description'):
+                G.nodes[ci_name]['description'] = ci_description
 
-        # Add edges for both scenarios
-        # Edge from CI_Name to Dependency_Type
+        # Add dependency_name node
+        if not G.has_node(dependency_name):
+            G.add_node(dependency_name, type=dependency_type, description=dependency_description, is_dependency_name=True)
+        else:
+            if not G.nodes[dependency_name].get('description'):
+                G.nodes[dependency_name]['description'] = dependency_description
+            G.nodes[dependency_name]['type'] = dependency_type
+            G.nodes[dependency_name]['is_dependency_name'] = True
+
+        # Add dependency_type node (Type Node)
+        if not G.has_node(dependency_type):
+            G.add_node(dependency_type, type=dependency_type, description=dependency_type_description, is_dependency_name=False)
+        else:
+            # Update description if necessary
+            if not G.nodes[dependency_type].get('description') or G.nodes[dependency_type]['description'] == 'No description available':
+                G.nodes[dependency_type]['description'] = dependency_type_description
+
+        # Add edges
         G.add_edge(ci_name, dependency_type, edge_type='with_type')
-
-        # Edge from Dependency_Type to Dependency_Name
         G.add_edge(dependency_type, dependency_name, edge_type='with_type')
-
-        # Direct edge from CI_Name to Dependency_Name
         G.add_edge(ci_name, dependency_name, edge_type='without_type')
+
+    # Identify center nodes
+    center_nodes = set(df[df['CI_Type'] == 'Organization']['CI_Name'])
 
     # Identify nodes that are depended on by more than one CI_Type
     for node in G.nodes:
         predecessors = list(G.predecessors(node))
         ci_types = set()
         for pred in predecessors:
-            ci_type = G.nodes[pred].get('type')
-            if ci_type and ci_type != node:
-                ci_types.add(ci_type)
+            ci_type_pred = G.nodes[pred].get('type')
+            if ci_type_pred and ci_type_pred != node:
+                ci_types.add(ci_type_pred)
         G.nodes[node]['is_multi_dependent'] = len(ci_types) > 1
 
     # Convert graph to JSON-friendly format for frontend
@@ -82,6 +93,5 @@ def fetch_graph_data(excel_file='data/network_diagram2.xlsx'):
     return {
         'nodes': nodes, 
         'links': links, 
-        'center_nodes': list(center_nodes), 
-        'types': list(types)
+        'center_nodes': list(center_nodes)
     }
