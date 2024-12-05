@@ -787,47 +787,42 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateRightContainer() {
         // Clear the existing content
         rightContainer.html("");
-
+    
         // Get the active node object
         const activeNode = nodeById.get(activeNodeId);
-
+    
         // Display the active node's ID at the top
         rightContainer.append("h2")
             .style("background-color", typeColorMap.get(activeNode.type) || '#000')
             .html(`${activeNode.id}`);
-
+    
         // Display the active node's type
         rightContainer.append("p").html(`<strong>Type: </strong>${activeNode.type}`);
-
+    
         // Display the active node's description
         const description = (activeNode.description || 'No description available').replace(/\n/g, '<br>');
         rightContainer.append("h3").attr("class", "description-header").html("Description");
         rightContainer.append("p").html(description);
-
+    
         // Dependencies header
         rightContainer.append("h3").attr("class", "dependencies-header").html("Dependencies");
-
-        // Get immediate children nodes connected to the active node
-        const immediateChildren = visibleNodes.filter(n =>
-            visibleLinks.some(link =>
-                (link.source.id === activeNodeId && link.target.id === n.id) ||
-                (link.target.id === activeNodeId && link.source.id === n.id)
-            )
-        );
-
-        // Group the immediate children by their type
-        const types = d3.group(immediateChildren, d => d.type);
-
+    
+        // Get all visible nodes excluding the active node
+        const visibleNodesExcludingActive = visibleNodes.filter(n => n.id !== activeNodeId);
+    
+        // Group the visible nodes by their type
+        const nodesByType = d3.group(visibleNodesExcludingActive, d => d.type);
+    
         // Define the desired order for types
         const desiredOrder = ["Organization", "People", "Technology"];
-
+    
         // Sort types according to the desired order
-        const orderedTypes = Array.from(types.entries()).sort((a, b) => {
-            const indexA = desiredOrder.indexOf(a[0]);
-            const indexB = desiredOrder.indexOf(b[0]);
-
+        const orderedTypes = Array.from(nodesByType.keys()).sort((a, b) => {
+            const indexA = desiredOrder.indexOf(a);
+            const indexB = desiredOrder.indexOf(b);
+    
             if (indexA === -1 && indexB === -1) {
-                return a[0].localeCompare(b[0]);
+                return a.localeCompare(b);
             } else if (indexA === -1) {
                 return 1;
             } else if (indexB === -1) {
@@ -836,62 +831,71 @@ document.addEventListener("DOMContentLoaded", () => {
                 return indexA - indexB;
             }
         });
-
+    
         // Add sorted types and nodes to the right container
-        orderedTypes.forEach(([type, nodes]) => createTypeSection(type, nodes));
-    } 
+        orderedTypes.forEach(type => {
+            const nodes = nodesByType.get(type);
+            createTypeSection(type, nodes);
+        });
+    }    
 
     // Helper function to create a type section
     function createTypeSection(type, nodes) {
         // Retrieve the type node to get its description
         const typeNode = nodeById.get(type);
-
+    
         // Create a container for the type section
         const typeSection = rightContainer.append("div")
             .attr("class", "type-section");
-
-        // Append the type name and make it clickable
+    
+        // Append the type name and make it clickable if the type node exists
         typeSection.append("p")
             .style("background-color", typeColorMap.get(type) || '#000')
             .attr("class", "dependency-type")
             .html(`<strong>${type}</strong>`)
-            .style("cursor", "pointer")
+            .style("cursor", typeNode ? "pointer" : "default")
             .style("text-align", "center")
             .on("click", (event) => {
                 if (typeNode) {
                     handleNodeClicked(event, typeNode);
                 }
             });
-
-        // Append the type description
+    
+        // Append the type description if available
         typeSection.append("p")
             .attr("class", "type-description")
             .html(typeNode && typeNode.description ? typeNode.description.replace(/\n/g, '<br>') : 'No description available');
-
-        // Sort nodes alphabetically and create elements for each Dependency_Name
-        nodes.sort((a, b) => a.id.localeCompare(b.id)).forEach(node => createNodeElement(typeSection, node));
+    
+        // Filter out nodes where node.id === type to avoid redundancy
+        const filteredNodes = nodes.filter(node => node.id !== type);
+    
+        // Sort nodes alphabetically and create elements for each node
+        filteredNodes.sort((a, b) => a.id.localeCompare(b.id))
+            .forEach(node => createNodeElement(typeSection, node));
     }
 
     // Helper function to create a node element
     function createNodeElement(parentContainer, node) {
-        // Only create elements for Dependency_Names that are not the same as the type
-        if (node.id !== node.type) {
-            // Create a container for the dependency node
-            const nodeContainer = parentContainer.append("div")
-                .attr("class", "dependency-node-container");
+        // Skip creating the node element if node.id === node.type
+        if (node.id === node.type) return;
 
-            // Append the dependency node name
-            nodeContainer.append("p")
-                .attr("class", "dependency-node")
-                .html(`<strong>${node.id}</strong>`)
-                .style("cursor", "pointer")
-                .on("click", (event) => handleNodeClicked(event, node));
+        // Create a container for the node
+        const nodeContainer = parentContainer.append("div")
+            .attr("class", "dependency-node-container");
 
-            // Append the description
-            nodeContainer.append("p")
-                .attr("class", "dependency-description")
-                .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
-        }
+        // Append the node name
+        nodeContainer.append("p")
+            .attr("class", "dependency-node")
+            .html(`<strong>${node.id}</strong>`)
+            .style("cursor", "pointer")
+            .style("text-align", "center")
+            .style("border-bottom", `2px solid ${typeColorMap.get(node.type) || '#000'}`)
+            .on("click", (event) => handleNodeClicked(event, node));
+
+        // Append the node description
+        nodeContainer.append("p")
+            .attr("class", "dependency-description")
+            .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
     }
     
     /*******************************************************

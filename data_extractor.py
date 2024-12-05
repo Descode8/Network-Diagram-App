@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import networkx as nx
 
-def fetch_graph_data(excel_file='data/network_diagram2.xlsx'):
+def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     if not os.path.exists(excel_file):
         raise FileNotFoundError(f"{excel_file} not found.")
 
