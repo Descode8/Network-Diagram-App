@@ -38,6 +38,12 @@ text, circle text {
     padding: 3px;
 }
 
+.settings {
+    background-color: var(--pane-bg-clr);
+    padding-left: 5%;
+    padding-bottom: 3%;
+}
+
 .right-pane {
     width: 18vw;
     gap: 5px; 
@@ -226,9 +232,10 @@ title {
     cursor: pointer;
 }
 
-.home-icon, .refresh-icon {
-    width: 30px;
-    height: 30px;
+.home-icon, .refresh-icon, .settings-icon {
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
 }
 
 .custom-slider input {
@@ -308,8 +315,12 @@ label, span {
     margin: 0;
     font-weight: bold;
     color: var(--pane-ttle-bg-clr);
-    font-size: .8rem;
-    margin-left: 15px;
+    font-size: .9rem;
+    margin-left: 10%;
+}
+
+.depthSlider {
+    margin: 0 auto;
 }
 
 span {

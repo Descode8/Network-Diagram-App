@@ -35,60 +35,63 @@ Right Pane: Displays details for the selected node.
     }
 </style>
 <body>
-    <div class="left-pane">
-        <h2>CIO Dashboard</h2>
-        <div class="button-container">
-            <!--<button id="screenshot" title="Take Screenshot">
-                <img src="{{ url_for('static', filename='images/screenshot.svg') }}" alt="Screenshot Icon" class="screenshot-icon">
-            </button> -->
-            <button id="homeButton" title="Go Home">
-                <img src="{{ url_for('static', filename='images/house.svg') }}" alt="Home Icon" class="home-icon">
-            </button>
-            <button id="refreshButton" title="Reset Forces">
-                <img src="{{ url_for('static', filename='images/refresh.svg') }}" alt="Refresh Icon" class="refresh-icon">
-            </button>
-        </div>
-        <div class="failed-search" style="display: none;"></div>
-        <div class="search-container">
-            <div class="search-input-and-button">
-                <button id="searchButton" title="Search">
-                    <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon" title="Search Node">
+    <div class="left-side-wrapper" style="display: flex; flex-direction: column;">
+        <div class="left-pane">
+            <h2>CIO Dashboard</h2>
+            <div class="button-container">
+                <button id="homeButton" title="Home">
+                    <img src="{{ url_for('static', filename='images/house.svg') }}" alt="Home Icon" class="home-icon">
                 </button>
-                <input type="text" id="searchInput" placeholder="Search">
-                <button id="clearButton" title="Clear Search" style="display: none;">
-                    <img src="{{ url_for('static', filename='images/x.svg') }}" class="clear-icon" alt="Clear Icon">
-                </button>          
+                <button id="refreshButton" title="Reset Forces">
+                    <img src="{{ url_for('static', filename='images/refresh.svg') }}" alt="Refresh Icon" class="refresh-icon">
+                </button>
             </div>
-            <div id="autocompleteSuggestions"></div>
-        </div>                      
-    
-        <label for="depthSlider">Depth<span id="depthValue">2</span></label>
-        <div class="custom-slider" title="Change Depth">
-            <input type="range" id="depthSlider" min="1" max="5" value="2" step="1">
+            <div class="failed-search" style="display: none;"></div>
+            <div class="search-container">
+                <div class="search-input-and-button">
+                    <button id="searchButton" title="Search">
+                        <img src="{{ url_for('static', filename='images/search.svg') }}" class="search-icon" alt="Search Icon" title="Search Node">
+                    </button>
+                    <input type="text" id="searchInput" placeholder="Search">
+                    <button id="clearButton" title="Clear Search" style="display: none;">
+                        <img src="{{ url_for('static', filename='images/x.svg') }}" class="clear-icon" alt="Clear Icon">
+                    </button>          
+                </div>
+                <div id="autocompleteSuggestions"></div>
+            </div>                      
+        
+            <label class="depthSlider" for="depthSlider">Depth<span id="depthValue"> 2</span></label>
+            <div class="custom-slider" title="Change Depth">
+                <input type="range" id="depthSlider" min="1" max="5" value="2" step="1">
+            </div>
+
+            <div class="switches-container">
+                <label class="switch">
+                    <input type="checkbox" id="typeNodesSwitch" checked>
+                    <span class="slider round">
+                        <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
+                    </span>
+                    Type Nodes
+                </label>
+                <label class="switch">
+                    <input type="checkbox" id="labelNodesSwitch" checked>
+                    <span class="slider round">
+                        <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
+                    </span>
+                    Label Nodes
+                </label>
+                <label class="switch">
+                    <input type="checkbox" id="indirectRelationshipsSwitch">
+                    <span class="slider round">
+                        <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
+                    </span>
+                    In. Relationships
+                </label>
+            </div>
         </div>
 
-        <div class="switches-container">
-            <label class="switch">
-                <input type="checkbox" id="typeNodesSwitch" checked>
-                <span class="slider round">
-                    <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
-                </span>
-                Type Nodes
-            </label>
-            <label class="switch">
-                <input type="checkbox" id="labelNodesSwitch" checked>
-                <span class="slider round">
-                    <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
-                </span>
-                Label Nodes
-            </label>
-            <label class="switch">
-                <input type="checkbox" id="indirectRelationshipsSwitch">
-                <span class="slider round">
-                    <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
-                </span>
-                In. Relationships
-            </label>
+        <div class="settings"> 
+            <img src="{{ url_for('static', filename='images/settings.svg') }}" alt="Settings Icon" class="settings-icon" title="Settings">
         </div>
     </div>
 
