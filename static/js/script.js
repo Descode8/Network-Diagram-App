@@ -66,8 +66,17 @@ document.addEventListener("DOMContentLoaded", () => {
     // Event listeners
     typeNodesSwitch.addEventListener("change", () => {
         showTypeNodes = typeNodesSwitch.checked;
+    
+        // Update the visibility of text elements based on the toggle state
+        node.select("text").style("visibility", d => {
+            if (showTypeNodes && typeColorMap.has(d.id)) {
+                return "hidden";
+            }
+            return "visible";
+        });
+    
         renderActiveNodeGraph(currentDepth, activeNodeId);
-    });
+    });       
 
     labelNodesSwitch.addEventListener("change", () => {
         showLabelNodes = labelNodesSwitch.checked;
@@ -353,7 +362,8 @@ document.addEventListener("DOMContentLoaded", () => {
             .text(d => d.id)
             .attr("font-size", initialFontSize + 'px') // Set initial font size
             .attr("dy", ".35em")                       // Vertically center the text
-            .attr("text-anchor", "middle");            // Horizontally center the text
+            .attr("text-anchor", "middle")            // Horizontally center the text
+            .style("visibility", showTypeNodes ? "hidden" : "visible");
         
         // Initialize the force simulation with visible nodes
         simulation = d3.forceSimulation(visibleNodes)
@@ -597,17 +607,20 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
         
-        // Append text element for labels
+        // Append text to each node
         nodeEnter.append("text")
-            .attr("dy", function(d) {
-                var hasLabelNode = !(d.is_dependency_name && !showLabelNodes);
-                return hasLabelNode ? "-.85em" : "0.35em";
-            })
-            .text(d => d.id)
-            .attr("font-size", initialFontSize + 'px')
-            .style("pointer-events", "auto") // Ensure text captures pointer events
-            .on("click", handleNodeClicked); // Attach click event to text
-    
+        .text(d => d.id)
+        .attr("font-size", initialFontSize + 'px') // Set initial font size
+        .attr("dy", ".35em")                       // Vertically center the text
+        .attr("text-anchor", "middle")            // Horizontally center the text
+        .style("visibility", d => {
+            // Hide labels for Type Nodes when showTypeNodes is true
+            if (showTypeNodes && typeColorMap.has(d.id)) {
+                return "hidden";
+            }
+            return "visible";
+        });
+
         // Merge newly created nodes with existing ones
         node = nodeEnter.merge(node);
     
