@@ -32,7 +32,7 @@ text, circle text {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 15px; 
+    gap: 20px; 
     width: 15vw;
     margin: 0 auto;
     padding: 3px;
@@ -44,14 +44,9 @@ text, circle text {
     padding-bottom: 3%;
 }
 
-.right-pane {
-    width: 18vw;
-    gap: 5px; 
-}
-
 .graph-container {
     height: 100vh; 
-    width: 68vw; 
+    width: 70vw; 
     background-color: var(--page-bg-clr);
 }
 

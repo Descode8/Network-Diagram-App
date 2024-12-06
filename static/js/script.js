@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let visibleNodes = [], visibleLinks = [], centralNodes = [], nodeWithMultiCI_Type = [];
     let graphFitted = false, isNodeClicked = false;
     let currentDepth = 2;
-    let graphLinkLength = 100;
+    let graphLinkLength = 50;
     let nodeSize = 5; 
     let activeNodeSize = 6.5; 
     let initialFontSize = 12; 
@@ -105,14 +105,25 @@ document.addEventListener("DOMContentLoaded", () => {
     /*****************************************************
      * INITIALIZING AND FETCHING GRAPH DATA ON PAGE LOAD *
      *****************************************************/
-    window.onload = function() {
+    window.onload = function () {
         fetchGraphData().then(() => {
-            // Set initial link distance
-            // Set activeNodeId to initial node
+            // Set activeNodeId to the initial node
             activeNodeId = graphData.nodes[0].id;
-            renderActiveNodeGraph(2, activeNodeId);  // Set initial depth to 2
+
+            // Render the graph with the initial depth
+            renderActiveNodeGraph(2, activeNodeId);
+
+            // Ensure the simulation runs with sufficient alpha for stabilization
+            simulation.alpha(1).restart(); // Increase alpha for initial load stabilization
+
+            // Use a timeout to let the graph settle before displaying
+            setTimeout(() => {
+                graphFitted = false; // Reset the graphFitted flag to ensure proper centering
+                fitGraphToContainer(); // Refit the graph to the container
+            }, 500); // Allow 500ms for forces to stabilize
         });
     };
+
     
     window.addEventListener('resize', () => {
         fitGraphToContainer();
@@ -382,12 +393,16 @@ document.addEventListener("DOMContentLoaded", () => {
     function renderActiveNodeGraph(depth = parseInt(onDepthSlider.value), nodeId = activeNodeId) {
         currentDepth = depth;
         activeNodeId = nodeId;
-        
+    
         visibleNodes = [];
         visibleLinks = [];
     
         var nodeObj = nodeById.get(nodeId);
-        expandNodeByDepth(nodeObj, depth);
+        expandNodeByDepth(nodeObj, depth); // Determine visibleNodes & visibleLinks using 'without_type' edges
+    
+        if (showTypeNodes) {
+            insertTypeNodesBetweenActiveAndDependencies();
+        }
     
         // Reset the graphFitted flag
         graphFitted = false;
@@ -403,7 +418,79 @@ document.addEventListener("DOMContentLoaded", () => {
         centerActiveNode();
         renderGraph();
         updateRightContainer();
-    }    
+    }
+    
+    function insertTypeNodesBetweenActiveAndDependencies() {
+        const activeNodeObj = nodeById.get(activeNodeId);
+        const newVisibleLinks = [];
+        const processedLinks = new Set();
+        const typeNodesAdded = new Set(); // To avoid adding the same type node multiple times
+    
+        // Loop through each visibleLink
+        visibleLinks.forEach(link => {
+            // Check if this link is a direct dependency from the activeNode to another node
+            const isActiveSource = (link.source.id === activeNodeId);
+            const isActiveTarget = (link.target.id === activeNodeId);
+            const isWithoutType = (link.edge_type === 'without_type');
+    
+            // If it's not connected directly to the active node or not a 'without_type' edge, keep as is
+            if (!isWithoutType || (!isActiveSource && !isActiveTarget)) {
+                if (!processedLinks.has(JSON.stringify(link))) {
+                    newVisibleLinks.push(link); // Keep original link
+                    processedLinks.add(JSON.stringify(link));
+                }
+                return;
+            }
+    
+            // Identify the dependency node (the one that's not active)
+            const dependencyNode = isActiveSource ? link.target : link.source;
+    
+            // Find or create the type node for this dependency
+            const dependencyType = dependencyNode.type;
+            let typeNodeObj = nodeById.get(dependencyType);
+    
+            // If no type node found in the original data (unlikely but check)
+            if (!typeNodeObj) {
+                // Create a pseudo type node if it doesn't exist in nodeById.
+                // This assumes type nodes are part of the dataset. If not, add logic to create a node object.
+                typeNodeObj = { id: dependencyType, type: dependencyType, description: "Type Node", is_dependency_name: false };
+                nodeById.set(dependencyType, typeNodeObj);
+            }
+    
+            // Add the type node to visibleNodes if not already present
+            if (!typeNodesAdded.has(typeNodeObj.id)) {
+                visibleNodes.push(typeNodeObj);
+                typeNodesAdded.add(typeNodeObj.id);
+            }
+    
+            // Create unique links and add them to newVisibleLinks
+            const activeToTypeLink = {
+                source: activeNodeObj,
+                target: typeNodeObj,
+                edge_type: 'with_type'
+            };
+    
+            const typeToDependencyLink = {
+                source: typeNodeObj,
+                target: dependencyNode,
+                edge_type: 'with_type'
+            };
+    
+            // Add unique links (check by stringifying for uniqueness)
+            if (!processedLinks.has(JSON.stringify(activeToTypeLink))) {
+                newVisibleLinks.push(activeToTypeLink);
+                processedLinks.add(JSON.stringify(activeToTypeLink));
+            }
+            if (!processedLinks.has(JSON.stringify(typeToDependencyLink))) {
+                newVisibleLinks.push(typeToDependencyLink);
+                processedLinks.add(JSON.stringify(typeToDependencyLink));
+            }
+        });
+    
+        // Update visibleLinks with the transformed set
+        visibleLinks = newVisibleLinks;
+    }
+
     
     // Center the active node by fixing it at the center
     function centerActiveNode() {
@@ -424,36 +511,26 @@ document.addEventListener("DOMContentLoaded", () => {
     * EXPAND ACTIVE NODE BY DEPTH *
     *******************************/
     function expandNodeByDepth(node, depth, currentDepth = 1) {
-        if (currentDepth > depth) return;  // Stop recursion when the target depth is reached
+        if (currentDepth > depth) return; // Stop recursion when the target depth is reached
     
         if (!visibleNodes.includes(node)) {
-            visibleNodes.push(node);  // Add the current node to the visible list
+            visibleNodes.push(node); // Add the current node to the visible list
         }
     
         // If the current depth is the maximum, stop expanding further
         if (currentDepth === depth) return;
     
-        // Find only the immediate children of the current node
+        // Always expand depth using 'without_type' edges only
         var childLinks = graphData.links.filter(link => {
-            // Filter links based on the switch state
-            if (showTypeNodes) {
-                // Include edges with 'with_type' edge_type
-                return (
-                    (link.source.id === node.id || link.target.id === node.id) &&
-                    link.edge_type === 'with_type'
-                );
-            } else {
-                // Include edges with 'without_type' edge_type
-                return (
-                    (link.source.id === node.id || link.target.id === node.id) &&
-                    link.edge_type === 'without_type'
-                );
-            }
+            return (
+                (link.source.id === node.id || link.target.id === node.id) &&
+                link.edge_type === 'without_type'
+            );
         });
     
         childLinks.forEach(link => {
             if (!visibleLinks.includes(link)) {
-                visibleLinks.push(link);  // Add the link to visible links
+                visibleLinks.push(link); // Add the link to visible links
     
                 // Get the connected node (either source or target of the link)
                 var childNode = link.source.id === node.id ? link.target : link.source;
@@ -465,6 +542,34 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+    
+    function addTypeNodesForDisplay() {
+        if (!showTypeNodes) return; // Only add type nodes if showTypeNodes is true
+    
+        // Find all 'with_type' links that connect currently visible nodes
+        // These links represent the type nodes that should be displayed in-between
+        var typeLinks = graphData.links.filter(link => {
+            return link.edge_type === 'with_type' &&
+                ((visibleNodes.includes(link.source) && visibleNodes.includes(link.target)) ||
+                (visibleNodes.includes(link.source) && typeColorMap.has(link.target.id)) ||
+                (visibleNodes.includes(link.target) && typeColorMap.has(link.source.id)));
+        });
+    
+        typeLinks.forEach(link => {
+            // Add link if it's not already visible
+            if (!visibleLinks.includes(link)) {
+                visibleLinks.push(link);
+            }
+    
+            // Add type node if not already visible
+            [link.source, link.target].forEach(n => {
+                if (!visibleNodes.includes(n) && typeColorMap.has(n.id)) {
+                    visibleNodes.push(n);
+                }
+            });
+        });
+    }
+    
 
     /****************************************************
     * SETTING UP FORCES BASED ON GRAPH LAYOUT (TREE) *
