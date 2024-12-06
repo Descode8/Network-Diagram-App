@@ -68,6 +68,15 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
                 ci_types.add(ci_type_pred)
         G.nodes[node]['is_multi_dependent'] = len(ci_types) > 1
 
+    # Identify indirect relationships for nodes like 'App 2'
+    indirect_relationships = {}
+    for node in G.nodes:
+        # Find nodes reachable within depth 2 but not directly connected
+        reachable_nodes = nx.single_source_shortest_path_length(G, node, cutoff=2)
+        indirect_nodes = [n for n, depth in reachable_nodes.items() if depth > 1]
+        if indirect_nodes:
+            indirect_relationships[node] = indirect_nodes
+
     # Convert graph to JSON-friendly format for frontend
     nodes = [
         {
@@ -76,6 +85,7 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
             'description': G.nodes[node]['description'],
             'is_multi_dependent': G.nodes[node]['is_multi_dependent'],
             'is_dependency_name': G.nodes[node].get('is_dependency_name', False),
+            'indirect_relationships': indirect_relationships.get(node, [])
         }
         for node in G.nodes
     ]
@@ -88,5 +98,6 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     return {
         'nodes': nodes, 
         'links': links, 
-        'center_nodes': list(center_nodes)
+        'center_nodes': list(center_nodes),
+        'indirect_relationships': indirect_relationships  # Include for convenience
     }
