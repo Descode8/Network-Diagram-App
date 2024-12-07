@@ -74,7 +74,6 @@ text, circle text {
     text-align: left;
     padding: 3px;
     margin: 0;
-    border-bottom: 1px solid var(--bdr-clr);
     font-size: .8rem;
 }
 
@@ -102,7 +101,6 @@ text, circle text {
 .right-pane .dependency-node {
     padding: 3px;
     margin: 0;
-    border-bottom: 1px solid var(--bdr-clr);
     font-size: 0.8rem;
     text-align: left;
 }
@@ -338,23 +336,24 @@ span {
 }
 
 .hover-box {
-    display: none; /* Hide the hover box by default */
+    display: none;
     position: absolute;
-    top: -50%; /* Position below the dependency-node */
-    left: 50%; /* Center horizontally */
+    top: -50%; 
+    left: 50%; 
     transform: translateX(-50%);
     background-color: var(--page-bg-clr);
-    border: 3px solid var(--bdr-clr);
+    border: 1px solid var(--bdr-clr);
     padding: 10px;
     border-radius: 5px;
     box-shadow: 0 4px 6px var(--pane-ttle-bg-clr);
     z-index: 100; 
     width: max-content;
     white-space: nowrap;
+    font-size: 0.8rem;
 }
 
 .dependency-node:hover + .hover-box {
-    display: block; /* Show the hover box when hovering over the dependency-node */
+    display: block; 
 }
 
 .switches-container {

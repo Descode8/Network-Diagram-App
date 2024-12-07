@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import networkx as nx
 
-def fetch_graph_data(excel_file='data/network_diagram_alt.xlsx'):
+def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     if not os.path.exists(excel_file):
         raise FileNotFoundError(f"{excel_file} not found.")
 
@@ -32,19 +32,10 @@ def fetch_graph_data(excel_file='data/network_diagram_alt.xlsx'):
         # Add ci_name node
         if not G.has_node(ci_name):
             G.add_node(ci_name, type=ci_type, description=ci_description, is_dependency_name=False)
-        else:
-            # Update description if necessary
-            if not G.nodes[ci_name].get('description'):
-                G.nodes[ci_name]['description'] = ci_description
 
         # Add dependency_name node
         if not G.has_node(dependency_name):
             G.add_node(dependency_name, type=dependency_type, description=dependency_description, is_dependency_name=True)
-        else:
-            if not G.nodes[dependency_name].get('description'):
-                G.nodes[dependency_name]['description'] = dependency_description
-            G.nodes[dependency_name]['type'] = dependency_type
-            G.nodes[dependency_name]['is_dependency_name'] = True
 
         # Add dependency_type node (Type Node)
         if not G.has_node(dependency_type):
@@ -68,14 +59,20 @@ def fetch_graph_data(excel_file='data/network_diagram_alt.xlsx'):
                 ci_types.add(ci_type_pred)
         G.nodes[node]['is_multi_dependent'] = len(ci_types) > 1
 
-    # Identify indirect relationships for nodes like 'App 2'
-    indirect_relationships = {}
+    # Identify special relationships for "App 2"
+    indirect_relationshps = {}
     for node in G.nodes:
-        # Find nodes reachable within depth 2 but not directly connected
-        reachable_nodes = nx.single_source_shortest_path_length(G, node, cutoff=2)
-        indirect_nodes = [n for n, depth in reachable_nodes.items() if depth > 1]
-        if indirect_nodes:
-            indirect_relationships[node] = indirect_nodes
+        if G.nodes[node].get('is_dependency_name', False):
+            successors = list(G.successors(node))
+            dependent_on_other_dependencies = [
+                succ for succ in successors if G.nodes[succ].get('is_dependency_name', False)
+            ]
+            if dependent_on_other_dependencies:
+                indirect_relationshps[node] = dependent_on_other_dependencies
+
+    # Add indirect_relationshps attribute to nodes
+    for node, dependencies in indirect_relationshps.items():
+        G.nodes[node]['indirect_relationshps'] = dependencies
 
     # Convert graph to JSON-friendly format for frontend
     nodes = [
@@ -85,7 +82,7 @@ def fetch_graph_data(excel_file='data/network_diagram_alt.xlsx'):
             'description': G.nodes[node]['description'],
             'is_multi_dependent': G.nodes[node]['is_multi_dependent'],
             'is_dependency_name': G.nodes[node].get('is_dependency_name', False),
-            'indirect_relationships': indirect_relationships.get(node, [])
+            'indirect_relationshps': G.nodes[node].get('indirect_relationshps', [])
         }
         for node in G.nodes
     ]
@@ -99,5 +96,5 @@ def fetch_graph_data(excel_file='data/network_diagram_alt.xlsx'):
         'nodes': nodes, 
         'links': links, 
         'center_nodes': list(center_nodes),
-        'indirect_relationships': indirect_relationships  # Include for convenience
+        'indirect_relationshps': indirect_relationshps  # Include for toggling relationships
     }

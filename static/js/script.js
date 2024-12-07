@@ -11,6 +11,8 @@ document.addEventListener("DOMContentLoaded", () => {
     var dataNodeClr = rootStyles.getPropertyValue('--data-nde-clr').trim();
     var procureNodeClr = rootStyles.getPropertyValue('--procure-nde-clr').trim();
     var fcltyNodeClr = rootStyles.getPropertyValue('--fclty-nde-clr').trim();
+    var sverNodeClr = rootStyles.getPropertyValue('--sver-nde-clr').trim();
+
     var textClr = rootStyles.getPropertyValue('--text-clr').trim();
     var linkClr = rootStyles.getPropertyValue('--link-clr').trim();
 
@@ -21,7 +23,8 @@ document.addEventListener("DOMContentLoaded", () => {
         ['Technology', techNodeClr],  
         ['Data', dataNodeClr], 
         ['Procurements', procureNodeClr],
-        ['Facilities', fcltyNodeClr] 
+        ['Facilities', fcltyNodeClr],
+        ['Server', sverNodeClr],
     ]);
 
     let activeNodeId, simulation, graphData, nodeById, node, link;
@@ -120,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 graphFitted = false; // Reset the graphFitted flag to ensure proper centering
                 fitGraphToContainer(); // Refit the graph to the container
-            }, 500); // Allow 500ms for forces to stabilize
+            }, 100); // Allow 100ms for forces to stabilize
         });
     };
 
@@ -408,7 +411,7 @@ document.addEventListener("DOMContentLoaded", () => {
         graphFitted = false;
     
         // Update force settings based on the depth value
-        if (depth > 2) {
+        if (depth > 3) {
             setTreeForces();
         } else {
             setGraphForces();
@@ -617,7 +620,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     
-        if (currentDepth > 2) {
+        if (currentDepth > 3) {
             // Apply custom repulsion on each tick and then update the graph
             simulation.on("tick", () => {
                 applyCentralRepulsion();
@@ -780,7 +783,7 @@ document.addEventListener("DOMContentLoaded", () => {
         simulation.force("y", null);
         
         // Apply the appropriate clustering force based on depth
-        if (currentDepth > 2) {
+        if (currentDepth > 3) {
             simulation.force("cluster", treeClusteringForce());
         } else {
             simulation.force("cluster", graphClusteringForce());
@@ -1001,7 +1004,6 @@ document.addEventListener("DOMContentLoaded", () => {
             .attr("class", "dependency-node")
             .html(`<strong>${node.id}</strong>`)
             .style("cursor", "pointer")
-            .style("border-bottom", `2px solid ${typeColorMap.get(node.type) || '#000'}`)
             .on("click", (event) => handleNodeClicked(event, node));
     
         // Append the hover box
@@ -1028,7 +1030,7 @@ document.addEventListener("DOMContentLoaded", () => {
         expandNodeByDepth(d, depth);
     
         // Apply the appropriate clustering force
-        if (currentDepth > 2) {
+        if (currentDepth > 3) {
             simulation.force("cluster", treeClusteringForce());
         } else {
             simulation.force("cluster", graphClusteringForce());
