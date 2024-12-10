@@ -42,12 +42,10 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
             G.add_node(dependency_type, type=dependency_type, description='No description available', is_dependency_name=False)
 
         # Add edges
-        G.add_edge(ci_name, dependency_type, edge_type='with_type')
-        G.add_edge(dependency_type, dependency_name, edge_type='with_type')
         G.add_edge(ci_name, dependency_name, edge_type='without_type')
 
     # Identify center nodes
-    center_nodes = set(df[df['CI_Type'] == 'Organization']['CI_Name'])
+    root_node = set(df[df['CI_Type'] == 'Organization']['CI_Name'])
 
     # Identify nodes that are depended on by more than one CI_Type
     for node in G.nodes:
@@ -80,9 +78,6 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
             'id': node,
             'type': G.nodes[node]['type'],
             'description': G.nodes[node]['description'],
-            'is_multi_dependent': G.nodes[node]['is_multi_dependent'],
-            'is_dependency_name': G.nodes[node].get('is_dependency_name', False),
-            'indirect_relationshps': G.nodes[node].get('indirect_relationshps', [])
         }
         for node in G.nodes
     ]
@@ -91,10 +86,13 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         {'source': source, 'target': target, 'edge_type': data['edge_type']}
         for source, target, data in G.edges(data=True)
     ]
+    
+    print()
 
     return {
-        'nodes': nodes, 
-        'links': links, 
-        'center_nodes': list(center_nodes),
-        'indirect_relationshps': indirect_relationshps  # Include for toggling relationships
+        'nodes': nodes,
+        'links': links,
+        'root_node': list(root_node),
+        'indirect_relationshps': indirect_relationshps
     }
+

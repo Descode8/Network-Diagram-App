@@ -27,8 +27,8 @@ document.addEventListener("DOMContentLoaded", () => {
         ['Server', sverNodeClr],
     ]);
 
-    let activeNodeId, simulation, graphData, nodeById, node, link;
-    let visibleNodes = [], visibleLinks = [], centralNodes = [], nodeWithMultiCI_Type = [];
+    let rootNode, activeNodeId, simulation, graphData, nodeById, node, link;
+    let visibleNodes = [], visibleLinks = []; //, nodeWithMultiCI_Type = []; //centralNodes = [], 
     let graphFitted = false, isNodeClicked = false;
     let currentDepth = 2;
     let graphLinkLength = 50;
@@ -111,7 +111,8 @@ document.addEventListener("DOMContentLoaded", () => {
     window.onload = function () {
         fetchGraphData().then(() => {
             // Set activeNodeId to the initial node
-            activeNodeId = graphData.nodes[0].id;
+            rootNode = activeNodeId = graphData.nodes[0].id;
+            console.log("Root Node:", rootNode);
 
             // Render the graph with the initial depth
             renderActiveNodeGraph(2, activeNodeId);
@@ -126,7 +127,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }, 100); // Allow 100ms for forces to stabilize
         });
     };
-
     
     window.addEventListener('resize', () => {
         fitGraphToContainer();
@@ -242,6 +242,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 localStorage.setItem('lastFetchedTime', Date.now());
                 console.log("Graph data fetched and stored successfully:", graphData);
 
+
                 // Listen for input events to trigger suggestions
                 onSearchInput.addEventListener("input", () => {
                     const searchTerm = onSearchInput.value.toLowerCase();
@@ -283,14 +284,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
             // Process graph data
-            centralNodes = graphData.center_nodes;
-            console.log("Central Nodes:", centralNodes);
-            graphData.nodes.forEach(node => {
-                if (node.is_multi_dependent === true) {
-                    nodeWithMultiCI_Type.push(node.id);
-                }
-            });
-            console.log("Nodes with multiple CI types:", nodeWithMultiCI_Type);
+            // centralNodes = graphData.center_nodes;
+            // console.log("Central Nodes:", centralNodes);
+            // graphData.nodes.forEach(node => {
+            //     if (node.is_multi_dependent === true) {
+            //         nodeWithMultiCI_Type.push(node.id);
+            //     }
+            // });
+            // console.log("Nodes with multiple CI types:", nodeWithMultiCI_Type);
         
             assignColors(graphData);
             initializeGraph(graphData);
@@ -411,8 +412,8 @@ document.addEventListener("DOMContentLoaded", () => {
         graphFitted = false;
     
         // Update force settings based on the depth value
-        //setTreeForces();
-        setGraphForces();
+        setTreeForces();
+        //setGraphForces();
     
         // Center the active node
         centerActiveNode();
@@ -444,6 +445,15 @@ document.addEventListener("DOMContentLoaded", () => {
     
             // Identify the dependency node (the one that's not active)
             const dependencyNode = isActiveSource ? link.target : link.source;
+    
+            // Skip adding a type node if the dependencyNode or activeNode is the rootNode
+            if (dependencyNode.id === rootNode.id || activeNodeObj.id === rootNode.id) {
+                if (!processedLinks.has(JSON.stringify(link))) {
+                    newVisibleLinks.push(link); // Keep original link
+                    processedLinks.add(JSON.stringify(link));
+                }
+                return;
+            }
     
             // Find or create the type node for this dependency
             const dependencyType = dependencyNode.type;
@@ -490,7 +500,6 @@ document.addEventListener("DOMContentLoaded", () => {
         // Update visibleLinks with the transformed set
         visibleLinks = newVisibleLinks;
     }
-
     
     // Center the active node by fixing it at the center
     function centerActiveNode() {
@@ -586,16 +595,16 @@ document.addEventListener("DOMContentLoaded", () => {
         // Custom repulsion force for central nodes
         function applyCentralRepulsion() {
             // Only apply repulsion if the active node is a central node
-            if (!centralNodes.includes(activeNodeId)) return;
+            // if (!centralNodes.includes(activeNodeId)) return;
     
             visibleNodes.forEach((nodeA, i) => {
                 // Skip if nodeA is not a central node or is in nodeWithMultiCI_Type
-                if (!centralNodes.includes(nodeA.id) || nodeWithMultiCI_Type.includes(nodeA.id)) return;
+                // if (!centralNodes.includes(nodeA.id) || nodeWithMultiCI_Type.includes(nodeA.id)) return;
     
                 // Compare with subsequent nodes to avoid duplicate calculations
                 visibleNodes.slice(i + 1).forEach(nodeB => {
                     // Skip if nodeB is not a central node or is in nodeWithMultiCI_Type
-                    if (!centralNodes.includes(nodeB.id) || nodeWithMultiCI_Type.includes(nodeB.id)) return;
+                    // if (!centralNodes.includes(nodeB.id) || nodeWithMultiCI_Type.includes(nodeB.id)) return;
     
                     const dx = nodeB.x - nodeA.x;
                     const dy = nodeB.y - nodeA.y;
@@ -675,6 +684,7 @@ document.addEventListener("DOMContentLoaded", () => {
     * UPDATE THE GRAPH AFTER NODE CHANGES *
     ***************************************/
     function renderGraph() {
+        // console.log("Root Node:", rootNode);
         // Update links
         link = graph.select(".links")
             .selectAll("line")
@@ -823,14 +833,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return function(alpha) {
             visibleNodes.forEach(function(d) {
                 // Include 'nodeWithMultiCI_Type' nodes when depth < 3 or if the node is the active node
-                if ((currentDepth < 3 || d.id === activeNodeId) || !nodeWithMultiCI_Type) {
+                // if ((currentDepth < 3 || d.id === activeNodeId)) {
                     var cluster = clusterCenters[d.type];
                     if (cluster) {
                         var clusterStrength = .1;
                         d.vx -= clusterStrength * (d.x - cluster.x) * alpha;
                         d.vy -= clusterStrength * (d.y - cluster.y) * alpha;
                     }
-                }
+                // }
             });
         };
     }
@@ -873,14 +883,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 // to allow nodes to cluster more closely together.
                 simulation
                     .force("collide", d3.forceCollide()
-                    .radius(d => nodeWithMultiCI_Type.includes(d.id) ? 60 : 60) // Smaller radius for multi-CI nodes
+                    // .radius(60) // Smaller radius for multi-CI nodes
                     .strength(1) // Weaker collision force to allow tighter clustering
                 );
         
                 // Skip nodes that are in nodeWithMultiCI_Type
-                if (nodeWithMultiCI_Type.includes(d.id) && centralNodes.includes(activeNodeId)) {
-                    return; // Exit early for nodes with multiple CI types, exempting them from clustering forces
-                }
+                // if (nodeWithMultiCI_Type.includes(d.id) && centralNodes.includes(activeNodeId)) {
+                //     return; // Exit early for nodes with multiple CI types, exempting them from clustering forces
+                // }
         
                 // Skip the active (central) node from being affected by clustering forces
                 if (d.id === activeNodeId) {
@@ -1016,30 +1026,13 @@ document.addEventListener("DOMContentLoaded", () => {
         isNodeClicked = true;
         if (d.id === activeNodeId) return;  // Do nothing if the clicked node is already active
     
-        activeNodeId = d.id;  // Update active node ID
+        activeNodeId = d.id;  // Update the active node ID
         console.log("Active Node ID:", activeNodeId);
     
-        var depth = parseInt(onDepthSlider.value);  // Get current depth from slider
-        visibleNodes = [];  // Clear visible nodes
-        visibleLinks = [];  // Clear visible links
-    
-        // Expand nodes based on new active node and depth
-        expandNodeByDepth(d, depth);
-    
-        if(showTypeNodes) {
-            insertTypeNodesBetweenActiveAndDependencies();
-        }
-        // Apply the appropriate clustering force
-        // if (currentDepth > 3) {
-        //     simulation.force("cluster", treeClusteringForce());
-        // } else {
-            simulation.force("cluster", graphClusteringForce());
-        // }
-    
-        // Center the active node
-        updateNodePositions();
-        renderGraph();
-        updateRightContainer();  // Update info pane
+        // Use the current slider depth to render the graph 
+        // so that if depth == 2, the surrounding nodes are displayed.
+        var depth = parseInt(onDepthSlider.value);
+        renderActiveNodeGraph(depth, activeNodeId);
     }
 
     /*************************
