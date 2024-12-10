@@ -149,9 +149,9 @@ document.addEventListener("DOMContentLoaded", () => {
     onDepthSlider.addEventListener('input', () => {
         var depth = parseInt(onDepthSlider.value);
     
-        if (depth < 2) {
-            setGraphForces();
-        }
+        // if (depth < 2) {
+        //     setGraphForces();
+        // }
     
         depthValueLabel.textContent = depth;
         renderActiveNodeGraph(depth, activeNodeId);
@@ -411,11 +411,8 @@ document.addEventListener("DOMContentLoaded", () => {
         graphFitted = false;
     
         // Update force settings based on the depth value
-        if (depth > 3) {
-            setTreeForces();
-        } else {
-            setGraphForces();
-        }
+        //setTreeForces();
+        setGraphForces();
     
         // Center the active node
         centerActiveNode();
@@ -620,16 +617,16 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     
-        if (currentDepth > 3) {
-            // Apply custom repulsion on each tick and then update the graph
-            simulation.on("tick", () => {
-                applyCentralRepulsion();
-                ticked();
-            });
-        } else {
+        // if (currentDepth > 3) {
+        //     // Apply custom repulsion on each tick and then update the graph
+        //     simulation.on("tick", () => {
+        //         applyCentralRepulsion();
+        //         ticked();
+        //     });
+        // } else {
             // Use the default graph forces for depths <= 2
             setGraphForces();
-        }
+        // }
     
         // Apply the tree clustering force
         simulation.force("cluster", treeClusteringForce());
@@ -1029,12 +1026,15 @@ document.addEventListener("DOMContentLoaded", () => {
         // Expand nodes based on new active node and depth
         expandNodeByDepth(d, depth);
     
-        // Apply the appropriate clustering force
-        if (currentDepth > 3) {
-            simulation.force("cluster", treeClusteringForce());
-        } else {
-            simulation.force("cluster", graphClusteringForce());
+        if(showTypeNodes) {
+            insertTypeNodesBetweenActiveAndDependencies();
         }
+        // Apply the appropriate clustering force
+        // if (currentDepth > 3) {
+        //     simulation.force("cluster", treeClusteringForce());
+        // } else {
+            simulation.force("cluster", graphClusteringForce());
+        // }
     
         // Center the active node
         updateNodePositions();

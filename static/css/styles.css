@@ -38,6 +38,10 @@ text, circle text {
     padding: 3px;
 }
 
+.right-pane {
+    gap: 0px;
+}
+
 .settings {
     background-color: var(--pane-bg-clr);
     padding-left: 5%;
@@ -336,10 +340,11 @@ span {
 }
 
 .hover-box {
-    display: none;
+    opacity: 0;
+    visibility: hidden;
     position: absolute;
-    top: -50%; 
-    left: 50%; 
+    bottom: 100%; /* Position above the dependency node */
+    left: 50%;
     transform: translateX(-50%);
     background-color: var(--page-bg-clr);
     border: 1px solid var(--bdr-clr);
@@ -350,6 +355,14 @@ span {
     width: max-content;
     white-space: nowrap;
     font-size: 0.8rem;
+    pointer-events: none; /* Prevent interaction issues */
+    transition: opacity 0.3s ease, visibility 0.3s ease; /* Smooth transition */
+}
+
+.dependency-node-container:hover .hover-box {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto; /* Enable interaction when visible */
 }
 
 .dependency-node:hover + .hover-box {
