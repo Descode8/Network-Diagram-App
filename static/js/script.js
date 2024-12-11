@@ -799,7 +799,6 @@ document.addEventListener("DOMContentLoaded", () => {
         // Restart simulation to apply changes
         simulation.alpha(0.3).restart();
     }    
-    
 
     /*****************************************************************************************
     * CLUSTERING FORCE GRAPH TTHAT WILL GROUP NODES BASED ON TYPES AROUND THEIR CENTRAL NODE *

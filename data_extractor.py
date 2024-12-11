@@ -78,6 +78,7 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
             'id': node,
             'type': G.nodes[node]['type'],
             'description': G.nodes[node]['description'],
+            'is_dependency_name': G.nodes[node].get('is_dependency_name', False)  # Include this line
         }
         for node in G.nodes
     ]
