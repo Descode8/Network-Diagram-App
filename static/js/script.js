@@ -1023,16 +1023,58 @@ document.addEventListener("DOMContentLoaded", () => {
     ********************************************************/
     function handleNodeClicked(event, d) {
         isNodeClicked = true;
-        if (d.id === activeNodeId) return;  // Do nothing if the clicked node is already active
     
-        activeNodeId = d.id;  // Update the active node ID
-        console.log("Active Node ID:", activeNodeId);
+        // If the clicked node is the active node, do nothing
+        if (d.id === activeNodeId) return;
     
-        // Use the current slider depth to render the graph 
-        // so that if depth == 2, the surrounding nodes are displayed.
-        var depth = parseInt(onDepthSlider.value);
-        renderActiveNodeGraph(depth, activeNodeId);
-    }
+        // Check if this is a type node (where node.id === node.type)
+        const isTypeNode = (d.id === d.type);
+    
+        if (isTypeNode && d.type_relations && d.type_relations.length > 0) {
+            // If it's a type node, show only this type node and its related nodes
+    
+            activeNodeId = d.id; // Set this node as active
+            visibleNodes = [d];
+            visibleLinks = [];
+    
+            // Add each related node and a 'with_type' link to it from the type node
+            d.type_relations.forEach(relId => {
+                const relatedNode = nodeById.get(relId);
+                if (relatedNode) {
+                    visibleNodes.push(relatedNode);
+    
+                    // Create a 'with_type' link from the type node to the related node
+                    visibleLinks.push({
+                        source: d,
+                        target: relatedNode,
+                        edge_type: 'with_type'
+                    });
+                }
+            });
+    
+            // Center the type node
+            centerX = svg.node().getBoundingClientRect().width / 2;
+            centerY = svg.node().getBoundingClientRect().height / 2;
+            visibleNodes.forEach(n => {
+                if (n.id === activeNodeId) {
+                    n.fx = centerX;
+                    n.fy = centerY;
+                } else {
+                    n.fx = null;
+                    n.fy = null;
+                }
+            });
+    
+            // Re-render with this new subset of nodes
+            renderGraph();
+            updateRightContainer();
+        } else {
+            // If it's not a type node, use the existing logic
+            activeNodeId = d.id;
+            var depth = parseInt(onDepthSlider.value);
+            renderActiveNodeGraph(depth, activeNodeId);
+        }
+    } 
 
     /*************************
     * FUNCTIONS FOR CONTROLS *

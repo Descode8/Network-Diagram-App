@@ -57,7 +57,7 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
                 ci_types.add(ci_type_pred)
         G.nodes[node]['is_multi_dependent'] = len(ci_types) > 1
 
-    # Identify special relationships for "App 2"
+    # Identify special indirect relationships
     indirect_relationshps = {}
     for node in G.nodes:
         if G.nodes[node].get('is_dependency_name', False):
@@ -72,13 +72,29 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     for node, dependencies in indirect_relationshps.items():
         G.nodes[node]['indirect_relationshps'] = dependencies
 
+    # Group nodes by their type for creating type relations
+    nodes_by_type = {}
+    for n in G.nodes:
+        nt = G.nodes[n]['type']
+        nodes_by_type.setdefault(nt, []).append(n)
+
+    # For each type node (where node id == node type), store the related nodes
+    for n in G.nodes:
+        node_type = G.nodes[n]['type']
+        # Check if this node is a "type node" itself (id == type)
+        if n == node_type:
+            # Related nodes are all nodes of the same type except itself
+            related_nodes = [x for x in nodes_by_type.get(node_type, []) if x != n]
+            G.nodes[n]['type_relations'] = related_nodes
+
     # Convert graph to JSON-friendly format for frontend
     nodes = [
         {
             'id': node,
             'type': G.nodes[node]['type'],
             'description': G.nodes[node]['description'],
-            'is_dependency_name': G.nodes[node].get('is_dependency_name', False)  # Include this line
+            'is_dependency_name': G.nodes[node].get('is_dependency_name', False),
+            'type_relations': G.nodes[node].get('type_relations', [])
         }
         for node in G.nodes
     ]
@@ -87,8 +103,6 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         {'source': source, 'target': target, 'edge_type': data['edge_type']}
         for source, target, data in G.edges(data=True)
     ]
-    
-    print()
 
     return {
         'nodes': nodes,
@@ -96,4 +110,3 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         'root_node': list(root_node),
         'indirect_relationshps': indirect_relationshps
     }
-
