@@ -31,8 +31,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let visibleNodes = [], visibleLinks = []; //, nodeWithMultiCI_Type = []; //centralNodes = [], 
     let graphFitted = false, isNodeClicked = false;
     let currentDepth = 2;
-    let graphLinkLength = 50;
+    let graphLinkLength = 1;
     let nodeSize = 5; 
+    let clusterSpaceRadiusLength = 75;
     let activeNodeSize = 6.5; 
     let initialFontSize = 12; 
     let currentZoomScale = 1;
@@ -148,10 +149,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Add event listener for the depth slider
     onDepthSlider.addEventListener('input', () => {
         var depth = parseInt(onDepthSlider.value);
-    
-        // if (depth < 2) {
-        //     setGraphForces();
-        // }
     
         depthValueLabel.textContent = depth;
         renderActiveNodeGraph(depth, activeNodeId);
@@ -401,7 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
         visibleNodes = [];
         visibleLinks = [];
     
-        var nodeObj = nodeById.get(nodeId);
+        const nodeObj = nodeById.get(nodeId);
         expandNodeByDepth(nodeObj, depth); // Determine visibleNodes & visibleLinks using 'without_type' edges
     
         if (showTypeNodes) {
@@ -411,14 +408,43 @@ document.addEventListener("DOMContentLoaded", () => {
         // Reset the graphFitted flag
         graphFitted = false;
     
-        // Update force settings based on the depth value
-        setTreeForces();
-        //setGraphForces();
+        // Always apply radial layout forces
+        // applyRadialLayoutForces();
+        applyForces();
     
         // Center the active node
         centerActiveNode();
         renderGraph();
         updateRightContainer();
+    }
+
+    function applyForces() {
+        const radius = 200; // Radius for radial layout
+    
+        // Decide which clustering force to use based on currentDepth
+        // For example:
+        let clusterForce;
+        if (currentDepth === 2 && !showTypeNodes) {
+            clusterForce = graphClusteringForce();
+        } else {
+            clusterForce = treeClusteringForce();
+        }
+    
+        simulation
+            .nodes(visibleNodes)
+            .force("link", d3.forceLink(visibleLinks)
+                .id(d => d.id)
+                .distance(graphLinkLength) // Your variable controlling link length
+                .strength(1))
+            .force("charge", d3.forceManyBody()
+                .strength(-100))           // Adjust charge strength as needed
+            .force("collide", d3.forceCollide()
+                .radius(nodeSize * 3)
+                .strength(0.7))
+            .force("radial", d3.forceRadial(d => d.id === activeNodeId ? 0 : radius, centerX, centerY))
+            .force("cluster", clusterForce)  // Apply the chosen clustering force
+            .alpha(0.3)
+            .restart();
     }
     
     function insertTypeNodesBetweenActiveAndDependencies() {
@@ -579,89 +605,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
     
-
-    /****************************************************
-    * SETTING UP FORCES BASED ON GRAPH LAYOUT (TREE) *
-    ****************************************************/
-    function setTreeForces() {
-        // Clear existing 'tick' event handlers
-        simulation.on("tick", null);
-    
-        // Remove the 'charge' force as it's no longer needed
-        simulation.force("charge", null);
-    
-        const minDistance = 200; // Minimum desired distance between central nodes
-    
-        // Custom repulsion force for central nodes
-        function applyCentralRepulsion() {
-            // Only apply repulsion if the active node is a central node
-            // if (!centralNodes.includes(activeNodeId)) return;
-    
-            visibleNodes.forEach((nodeA, i) => {
-                // Skip if nodeA is not a central node or is in nodeWithMultiCI_Type
-                // if (!centralNodes.includes(nodeA.id) || nodeWithMultiCI_Type.includes(nodeA.id)) return;
-    
-                // Compare with subsequent nodes to avoid duplicate calculations
-                visibleNodes.slice(i + 1).forEach(nodeB => {
-                    // Skip if nodeB is not a central node or is in nodeWithMultiCI_Type
-                    // if (!centralNodes.includes(nodeB.id) || nodeWithMultiCI_Type.includes(nodeB.id)) return;
-    
-                    const dx = nodeB.x - nodeA.x;
-                    const dy = nodeB.y - nodeA.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-                    // Only apply repulsion if nodes are closer than minDistance
-                    if (distance < minDistance && distance > 0) { // Added distance > 0 to avoid division by zero
-                        const repulsionStrength = (minDistance - distance) / distance;
-                        const fx = dx * repulsionStrength;
-                        const fy = dy * repulsionStrength;
-    
-                        // Adjust velocities to push nodes apart
-                        nodeA.vx -= fx;
-                        nodeA.vy -= fy;
-                        nodeB.vx += fx;
-                        nodeB.vy += fy;
-                    }
-                });
-            });
-        }
-    
-        // if (currentDepth > 3) {
-        //     // Apply custom repulsion on each tick and then update the graph
-        //     simulation.on("tick", () => {
-        //         applyCentralRepulsion();
-        //         ticked();
-        //     });
-        // } else {
-            // Use the default graph forces for depths <= 2
-            setGraphForces();
-        // }
-    
-        // Apply the tree clustering force
-        simulation.force("cluster", treeClusteringForce());
-    }    
-    
-    /***************************************************
-     * SETTING UP FORCES BASED ON GRAPH LAYOUT (GRAPH) *
-     * *************************************************/
-    function setGraphForces() {
-        simulation.on("tick", ticked); // Update positions and redraw the graph elements
-        
-        simulation
-        .force("link", d3.forceLink(visibleLinks)
-            .id(d => d.id)
-            .distance(graphLinkLength)
-            .strength(1))
-
-            .force("charge", d3.forceManyBody()
-                .strength(d => d.id === activeNodeId ? -50 : -50) // Stronger repulsion for the active node
-            )
-            .force("center", d3.forceCenter(centerX, centerY))
-            .force("collide", d3.forceCollide() // Prevent node overlap
-                .radius(25) // Minimum distance between nodes
-                .strength(1)); // Increase strength for stronger collision enforcement
-    }
-
     /*********************************************
     * UPDATE NODE POSITIONS BASED ON ACTIVE NODE *
     **********************************************/
@@ -778,11 +721,11 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Update force simulation
         simulation.nodes(visibleNodes);
-        simulation.force("link", d3.forceLink(visibleLinks)
-            .id(d => d.id)
-            .distance(graphLinkLength)
-            .strength(1)
-        );
+        // simulation.force("link", d3.forceLink(visibleLinks)
+        //     .id(d => d.id)
+        //     .distance(graphLinkLength)
+        //     .strength(1)
+        // );
         simulation.force("center", null);
         
         // Remove positional forces
@@ -790,11 +733,11 @@ document.addEventListener("DOMContentLoaded", () => {
         simulation.force("y", null);
         
         // Apply the appropriate clustering force based on depth
-        if (currentDepth > 3) {
-            simulation.force("cluster", treeClusteringForce());
-        } else {
-            simulation.force("cluster", graphClusteringForce());
-        }
+        // if (currentDepth > 1) {
+        //    simulation.force("cluster", treeClusteringForce());
+        // } else {
+        //    simulation.force("cluster", graphClusteringForce());
+        // }
         
         // Restart simulation to apply changes
         simulation.alpha(0.3).restart();
@@ -882,7 +825,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // to allow nodes to cluster more closely together.
                 simulation
                     .force("collide", d3.forceCollide()
-                    // .radius(60) // Smaller radius for multi-CI nodes
+                    .radius(clusterSpaceRadiusLength) // Smaller radius for multi-CI nodes
                     .strength(1) // Weaker collision force to allow tighter clustering
                 );
         
@@ -1023,9 +966,9 @@ document.addEventListener("DOMContentLoaded", () => {
     ********************************************************/
     function handleNodeClicked(event, d) {
         isNodeClicked = true;
+        if (d.id === activeNodeId) return; // Do nothing if the clicked node is already active
     
-        // If the clicked node is the active node, do nothing
-        if (d.id === activeNodeId) return;
+        activeNodeId = d.id; // Set this node as active
     
         // Check if this is a type node (where node.id === node.type)
         const isTypeNode = (d.id === d.type);
@@ -1033,17 +976,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isTypeNode && d.type_relations && d.type_relations.length > 0) {
             // If it's a type node, show only this type node and its related nodes
     
-            activeNodeId = d.id; // Set this node as active
-            visibleNodes = [d];
+            visibleNodes = [d];     // Add only the type node itself
             visibleLinks = [];
     
-            // Add each related node and a 'with_type' link to it from the type node
+            // Add each related node and a link from the type node to it
             d.type_relations.forEach(relId => {
                 const relatedNode = nodeById.get(relId);
                 if (relatedNode) {
                     visibleNodes.push(relatedNode);
     
-                    // Create a 'with_type' link from the type node to the related node
+                    // Create a link from the type node to the related node
                     visibleLinks.push({
                         source: d,
                         target: relatedNode,
@@ -1065,16 +1007,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
     
-            // Re-render with this new subset of nodes
+            // Apply the forces and re-render
+            applyForces();   // Apply radial layout and keep nodes close
             renderGraph();
             updateRightContainer();
+    
         } else {
-            // If it's not a type node, use the existing logic
-            activeNodeId = d.id;
-            var depth = parseInt(onDepthSlider.value);
+            // If it's not a type node, fall back to the depth-based rendering
+            const depth = parseInt(onDepthSlider.value);
             renderActiveNodeGraph(depth, activeNodeId);
         }
-    } 
+    }
+    
 
     /*************************
     * FUNCTIONS FOR CONTROLS *
