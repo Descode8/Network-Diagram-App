@@ -58,7 +58,7 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         G.nodes[node]['is_multi_dependent'] = len(ci_types) > 1
 
     # Identify special indirect relationships
-    indirect_relationshps = {}
+    indirect_relationships = {}
     for node in G.nodes:
         if G.nodes[node].get('is_dependency_name', False):
             successors = list(G.successors(node))
@@ -66,11 +66,11 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
                 succ for succ in successors if G.nodes[succ].get('is_dependency_name', False)
             ]
             if dependent_on_other_dependencies:
-                indirect_relationshps[node] = dependent_on_other_dependencies
+                indirect_relationships[node] = dependent_on_other_dependencies
 
-    # Add indirect_relationshps attribute to nodes
-    for node, dependencies in indirect_relationshps.items():
-        G.nodes[node]['indirect_relationshps'] = dependencies
+    # Add indirect_relationships attribute to nodes
+    for node, dependencies in indirect_relationships.items():
+        G.nodes[node]['indirect_relationships'] = dependencies
 
     # Group nodes by their type for creating type relations
     nodes_by_type = {}
@@ -103,10 +103,15 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         {'source': source, 'target': target, 'edge_type': data['edge_type']}
         for source, target, data in G.edges(data=True)
     ]
+    
+    print(f"nodes", nodes, "\n")
+    print(f"links", links, "\n")
+    print(f"root_node", root_node, "\n")
+    print(f"indirect_relationships", indirect_relationships, "\n")
 
     return {
         'nodes': nodes,
         'links': links,
         'root_node': list(root_node),
-        'indirect_relationshps': indirect_relationshps
+        'indirect_relationships': indirect_relationships
     }

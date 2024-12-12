@@ -23,8 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ['Technology', techNodeClr],  
         ['Data', dataNodeClr], 
         ['Procurements', procureNodeClr],
-        ['Facilities', fcltyNodeClr],
-        ['Server', sverNodeClr],
+        ['Facilities', fcltyNodeClr]
     ]);
 
     let rootNode, activeNodeId, simulation, graphData, nodeById, node, link;
@@ -419,10 +418,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function applyForces() {
+        console.log("Indirect Relationships", graphData.indirect_relationships);
         const radius = 200; // Radius for radial layout
     
         // Decide which clustering force to use based on currentDepth
-        // For example:
         let clusterForce;
         if (currentDepth === 2 && !showTypeNodes) {
             clusterForce = graphClusteringForce();
