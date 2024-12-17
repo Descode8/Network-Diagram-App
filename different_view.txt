@@ -1,0 +1,88 @@
+fetch('/data')
+  .then(response => response.json())
+  .then(data => {
+    console.log("Loaded data:", data); // Check data in browser console
+
+    const width = 800;
+    const height = 600;
+
+    const root = d3.hierarchy(data);
+
+    const treeLayout = d3.tree().size([height, width]);
+    treeLayout(root);
+
+    const svg = d3.select("body").append("svg")
+      .attr("viewBox", [-width / 2, -height / 2, width, height])
+      .style("font", "10px sans-serif")
+      .style("user-select", "none");
+
+    const g = svg.append("g");
+
+    g.append("g")
+      .attr("fill", "none")
+      .attr("stroke", "#555")
+      .attr("stroke-opacity", 0.4)
+      .selectAll("path")
+      .data(root.links())
+      .join("path")
+      .attr("d", d3.linkHorizontal()
+        .x(d => d.y)
+        .y(d => d.x)
+      );
+
+    const node = g.append("g")
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-width", 3)
+      .selectAll("g")
+      .data(root.descendants())
+      .join("g")
+      .attr("transform", d => `translate(${d.y},${d.x})`);
+
+    node.append("circle")
+      .attr("fill", d => d.children ? "#555" : "#999")
+      .attr("r", 5);
+
+    node.append("text")
+      .attr("dy", "0.31em")
+      .attr("x", d => d.children ? -10 : 10)
+      .attr("text-anchor", d => d.children ? "end" : "start")
+      .text(d => d.data.name)
+      .clone(true).lower()
+      .attr("stroke", "white");
+
+    svg.call(d3.zoom()
+      .scaleExtent([0.5, 5])
+      .on("zoom", (event) => {
+        g.attr("transform", event.transform);
+      }));
+  })
+  .catch(error => console.error("Error loading data:", error));
+
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<head>
+    <title>D3 Hierarchical Layout Example</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+        svg {
+            display: block;
+            background: #f9f9f9;
+            width: 100vw;
+            height: 100vh;
+        }
+        text {
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+</body>
+</html>

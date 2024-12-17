@@ -27,6 +27,7 @@ text, circle text {
 .right-pane, .left-pane {
     background-color: var(--pane-bg-clr);
     overflow-y: auto;
+    overflow-x: hidden;
     box-sizing: border-box;
     height: 100%;
     display: flex;

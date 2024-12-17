@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-import networkx as nx
 
 def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     if not os.path.exists(excel_file):
@@ -18,9 +17,11 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
     for col in description_cols:
         df[col] = df[col].fillna('No description available')
 
-    # Initialize NetworkX directed graph
-    G = nx.DiGraph()
-    
+    # Initialize graph data structures
+    nodes = {}
+    edges = []
+    root_node = set()
+
     for _, row in df.iterrows():
         ci_name = row['CI_Name']
         dependency_name = row['Dependency_Name']
@@ -29,89 +30,90 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         ci_description = row['CI_Descrip'] or 'No description available'
         dependency_description = row['Dependency_Descrip'] or 'No description available'
 
-        # Add ci_name node
-        if not G.has_node(ci_name):
-            G.add_node(ci_name, type=ci_type, description=ci_description, is_dependency_name=False)
+        # Add or update ci_name node
+        if ci_name not in nodes:
+            nodes[ci_name] = {
+                'id': ci_name,
+                'type': ci_type,
+                'description': ci_description,
+                'is_dependency_name': False,
+                'type_relations': [],
+                'is_multi_dependent': False,
+                'indirect_relationships': []
+            }
 
-        # Add dependency_name node
-        if not G.has_node(dependency_name):
-            G.add_node(dependency_name, type=dependency_type, description=dependency_description, is_dependency_name=True)
+        # Add or update dependency_name node
+        if dependency_name not in nodes:
+            nodes[dependency_name] = {
+                'id': dependency_name,
+                'type': dependency_type,
+                'description': dependency_description,
+                'is_dependency_name': True,
+                'type_relations': [],
+                'is_multi_dependent': False,
+                'indirect_relationships': []
+            }
 
-        # Add dependency_type node (Type Node)
-        if not G.has_node(dependency_type):
-            G.add_node(dependency_type, type=dependency_type, description='No description available', is_dependency_name=False)
+        # Add edge
+        edges.append({
+            'source': ci_name,
+            'target': dependency_name,
+            'edge_type': 'without_type'
+        })
 
-        # Add edges
-        G.add_edge(ci_name, dependency_name, edge_type='without_type')
+        # Add type node if not already present
+        if dependency_type not in nodes:
+            nodes[dependency_type] = {
+                'id': dependency_type,
+                'type': dependency_type,
+                'description': 'No description available',
+                'is_dependency_name': False,
+                'type_relations': [],
+                'is_multi_dependent': False,
+                'indirect_relationships': []
+            }
 
-    # Identify center nodes
-    root_node = set(df[df['CI_Type'] == 'Organization']['CI_Name'])
+    # Identify root nodes
+    root_node.update(df[df['CI_Type'] == 'Organization']['CI_Name'])
 
     # Identify nodes that are depended on by more than one CI_Type
-    for node in G.nodes:
-        predecessors = list(G.predecessors(node))
-        ci_types = set()
-        for pred in predecessors:
-            ci_type_pred = G.nodes[pred].get('type')
-            if ci_type_pred and ci_type_pred != node:
-                ci_types.add(ci_type_pred)
-        G.nodes[node]['is_multi_dependent'] = len(ci_types) > 1
+    for node_id in nodes:
+        predecessors = [edge['source'] for edge in edges if edge['target'] == node_id]
+        ci_types = set(nodes[pred]['type'] for pred in predecessors if pred in nodes)
+        nodes[node_id]['is_multi_dependent'] = len(ci_types) > 1
 
-    # Identify special indirect relationships
-    indirect_relationships = {}
-    for node in G.nodes:
-        if G.nodes[node].get('is_dependency_name', False):
-            successors = list(G.successors(node))
-            dependent_on_other_dependencies = [
-                succ for succ in successors if G.nodes[succ].get('is_dependency_name', False)
-            ]
-            if dependent_on_other_dependencies:
-                indirect_relationships[node] = dependent_on_other_dependencies
+    # Identify indirect relationships
+    for node_id, node_data in nodes.items():
+        if node_data['is_dependency_name']:
+            successors = [edge['target'] for edge in edges if edge['source'] == node_id]
+            indirect_dependencies = [succ for succ in successors if nodes[succ]['is_dependency_name']]
+            nodes[node_id]['indirect_relationships'] = indirect_dependencies
 
-    # Add indirect_relationships attribute to nodes
-    for node, dependencies in indirect_relationships.items():
-        G.nodes[node]['indirect_relationships'] = dependencies
-
-    # Group nodes by their type for creating type relations
+    # Group nodes by their type
     nodes_by_type = {}
-    for n in G.nodes:
-        nt = G.nodes[n]['type']
-        nodes_by_type.setdefault(nt, []).append(n)
+    for node_id, node_data in nodes.items():
+        node_type = node_data['type']
+        if node_type not in nodes_by_type:
+            nodes_by_type[node_type] = []
+        nodes_by_type[node_type].append(node_id)
 
-    # For each type node (where node id == node type), store the related nodes
-    for n in G.nodes:
-        node_type = G.nodes[n]['type']
-        # Check if this node is a "type node" itself (id == type)
-        if n == node_type:
-            # Related nodes are all nodes of the same type except itself
-            related_nodes = [x for x in nodes_by_type.get(node_type, []) if x != n]
-            G.nodes[n]['type_relations'] = related_nodes
+    # Assign type relations for type nodes
+    for node_id, node_data in nodes.items():
+        if node_data['id'] == node_data['type']:  # Type node
+            node_data['type_relations'] = [
+                nid for nid in nodes_by_type.get(node_data['type'], []) if nid != node_id
+            ]
 
-    # Convert graph to JSON-friendly format for frontend
-    nodes = [
-        {
-            'id': node,
-            'type': G.nodes[node]['type'],
-            'description': G.nodes[node]['description'],
-            'is_dependency_name': G.nodes[node].get('is_dependency_name', False),
-            'type_relations': G.nodes[node].get('type_relations', [])
-        }
-        for node in G.nodes
-    ]
-    
-    links = [
-        {'source': source, 'target': target, 'edge_type': data['edge_type']}
-        for source, target, data in G.edges(data=True)
-    ]
-    
-    print(f"nodes", nodes, "\n")
-    print(f"links", links, "\n")
-    print(f"root_node", root_node, "\n")
-    print(f"indirect_relationships", indirect_relationships, "\n")
+    # Convert graph data to JSON-friendly format
+    graph_nodes = list(nodes.values())
+    graph_links = edges
 
     return {
-        'nodes': nodes,
-        'links': links,
+        'nodes': graph_nodes,
+        'links': graph_links,
         'root_node': list(root_node),
-        'indirect_relationships': indirect_relationships
+        'indirect_relationships': {
+            node_id: data['indirect_relationships']
+            for node_id, data in nodes.items() if data['indirect_relationships']
+        }
     }
