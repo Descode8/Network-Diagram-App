@@ -14,7 +14,6 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx'):
         print(f"An error occurred: {e}")
         return None
 
-# Function to build a hierarchical JSON structure from tabular data
 def build_hierarchy(data, depth):
     """
     Builds a hierarchical JSON structure from tabular data.
