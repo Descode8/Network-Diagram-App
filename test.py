@@ -125,8 +125,6 @@ def build_hierarchy(data, depth, active_node_name):
     Returns:
     - dict: A hierarchical JSON-like dictionary structure representing the data.
     """
-    print("DEPTH:", depth)
-    print("ACTIVE NODE:", active_node_name)
     
     # Filter rows corresponding to the active node
     active_data = data[data['CI_Name'] == active_node_name]
@@ -214,11 +212,12 @@ def build_hierarchy(data, depth, active_node_name):
     return active_node_relationships
 
 
-# # Fetch data and build hierarchy
-# data = fetch_graph_data()
-# depth = 3 # Set the depth of the hierarchy
-# hierarchy = build_hierarchy(data, depth)
+# Fetch data and build hierarchy
+data, active_node = fetch_graph_data()
+active_node='App 2'
+depth = 2 # Set the depth of the hierarchy
+hierarchy = build_hierarchy(data, depth, active_node)
 
-# # Print or save the hierarchy as JSON
-# if hierarchy:
-#     print(json.dumps(hierarchy, indent=2))
+# Print or save the hierarchy as JSON
+if hierarchy:
+    print(json.dumps(hierarchy, indent=2))
