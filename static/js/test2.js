@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nodeBorderColor = 'black';
 
     let currentActiveNodeName = null; // Track the currently active node name
-    let graphPadding = 50;  // Adjust padding as needed
+    let graphPadding = 75;  // Adjust padding as needed
     let visibleNodes = [];
     let isNodeClicked = false;
 
@@ -28,7 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
     svg.call(zoom);
 
     function nodeColor(node) {
-        switch (node.data.type) {
+        const nodes = node.data.groupType || node.data.type; 
+        switch (nodes) {
             case 'Applications': return 'var(--app-nde-clr)';
             case 'People': return 'var(--ppl-nde-clr)';
             case 'Technology': return 'var(--tech-nde-clr)';
@@ -37,7 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'Facilities': return 'var(--fclty-nde-clr)';
             default: return 'var(--home-nde-clr)';
         }
-    }
+    }    
+
+    document.getElementById('groupNodeSwitch').addEventListener('change', () => {
+        // Re-fetch and re-render graph to apply changes
+        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
+    });    
 
     svg.attr('width', width).attr('height', height);
 
@@ -49,8 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .force('center', d3.forceCenter(width / 2, height / 2));
 
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
+        console.log('activeNodeParam:', activeNodeParam);
         const url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
-
+    
         fetch(url, { headers: { 'Accept': 'application/json' } })
             .then(response => {
                 if (!response.ok) {
@@ -70,23 +77,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error fetching graph data:', error);
             });
     }
+    
 
     function renderGraph(data) {
         graphGroup.selectAll('*').remove();
-
+    
+        // Determine whether type nodes should be displayed
+        const displayGroupNodes = document.getElementById('groupNodeSwitch') ? document.getElementById('groupNodeSwitch').checked : true;
+    
+        // Flatten type nodes if the toggle is off
+        hideGroupNodes(data, displayGroupNodes);
+    
         const root = d3.hierarchy(data);
         const links = root.links();
         const nodes = root.descendants();
-
+    
         visibleNodes = nodes;
-
+    
         simulation.nodes(nodes)
             .force("link", d3.forceLink(links).id(d => d.data.name).distance(100))
             .force("charge", d3.forceManyBody().strength(-300))
             .force("center", d3.forceCenter(width / 2, height / 2));
-
+    
         simulation.force("link").links(links);
-
+    
         const link = graphGroup.append('g')
             .attr('class', 'links')
             .selectAll('line')
@@ -94,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .enter().append('line')
             .attr('stroke', linkColor)
             .attr('stroke-width', linkWidth);
-
+    
         const node = graphGroup.append('g')
             .attr('class', 'nodes')
             .selectAll('circle')
@@ -104,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('fill', d => nodeColor(d))
             .attr('stroke', nodeBorderColor)
             .call(drag(simulation));
-
+    
         const labels = graphGroup.append('g')
             .attr('class', 'labels')
             .selectAll('text')
@@ -114,10 +128,10 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('dy', 5)
             .attr('fill', 'black')
             .text(d => d.data.name);
-
+    
         // Update current active node name
         currentActiveNodeName = data.name;
-
+    
         // Center active node logic
         const foundActiveNode = nodes.find(node => node.data.name === data.name);
         if (foundActiveNode) {
@@ -125,27 +139,67 @@ document.addEventListener('DOMContentLoaded', () => {
             foundActiveNode.fx = width / 2;
             foundActiveNode.fy = height / 2;
         }
-
+    
         simulation.on('tick', () => ticked(link, node, labels));
-
-        node.on('click', (event, d) => handleNodeClicked(d.data.name));
-
+    
+        node.on('click', (event, d) => handleNodeClicked(d.data));
+    
         // Ensure graph fits after rendering
         fitGraphToContainer();
     }
+    
 
-    function handleNodeClicked(nodeName) {
-        console.log(`Node clicked: ${nodeName}`);
+    function hideGroupNodes(node, displayGroupNodes) {
+        if (!node.children || node.children.length === 0) {
+            return node;
+        }
+    
+        let flattenedChildren = [];
+    
+        node.children.forEach(child => {
+            // Check if this child has a 'groupType' property indicating it's a group node
+            // If displayGroupNodes is false, we want to flatten these nodes
+            if (child.groupType && !displayGroupNodes) {
+                // Instead of keeping the child as a grouping node,
+                // we'll skip it and take all of its children
+                if (child.children && child.children.length > 0) {
+                    // Recursively flatten the child's children before merging
+                    child.children.forEach(grandChild => {
+                        hideGroupNodes(grandChild, displayGroupNodes);
+                    });
+                    flattenedChildren.push(...child.children);
+                }
+                // If no children, it simply removes the group node
+            } else {
+                // Recursively flatten the child's subtree if needed
+                hideGroupNodes(child, displayGroupNodes);
+                flattenedChildren.push(child);
+            }
+        });
+    
+        node.children = flattenedChildren;
+        return node;
+    }    
 
-        // If the clicked node is the same as the current active node, do nothing
-        if (nodeName === currentActiveNodeName) {
+    function handleNodeClicked(nodeData) {
+        // Try name first, if not available, use groupNode
+        const clickedName = nodeData.name || nodeData.groupType;
+        console.log(`Node clicked: ${clickedName}`);
+    
+        if (!clickedName) {
+            console.error('Clicked node has neither name nor groupNode:', nodeData);
             return;
         }
-
-        searchInput.value = nodeName;
+    
+        // If the clicked node is the same as the current active node, do nothing
+        if (clickedName === currentActiveNodeName) {
+            return;
+        }
+    
+        searchInput.value = clickedName;
         isNodeClicked = true;
-        fetchAndRenderGraph(depthSlider.value, nodeName);
-    }
+        fetchAndRenderGraph(depthSlider.value, clickedName);
+    }    
 
     function ticked(link, node, labels) {
         link
