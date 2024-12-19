@@ -130,6 +130,7 @@ def build_hierarchy(data, depth, active_node):
     # Return the fully built hierarchy
     return active_node_relationships
 
+
 # Fetch data and build hierarchy
 # data, active_node = fetch_graph_data()
 # active_node='PO 2'

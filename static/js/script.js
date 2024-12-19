@@ -11,7 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
     var dataNodeClr = rootStyles.getPropertyValue('--data-nde-clr').trim();
     var procureNodeClr = rootStyles.getPropertyValue('--procure-nde-clr').trim();
     var fcltyNodeClr = rootStyles.getPropertyValue('--fclty-nde-clr').trim();
-    var sverNodeClr = rootStyles.getPropertyValue('--sver-nde-clr').trim();
 
     var textClr = rootStyles.getPropertyValue('--text-clr').trim();
     var linkClr = rootStyles.getPropertyValue('--link-clr').trim();
