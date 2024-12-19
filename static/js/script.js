@@ -17,9 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const depthValueLabel = document.getElementById('depthValue');
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
+    const rightContainer = d3.select('.right-pane');
 
     const labelNodesSwitch = document.getElementById('labelNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
+
+    // Home and Refresh buttons
+    const onHomeButton = document.getElementById('homeButton');
+    const onRefreshButton = document.getElementById('refreshButton');
 
     // Add event listener for labelNodesSwitch to re-render graph
     labelNodesSwitch.addEventListener('change', () => {
@@ -61,6 +66,26 @@ document.addEventListener('DOMContentLoaded', () => {
         .force('link', d3.forceLink().id(d => d.id).distance(100))
         .force('charge', d3.forceManyBody().strength(-300))
         .force('center', d3.forceCenter(width / 2, height / 2));
+
+    // Home button: reload the page
+    onHomeButton.addEventListener('click', () => {
+        location.reload();
+    });
+
+    // Refresh button: reset node forces
+    onRefreshButton.addEventListener('click', () => {
+        resetNodeForces();
+    });
+
+    function resetNodeForces() {
+        // Clear fixed positions on nodes
+        visibleNodes.forEach(d => {
+            d.fx = null;
+            d.fy = null;
+        });
+        // Restart the simulation to let it re-run the forces
+        simulation.alpha(1).restart();
+    }
 
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
         console.log('activeNodeParam:', activeNodeParam);
@@ -193,10 +218,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     
         fitGraphToContainer();
+        updateRightContainer(data); // Update the right container after rendering
     }
     
-    
-
     function hideGroupNodes(node, displayGroupNodes) {
         if (!node.children || node.children.length === 0) {
             return node;
@@ -222,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
         node.children = flattenedChildren;
         return node;
-    }    
+    }
 
     function handleNodeClicked(nodeData) {
         const clickedName = nodeData.name || nodeData.groupType;
@@ -241,33 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
         isNodeClicked = true;
         fetchAndRenderGraph(depthSlider.value, clickedName);
     }    
-
-    function ticked(link, node, labels) {
-        link
-            .attr('x1', d => d.source.x)
-            .attr('y1', d => d.source.y)
-            .attr('x2', d => d.target.x)
-            .attr('y2', d => d.target.y);
-
-        if (node) {
-            node.attr("transform", d => {
-                if (isNaN(d.x) || isNaN(d.y)) {
-                    d.x = width / 2;
-                    d.y = height / 2;
-                }
-                return `translate(${d.x},${d.y})`;
-            });
-        }
-
-        labels
-            .attr('x', d => d.x)
-            .attr('y', d => d.y - (node ? 15 : 0)); // If no node, put label closer to center
-
-        if (simulation.alpha() < 0.05) {
-            fitGraphToContainer();
-            simulation.stop();
-        }
-    }
     
     const drag = simulation => {
         function dragstarted(event, d) {
@@ -353,4 +350,88 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial fetch
     fetchAndRenderGraph();
+
+
+    function updateRightContainer(data) {
+        rightContainer.html(""); // Clear existing content
+    
+        // Display active node info
+        rightContainer.append("h2")
+            .style("background-color", nodeColor({data: {type: data.type}}))
+            .html(`${data.name}`);
+
+        rightContainer.append("p")
+            .html(`<strong>Type: </strong>${data.type || 'Unknown'}`);
+
+        const description = (data.description || 'No description available').replace(/\n/g, '<br>');
+        rightContainer.append("h3").attr("class", "description-header").html("Description");
+        rightContainer.append("p").html(description);
+
+        rightContainer.append("h3").attr("class", "dependencies-header").html("Dependencies");
+
+        const groupNodes = (data.children || []).filter(d => d.groupType);
+
+        // Desired order
+        const desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
+        groupNodes.sort((a, b) => {
+            const indexA = desiredOrder.indexOf(a.groupType);
+            const indexB = desiredOrder.indexOf(b.groupType);
+            if (indexA === -1 && indexB === -1) {
+                return a.groupType.localeCompare(b.groupType);
+            } else if (indexA === -1) {
+                return 1;
+            } else if (indexB === -1) {
+                return -1;
+            } else {
+                return indexA - indexB;
+            }
+        });
+
+        groupNodes.forEach(typeNode => {
+            createTypeSection(typeNode);
+        });
+
+        function createTypeSection(typeNode) {
+            const typeSection = rightContainer.append("div")
+                .attr("class", "type-section");
+
+            typeSection.append("p")
+                .style("background-color", nodeColor({data: {type: typeNode.groupType}}))
+                .attr("class", "dependency-type")
+                .html(`<strong>${typeNode.groupType}</strong>`)
+                .style("cursor", "pointer")
+                .style("text-align", "center")
+                .on("click", (event) => {
+                    // When clicking on a group type, treat it like a node
+                    const pseudoNodeData = {
+                        name: typeNode.groupType,
+                        type: typeNode.groupType,
+                        description: typeNode.groupType + " Group Node",
+                        children: typeNode.children || []
+                    };
+                    handleNodeClicked(pseudoNodeData);
+                });
+
+            const sortedChildren = (typeNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+
+            sortedChildren.forEach(childNode => {
+                createNodeElement(typeSection, childNode);
+            });
+        }
+
+        function createNodeElement(parentContainer, node) {
+            const nodeContainer = parentContainer.append("div")
+                .attr("class", "dependency-node-container");
+
+            nodeContainer.append("p")
+                .attr("class", "dependency-node")
+                .html(`<strong>${node.name}</strong>`)
+                .style("cursor", "pointer")
+                .on("click", (event) => handleNodeClicked(node));
+
+            nodeContainer.append("div")
+                .attr("class", "hover-box")
+                .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
+        }
+    }
 });
