@@ -2,11 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let width = document.querySelector('.graph-container').clientWidth;
     let height = document.querySelector('.graph-container').clientHeight;
     const svg = d3.select('.graph-container svg');
-    const activeNodeSize = 8;
-    const nodeSize = 6;
+    const activeNodeSize = 6.5;
+    const nodeSize = 5;
     const linkWidth = 1;
     const linkColor = '#85929E';
-    const nodeBorderColor = '#EBEDEF';
+    const nodeBorderColor = '#000000';
 
     let currentActiveNodeName = null; 
     let graphPadding = 75;  
@@ -141,16 +141,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initializeGroupToggles(data) {
         const allGroups = Array.from(getUniqueGroups(data));
-
+    
         if (Object.keys(visibleGroups).length === 0) {
             allGroups.forEach(group => {
                 visibleGroups[group] = true;
             });
         }
-
+    
         const switchesContainer = document.querySelector('.switches-container');
         let dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
-
+    
         if (!dynamicTogglesContainer) {
             dynamicTogglesContainer = document.createElement('div');
             dynamicTogglesContainer.className = 'dynamic-group-toggles';
@@ -158,31 +158,34 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             dynamicTogglesContainer.innerHTML = '';
         }
-
+    
         allGroups.forEach(group => {
             const label = document.createElement('label');
             label.className = 'switch';
-
+    
             const input = document.createElement('input');
             input.type = 'checkbox';
             input.checked = visibleGroups[group];
-
+    
             const span = document.createElement('span');
             span.className = 'slider round';
-
+    
+            // Use nodeColor to get the color dynamically for the group
+            span.style.backgroundColor = nodeColor({ data: { groupType: group } });
+    
             const checkImg = document.createElement('img');
             checkImg.src = "/static/images/check.svg";
             checkImg.className = "checkmark";
             checkImg.alt = "Checkmark";
-
+    
             span.appendChild(checkImg);
-
+    
             label.appendChild(input);
             label.appendChild(span);
             label.append(` ${group}`);
-
+    
             dynamicTogglesContainer.appendChild(label);
-
+    
             input.addEventListener('change', () => {
                 visibleGroups[group] = input.checked;
                 fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
@@ -192,26 +195,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderGraph(data) {
         graphGroup.selectAll('*').remove();
-
+    
         const displayGroupNodes = groupNodeSwitch.checked;
         const displayAssetNodes = labelNodesSwitch.checked;
-
+    
         hideGroupNodes(data, displayGroupNodes);
         filterDataByVisibleGroups(data);
-
+    
         const root = d3.hierarchy(data);
         const links = root.links();
         const nodes = root.descendants();
-
+    
         visibleNodes = nodes;
-
+    
         simulation.nodes(nodes)
             .force("link", d3.forceLink(links).id(d => d.data.name).distance(100))
             .force("charge", d3.forceManyBody().strength(-300))
             .force("center", d3.forceCenter(width / 2, height / 2));
-
+    
         simulation.force("link").links(links);
-
+    
         const link = graphGroup.append('g')
             .attr('class', 'links')
             .selectAll('line')
@@ -219,24 +222,24 @@ document.addEventListener('DOMContentLoaded', () => {
             .enter().append('line')
             .attr('stroke', linkColor)
             .attr('stroke-width', linkWidth);
-
+    
         // Store link selection globally
         linkSelectionGlobal = link;
-
+    
         const activeNodeName = data.name;
-
+    
         function shouldHaveCircle(d) {
             if (d.data.name === activeNodeName) return true;
             if (d.data.groupType) return true;
             if (displayAssetNodes) return true;
             return false;
         }
-
+    
         let nodeSelection = graphGroup.append('g')
             .attr('class', 'nodes')
             .selectAll('circle')
             .data(nodes);
-
+    
         nodeSelection = nodeSelection.enter()
             .filter(d => shouldHaveCircle(d))
             .append('circle')
@@ -244,12 +247,12 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('fill', d => nodeColor(d))
             .attr('stroke', nodeBorderColor)
             .call(drag(simulation));
-
+    
         nodeSelection.on('click', (event, d) => handleNodeClicked(d.data));
-
+    
         // Store node selection globally
         nodeSelectionGlobal = nodeSelection;
-
+    
         const labels = graphGroup.append('g')
             .attr('class', 'labels')
             .selectAll('text')
@@ -258,43 +261,44 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('text-anchor', 'middle')
             .attr('dy', d => shouldHaveCircle(d) ? 5 : 0)
             .attr('fill', 'black')
-            .text(d => d.data.name);
-
+            .text(d => d.data.name)
+            .on('click', (event, d) => handleNodeClicked(d.data)); // Enable label click handling
+    
         // Store labels selection globally
         labelsSelectionGlobal = labels;
-
+    
         currentActiveNodeName = data.name;
-
+    
         const foundActiveNode = nodes.find(node => node.data.name === data.name);
         if (foundActiveNode) {
             simulation.alpha(1).restart();
             foundActiveNode.fx = width / 2;
             foundActiveNode.fy = height / 2;
         }
-
+    
         simulation.on('tick', () => {
             link
                 .attr('x1', d => d.source.x)
                 .attr('y1', d => d.source.y)
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
-
+    
             nodeSelection
                 .attr("transform", d => `translate(${d.x},${d.y})`);
-
+    
             labels
                 .attr('x', d => d.x)
                 .attr('y', d => shouldHaveCircle(d) ? d.y - 15 : d.y);
-
+    
             if (simulation.alpha() < 0.05) {
                 fitGraphToContainer();
                 simulation.stop();
             }
         });
-
+    
         fitGraphToContainer();
         updateRightContainer(data);
-    }
+    }    
 
     function hideGroupNodes(node, displayGroupNodes) {
         if (!node.children || node.children.length === 0) {
