@@ -149,6 +149,7 @@ title {
     height: 100%;
     display: block;
     cursor: move;
+    background-color: var(--svg-bg-clr);
 }
 
 .custom-slider {
@@ -370,7 +371,7 @@ span {
     display: block; 
 }
 
-.switches-container {
+.switches-container, .dynamic-group-toggles {
     margin-top: 10px;
 }
 

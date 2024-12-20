@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => { 
+document.addEventListener('DOMContentLoaded', () => {  
     let width = document.querySelector('.graph-container').clientWidth;
     let height = document.querySelector('.graph-container').clientHeight;
     const svg = d3.select('.graph-container svg');
@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
 
+    // We'll keep track of visible groups here.
+    // Initially, we don't know the groups. We'll populate them after we fetch data.
+    let visibleGroups = {};
+
     // Add event listener for labelNodesSwitch to re-render graph
     labelNodesSwitch.addEventListener('change', () => {
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
@@ -48,13 +52,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function nodeColor(node) {
         const nodes = node.data.groupType || node.data.type; 
         switch (nodes) {
-            case 'Applications': return 'var(--app-nde-clr)';
-            case 'People': return 'var(--ppl-nde-clr)';
-            case 'Technology': return 'var(--tech-nde-clr)';
-            case 'Data': return 'var(--data-nde-clr)';
-            case 'Procurements': return 'var(--procure-nde-clr)';
-            case 'Facilities': return 'var(--fclty-nde-clr)';
-            default: return 'var(--home-nde-clr)';
+            case 'Applications': return 'var(--app-nde-clr, #3498DB)';
+            case 'People': return 'var(--ppl-nde-clr, #229954)';
+            case 'Technology': return 'var(--tech-nde-clr, #C0504D)';
+            case 'Data': return 'var(--data-nde-clr, #A5A5A5)';
+            case 'Procurements': return 'var(--procure-nde-clr, #F79646)';
+            case 'Facilities': return 'var(--fclty-nde-clr, #8064A2)';
+            default: return 'var(--home-nde-clr, #2E4053)';
         }
     }    
 
@@ -78,17 +82,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function resetNodeForces() {
-        // Clear fixed positions on nodes
         visibleNodes.forEach(d => {
             d.fx = null;
             d.fy = null;
         });
-        // Restart the simulation to let it re-run the forces
         simulation.alpha(1).restart();
     }
 
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
-        console.log('activeNodeParam:', activeNodeParam);
         const url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
     
         fetch(url, { headers: { 'Accept': 'application/json' } })
@@ -99,40 +100,111 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(data => {
-                console.log('Fetched data:', data);
                 if (data.error) {
                     console.error('Backend error:', data.error);
                     return;
                 }
+                // Identify groups and create toggles if not done yet
+                initializeGroupToggles(data);
                 renderGraph(data);
             })
             .catch(error => {
                 console.error('Error fetching graph data:', error);
             });
     }
+
+    // Identify unique group types from the hierarchy
+    function getUniqueGroups(node, groups = new Set()) {
+        if (!node) return groups;
+        if (node.groupType || node.type) {
+            groups.add(node.groupType || node.type);
+        }
+        if (node.children) {
+            node.children.forEach(child => getUniqueGroups(child, groups));
+        }
+        return groups;
+    }
+
+    function initializeGroupToggles(data) {
+        const allGroups = Array.from(getUniqueGroups(data));
     
+        // If visibleGroups is empty, initialize it
+        if (Object.keys(visibleGroups).length === 0) {
+            allGroups.forEach(group => {
+                visibleGroups[group] = true; // default all groups to visible
+            });
+        }
+    
+        // Select .switches-container
+        const switchesContainer = document.querySelector('.switches-container');
+        let dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
+    
+        if (!dynamicTogglesContainer) {
+            dynamicTogglesContainer = document.createElement('div');
+            dynamicTogglesContainer.className = 'dynamic-group-toggles';
+            switchesContainer.appendChild(dynamicTogglesContainer);
+        } else {
+            // Clear old toggles if any
+            dynamicTogglesContainer.innerHTML = '';
+        }
+    
+        allGroups.forEach(group => {
+            const label = document.createElement('label');
+            label.className = 'switch';
+            
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = visibleGroups[group];
+    
+            const span = document.createElement('span');
+            span.className = 'slider round';
+    
+            // Create the checkmark image
+            const checkImg = document.createElement('img');
+            checkImg.src = "/static/images/check.svg";
+            checkImg.className = "checkmark";
+            checkImg.alt = "Checkmark";
+    
+            span.appendChild(checkImg);
+            
+            label.appendChild(input);
+            label.appendChild(span);
+            label.append(` ${group}`);
+    
+            dynamicTogglesContainer.appendChild(label);
+    
+            input.addEventListener('change', () => {
+                visibleGroups[group] = input.checked;
+                fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
+            });
+        });
+    }    
 
     function renderGraph(data) {
         graphGroup.selectAll('*').remove();
-        
+
         const displayGroupNodes = groupNodeSwitch.checked;
         const displayAssetNodes = labelNodesSwitch.checked;
-    
+
+        // First hide group nodes if necessary
         hideGroupNodes(data, displayGroupNodes);
-    
+
+        // Filter out groups that are toggled off
+        filterDataByVisibleGroups(data);
+
         const root = d3.hierarchy(data);
         const links = root.links();
         const nodes = root.descendants();
-    
+
         visibleNodes = nodes;
-    
+
         simulation.nodes(nodes)
             .force("link", d3.forceLink(links).id(d => d.data.name).distance(100))
             .force("charge", d3.forceManyBody().strength(-300))
             .force("center", d3.forceCenter(width / 2, height / 2));
-    
+
         simulation.force("link").links(links);
-    
+
         const link = graphGroup.append('g')
             .attr('class', 'links')
             .selectAll('line')
@@ -140,98 +212,84 @@ document.addEventListener('DOMContentLoaded', () => {
             .enter().append('line')
             .attr('stroke', linkColor)
             .attr('stroke-width', linkWidth);
-    
+
         // Identify the active node name
         const activeNodeName = data.name;
-    
-        // Function to determine if a node should have a circle
+
         function shouldHaveCircle(d) {
-            // Active node always has a circle
             if (d.data.name === activeNodeName) return true;
-            // Group nodes always have a circle
             if (d.data.groupType) return true;
-            // If displayAssetNodes is ON, all nodes get a circle
             if (displayAssetNodes) return true;
-            // Otherwise (displayAssetNodes is OFF and node is not active or group node), no circle
             return false;
         }
-    
+
         let nodeSelection = graphGroup.append('g')
             .attr('class', 'nodes')
             .selectAll('circle')
             .data(nodes);
-    
-        // Append circles conditionally
+
         nodeSelection = nodeSelection.enter()
-            .filter(d => shouldHaveCircle(d))  // Only enter nodes that should have a circle
+            .filter(d => shouldHaveCircle(d))
             .append('circle')
             .attr('r', d => d.data.name === activeNodeName ? activeNodeSize : nodeSize)
             .attr('fill', d => nodeColor(d))
             .attr('stroke', nodeBorderColor)
             .call(drag(simulation));
-    
+
         nodeSelection.on('click', (event, d) => handleNodeClicked(d.data));
-    
-        // Always render labels for all nodes
+
         const labels = graphGroup.append('g')
             .attr('class', 'labels')
             .selectAll('text')
             .data(nodes)
             .enter().append('text')
             .attr('text-anchor', 'middle')
-            .attr('dy', d => shouldHaveCircle(d) ? 5 : 0) // If no circle, center label on node position
+            .attr('dy', d => shouldHaveCircle(d) ? 5 : 0)
             .attr('fill', 'black')
             .text(d => d.data.name);
-    
+
         currentActiveNodeName = data.name;
-    
+
         const foundActiveNode = nodes.find(node => node.data.name === data.name);
         if (foundActiveNode) {
             simulation.alpha(1).restart();
             foundActiveNode.fx = width / 2;
             foundActiveNode.fy = height / 2;
         }
-    
+
         simulation.on('tick', () => {
             link
                 .attr('x1', d => d.source.x)
                 .attr('y1', d => d.source.y)
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
-    
-            // Apply transform to circles (only for nodes that have them)
+
             graphGroup.selectAll('circle')
                 .attr("transform", d => `translate(${d.x},${d.y})`);
-    
-            // Labels positioned at node coordinates (if no circle, label is at node coords)
+
             labels
                 .attr('x', d => d.x)
-                .attr('y', d => {
-                    // If node has a circle, raise label above the circle slightly
-                    return shouldHaveCircle(d) ? d.y - 15 : d.y;
-                });
-    
+                .attr('y', d => shouldHaveCircle(d) ? d.y - 15 : d.y);
+
             if (simulation.alpha() < 0.05) {
                 fitGraphToContainer();
                 simulation.stop();
             }
         });
-    
+
         fitGraphToContainer();
-        updateRightContainer(data); // Update the right container after rendering
+        updateRightContainer(data);
     }
-    
+
     function hideGroupNodes(node, displayGroupNodes) {
         if (!node.children || node.children.length === 0) {
             return node;
         }
-    
+
         let flattenedChildren = [];
-    
+
         node.children.forEach(child => {
-            // Check if this child has a 'groupType' property
             if (child.groupType && !displayGroupNodes) {
-                // Flatten
                 if (child.children && child.children.length > 0) {
                     child.children.forEach(grandChild => {
                         hideGroupNodes(grandChild, displayGroupNodes);
@@ -243,29 +301,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 flattenedChildren.push(child);
             }
         });
-    
+
         node.children = flattenedChildren;
         return node;
     }
 
+    function filterDataByVisibleGroups(node) {
+        if (!node.children) return;
+        node.children = node.children.filter(child => {
+            // Determine the key used in visibleGroups - could be groupType or type
+            const key = child.groupType || child.type;
+            if (key && visibleGroups.hasOwnProperty(key)) {
+                // If the group/type is toggled off, exclude this node
+                if (!visibleGroups[key]) {
+                    return false;
+                }
+            }
+            // Recursively filter children
+            filterDataByVisibleGroups(child);
+            return true;
+        });
+    }    
+
     function handleNodeClicked(nodeData) {
         const clickedName = nodeData.name || nodeData.groupType;
-        console.log(`Node clicked: ${clickedName}`);
-    
         if (!clickedName) {
             console.error('Clicked node has neither name nor groupNode:', nodeData);
             return;
         }
-    
+
         if (clickedName === currentActiveNodeName) {
             return;
         }
-    
+
         searchInput.value = clickedName;
         isNodeClicked = true;
         fetchAndRenderGraph(depthSlider.value, clickedName);
-    }    
-    
+    }
+
     const drag = simulation => {
         function dragstarted(event, d) {
             visibleNodes.forEach(node => {
@@ -278,18 +351,18 @@ document.addEventListener('DOMContentLoaded', () => {
             d.fy = d.y;
             simulation.alphaTarget(0.1).restart();
         }
-    
+
         function dragged(event, d) {
             d.fx = event.x;
             d.fy = event.y;
         }
-    
+
         function dragended(event, d) {
             d.fx = event.x;
             d.fy = event.y;
             simulation.alphaTarget(0);
         }
-    
+
         return d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
@@ -299,34 +372,34 @@ document.addEventListener('DOMContentLoaded', () => {
     function fitGraphToContainer() {
         width = document.querySelector('.graph-container').clientWidth;
         height = document.querySelector('.graph-container').clientHeight;
-    
+
         const containerWidth = width;
         const containerHeight = height;
-    
+
         const nodesBBox = {
             xMin: d3.min(visibleNodes, d => d.x),
             xMax: d3.max(visibleNodes, d => d.x),
             yMin: d3.min(visibleNodes, d => d.y),
             yMax: d3.max(visibleNodes, d => d.y)
         };
-    
+
         const nodesWidth = nodesBBox.xMax - nodesBBox.xMin;
         const nodesHeight = nodesBBox.yMax - nodesBBox.yMin;
-    
+
         const scale = Math.min(
             (containerWidth - 2 * graphPadding) / nodesWidth,
             (containerHeight - 2 * graphPadding) / nodesHeight
         );
-    
+
         const translateX = (containerWidth - nodesWidth * scale) / 2 - nodesBBox.xMin * scale;
         const translateY = (containerHeight - nodesHeight * scale) / 2 - nodesBBox.yMin * scale;
-    
+
         svg.call(
             zoom.transform,
             d3.zoomIdentity.translate(translateX, translateY).scale(scale)
         );
     }
-    
+
     function updateDepthSlider() {
         const value = (depthSlider.value - depthSlider.min) / (depthSlider.max - depthSlider.min) * 100;
         depthSlider.style.setProperty('--value', `${value}%`);
@@ -351,11 +424,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial fetch
     fetchAndRenderGraph();
 
-
     function updateRightContainer(data) {
-        rightContainer.html(""); // Clear existing content
-    
-        // Display active node info
+        rightContainer.html("");
+
         rightContainer.append("h2")
             .style("background-color", nodeColor({data: {type: data.type}}))
             .html(`${data.name}`);
@@ -371,7 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const groupNodes = (data.children || []).filter(d => d.groupType);
 
-        // Desired order
         const desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
         groupNodes.sort((a, b) => {
             const indexA = desiredOrder.indexOf(a.groupType);
@@ -400,9 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .attr("class", "dependency-type")
                 .html(`<strong>${typeNode.groupType}</strong>`)
                 .style("cursor", "pointer")
-                .style("text-align", "center")
                 .on("click", (event) => {
-                    // When clicking on a group type, treat it like a node
                     const pseudoNodeData = {
                         name: typeNode.groupType,
                         type: typeNode.groupType,
