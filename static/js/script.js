@@ -2,11 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let width = document.querySelector('.graph-container').clientWidth;
     let height = document.querySelector('.graph-container').clientHeight;
     const svg = d3.select('.graph-container svg');
-    const activeNodeSize = 7;
-    const nodeSize = 5;
+    const activeNodeSize = 8;
+    const nodeSize = 6;
     const linkWidth = 1;
     const linkColor = '#85929E';
-    const nodeBorderColor = 'black';
+    const nodeBorderColor = '#EBEDEF';
 
     let currentActiveNodeName = null; 
     let graphPadding = 75;  
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
             d.fx = null;
             d.fy = null;
         });
-        simulation.alpha(1).restart();
+        simulation.alpha(2).restart();
     }
 
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {

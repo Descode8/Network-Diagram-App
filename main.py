@@ -1,5 +1,4 @@
 from flask import Flask, jsonify, render_template, request
-# from data_extractor import fetch_graph_data
 from data_extractor import build_hierarchy
 from data_extractor import fetch_graph_data
 
