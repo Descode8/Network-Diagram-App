@@ -1,15 +1,15 @@
-document.addEventListener('DOMContentLoaded', () => {  
+document.addEventListener('DOMContentLoaded', () => {
     let width = document.querySelector('.graph-container').clientWidth;
     let height = document.querySelector('.graph-container').clientHeight;
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 6.5;
     const nodeSize = 5;
-    const linkWidth = .5;
+    const linkWidth = 0.5;
     const linkColor = 'var(--link-clr)';
     const nodeBorderColor = 'var(--nde-bdr-clr)';
 
-    let currentActiveNodeName = null; 
-    let graphPadding = 75;  
+    let currentActiveNodeName = null;
+    let graphPadding = 75;
     let visibleNodes = [];
     let visibleGroups = {};
     let isNodeClicked = false;
@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const depthSlider = document.getElementById('depthSlider');
     const depthValueLabel = document.getElementById('depthValue');
     const searchInput = document.getElementById('searchInput');
+    const clearButton = document.getElementById('clearButton');
     const searchButton = document.getElementById('searchButton');
     const rightContainer = d3.select('.right-pane');
 
@@ -26,6 +27,113 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'search-menu'; // Matches your CSS class
+    searchInput.parentNode.appendChild(dropdown);
+
+    let allNodes = []; // Holds all node names and group types
+
+    // Show the clear button and dropdown when input has text
+    searchInput.addEventListener('input', () => {
+        const input = searchInput.value.trim();
+        const dropdown = document.getElementById('autocompleteSuggestions');
+        
+        if (input) {
+            clearButton.style.display = 'flex'; // Show clear button
+            dropdown.style.display = 'block'; // Show dropdown
+            // Add logic to populate dropdown suggestions
+        } else {
+            clearButton.style.display = 'none'; // Hide clear button
+            dropdown.style.display = 'none'; // Hide dropdown
+            dropdown.innerHTML = ''; // Clear dropdown content
+        }
+    });    
+
+    clearButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        searchInput.value = ''; // Clear input field
+        clearButton.style.display = 'none'; // Hide clear button
+        const dropdown = document.getElementById('autocompleteSuggestions');
+        dropdown.style.display = 'none'; // Temporarily hide dropdown
+        dropdown.innerHTML = ''; // Clear dropdown content
+    });      
+
+    // Initialize nodes for dropdown matching
+    function populateNodeList(data) {
+        function traverse(node) {
+            if (node.name) allNodes.push(node.name);
+            if (node.groupType) allNodes.push(node.groupType);
+            if (node.children) node.children.forEach(traverse);
+        }
+        traverse(data);
+        allNodes = [...new Set(allNodes)]; // Remove duplicates
+    }
+
+    // Search function
+    function searchNode() {
+        const query = searchInput.value.trim();
+        if (query) {
+            fetchAndRenderGraph(depthSlider.value, query);
+        }
+    }
+
+    // Add event listener for Enter key
+    searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            searchNode();
+            dropdown.innerHTML = ''; // Clear the dropdown
+        }
+    });
+
+    // Add event listener for the search button
+    searchButton.addEventListener('click', () => {
+        searchNode();
+        dropdown.innerHTML = ''; // Clear the dropdown
+    });
+
+    // Dynamic dropdown functionality
+    searchInput.addEventListener('input', () => {
+        const input = searchInput.value.toLowerCase();
+
+        if (!input) {
+            dropdown.style.display = 'none'; // Hide the dropdown when input is empty
+            dropdown.innerHTML = ''; // Clear any previous suggestions
+            return;
+        }
+        
+        const dropdown = document.getElementById('autocompleteSuggestions');
+        dropdown.innerHTML = ''; // Clear previous suggestions
+    
+        if (!input) {
+            dropdown.style.border = 'none'; // Hide the border if the input is empty
+            return;
+        }
+    
+        // Filter and display matching nodes
+        const matches = allNodes.filter(name => name.toLowerCase().includes(input));
+        matches.forEach(match => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-suggestions';
+            item.textContent = match;
+            item.addEventListener('click', () => {
+                searchInput.value = match; // Set the selected value
+                searchNode();
+                dropdown.innerHTML = ''; // Clear the dropdown
+                dropdown.style.border = 'none'; // Hide the border after selection
+            });
+            dropdown.appendChild(item);
+        });
+    
+        // Handle case where no matches are found
+        if (matches.length === 0) {
+            const noMatch = document.createElement('div');
+            noMatch.className = 'autocomplete-suggestions';
+            noMatch.textContent = 'No matches found';
+            dropdown.appendChild(noMatch);
+        }
+    });
 
     // Global references for zoom updates
     let currentZoomScale = 1; 
@@ -108,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
         simulation.alpha(2).restart();
     }
 
-    // Call fitGraphToContainer after rendering the graph
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
         var url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
 
@@ -120,13 +227,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(data => {
-                if (data.error) {
-                    console.error('Backend error:', data.error);
-                    return;
-                }
+                populateNodeList(data); // Refresh node list for dropdown
                 initializeGroupToggles(data);
                 renderGraph(data);
-                fitGraphToContainer(); // Center and fit graph after rendering
+                fitGraphToContainer();
             })
             .catch(error => {
                 console.error('Error fetching graph data:', error);
@@ -591,8 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             nodeContainer.append("p")
                 .attr("class", "dependency-node")
-                .html(`<strong>${node.name}</strong>`)
-                .style("cursor", "pointer")
+                .html(`${node.name}`)
                 .on("click", (event) => handleNodeClicked(node));
 
             nodeContainer.append("div")

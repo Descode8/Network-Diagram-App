@@ -78,7 +78,7 @@ text, circle text {
 }
 
 .right-pane p {
-    text-align: left;
+    text-align: center;
     padding: 3px;
     margin: 0;
     font-size: .8rem;
@@ -110,6 +110,15 @@ text, circle text {
     margin: 0;
     font-size: 0.8rem;
     text-align: left;
+}
+
+.dependency-node {
+    cursor: pointer;
+}
+
+.dependency-node:hover {
+    font-weight: bold;
+    text-decoration: underline;
 }
 
 .right-pane h4 {
@@ -157,7 +166,8 @@ title {
 
 .custom-slider {
     width: 90%;
-    margin: 0px auto;
+    margin: 10px auto;
+    margin-top: 0px;
 }
 
 .custom-slider input[type="range"] {
@@ -238,7 +248,6 @@ title {
     width: 35px;
     height: 35px;
     cursor: pointer;
-    margin: 10px 0;
 }
 
 .custom-slider input {
@@ -246,48 +255,91 @@ title {
 }
 
 .search-input-and-button {
-    display: flex;
+    display: flex; /* Align the icon and input side-by-side */
     flex-direction: row;
-    justify-content: center;
+    align-items: center;
+    width: 100%; /* Ensure it spans the container */
+    background-color: var(--page-bg-clr); /* Match the container background */
+    position: sticky; /* Keep it fixed while scrolling */
+    top: 0; /* Stick to the top of the container */
+    z-index: 10; /* Ensure it stays above the dropdown */
 }
 
+.search-input-and-button:focus {
+    border-bottom: 2px solid var(--pane-ttle-bg-clr); /* Subtle shadow */
+}
+
+
 .search-container {
-    position: relative;
+    position: relative; /* Necessary for dropdown alignment */
     display: flex;
-    flex-direction: column;
+    flex-direction: column; /* Stack elements vertically */
     width: 90%;
+    max-height: 20%;
     margin: 0 auto;
     background-color: var(--page-bg-clr);
     border-radius: 15px; 
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0);
-    overflow-y: auto;
-    overflow-x: hidden;
+    border: 2px solid transparent;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Subtle shadow */
     font-family: 'Roboto Flex', sans-serif;
-    max-height: 150px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.search-container:active, .search-container:focus-within {
+    border: 2px solid var(--pane-ttle-bg-clr); /* Subtle shadow */
 }
 
 .autocomplete-suggestions {
-    font-size: .8rem;
-    position: relative;
-    padding: 5px 0 5px 10px;
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap; /* Prevent text wrapping */
+    text-overflow: ellipsis;
+    overflow: hidden;
+    overflow-y: auto;
+}
+
+.autocomplete-suggestions:last-child {
+    border-bottom-right-radius: inherit;
+    border-bottom-left-radius: inherit;
 }
 
 .autocomplete-suggestions:hover {
     background-color: var(--bdr-clr);
     color: white;
-    cursor: pointer;
+}
+
+#autocompleteSuggestions {
+    overflow: auto;
+}
+
+.search-menu {
+    position: absolute; 
+    top: 115%; 
+    left: 0;
+    width: 100%;
+    z-index: 10; 
+    background-color: var(--page-bg-clr);
+    border: none;
+    border-top: none;
+    border-radius: 10px; 
+    max-height: 100px; 
+    overflow-y: auto; 
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
 }
 
 #searchInput {
+    flex-grow: 1;
     font-size: .8rem;
     border: none;
     outline: none;
     background-color: transparent;
-    flex-grow: 1;
     color: black; 
     white-space: nowrap; 
     text-overflow: ellipsis;
-    padding: 0px 10px 0px 0px;
+    padding: 0;
 }
 
 #searchButton, #clearButton {
@@ -297,9 +349,12 @@ title {
     justify-content: center;
     border: none;
     background: none;
-    padding-left: 8px;
     margin: 0;
     cursor: pointer;
+}
+
+#clearButton {
+    display: none; /* Initially hidden */
 }
 
 .search-icon, .clear-icon {
@@ -323,7 +378,7 @@ label, span {
 }
 
 .depthSlider {
-    margin: 0 auto;
+    margin: -10px auto;
 }
 
 span {
@@ -359,6 +414,7 @@ span {
     box-shadow: 0 4px 6px var(--pane-ttle-bg-clr);
     z-index: 100; 
     width: max-content;
+    height: max-content;
     white-space: nowrap;
     font-size: 0.8rem;
     pointer-events: none; /* Prevent interaction issues */
@@ -378,6 +434,12 @@ span {
 .switches-container, .dynamic-group-toggles {
     background-color: var(--compnt-bg-clr);
     border-radius: 10px;
+    width: 90%;
+    margin: 0 auto;
+}
+
+.dynamic-group-toggles {
+    width: 100%;
 }
 
 .switch {
@@ -450,4 +512,3 @@ input + .slider {
 input:checked + .slider .checkmark {
     opacity: 1;
 }
-
