@@ -4,13 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 6.5;
     const nodeSize = 5;
-    const linkWidth = 1;
-    const linkColor = '#85929E';
-    const nodeBorderColor = '#000000';
+    const linkWidth = .5;
+    const linkColor = 'var(--link-clr)';
+    const nodeBorderColor = 'var(--nde-bdr-clr)';
 
     let currentActiveNodeName = null; 
     let graphPadding = 75;  
     let visibleNodes = [];
+    let visibleGroups = {};
     let isNodeClicked = false;
 
     const depthSlider = document.getElementById('depthSlider');
@@ -21,11 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const labelNodesSwitch = document.getElementById('labelNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
+    const switchesContainer = document.querySelector('.switches-container');
 
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
-
-    let visibleGroups = {};
 
     // Global references for zoom updates
     let currentZoomScale = 1; 
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     svg.call(zoom);
 
     function nodeColor(node) {
-        const nodes = node.data.groupType || node.data.type; 
+        var nodes = node.data.groupType || node.data.type; 
         switch (nodes) {
             case 'Applications': return 'var(--app-nde-clr, #3498DB)';
             case 'People': return 'var(--ppl-nde-clr, #229954)';
@@ -91,10 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     onHomeButton.addEventListener('click', () => {
         location.reload();
+        // Optional: show toggles if not reloading
+        // showGroupToggles();
     });
 
     onRefreshButton.addEventListener('click', () => {
         resetNodeForces();
+        showGroupToggles(); // Ensure toggles are visible on refresh
     });
 
     function resetNodeForces() {
@@ -105,8 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
         simulation.alpha(2).restart();
     }
 
+    // Call fitGraphToContainer after rendering the graph
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
-        const url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
+        var url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
 
         fetch(url, { headers: { 'Accept': 'application/json' } })
             .then(response => {
@@ -122,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 initializeGroupToggles(data);
                 renderGraph(data);
+                fitGraphToContainer(); // Center and fit graph after rendering
             })
             .catch(error => {
                 console.error('Error fetching graph data:', error);
@@ -140,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initializeGroupToggles(data) {
-        const allGroups = Array.from(getUniqueGroups(data));
+        var allGroups = Array.from(getUniqueGroups(data));
     
         if (Object.keys(visibleGroups).length === 0) {
             allGroups.forEach(group => {
@@ -148,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     
-        const switchesContainer = document.querySelector('.switches-container');
         let dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
     
         if (!dynamicTogglesContainer) {
@@ -160,20 +164,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     
         allGroups.forEach(group => {
-            const label = document.createElement('label');
+            var label = document.createElement('label');
             label.className = 'switch';
     
-            const input = document.createElement('input');
+            var input = document.createElement('input');
             input.type = 'checkbox';
             input.checked = visibleGroups[group];
     
-            const span = document.createElement('span');
+            var span = document.createElement('span');
             span.className = 'slider round';
     
             // Use nodeColor to get the color dynamically for the group
             span.style.backgroundColor = nodeColor({ data: { groupType: group } });
     
-            const checkImg = document.createElement('img');
+            var checkImg = document.createElement('img');
             checkImg.src = "/static/images/check.svg";
             checkImg.className = "checkmark";
             checkImg.alt = "Checkmark";
@@ -196,15 +200,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderGraph(data) {
         graphGroup.selectAll('*').remove();
     
-        const displayGroupNodes = groupNodeSwitch.checked;
-        const displayAssetNodes = labelNodesSwitch.checked;
+        var displayGroupNodes = groupNodeSwitch.checked;
+        var displayAssetNodes = labelNodesSwitch.checked;
     
         hideGroupNodes(data, displayGroupNodes);
         filterDataByVisibleGroups(data);
     
-        const root = d3.hierarchy(data);
-        const links = root.links();
-        const nodes = root.descendants();
+        var root = d3.hierarchy(data);
+        var links = root.links();
+        var nodes = root.descendants();
     
         visibleNodes = nodes;
     
@@ -215,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
         simulation.force("link").links(links);
     
-        const link = graphGroup.append('g')
+        var link = graphGroup.append('g')
             .attr('class', 'links')
             .selectAll('line')
             .data(links)
@@ -226,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Store link selection globally
         linkSelectionGlobal = link;
     
-        const activeNodeName = data.name;
+        var activeNodeName = data.name;
     
         function shouldHaveCircle(d) {
             if (d.data.name === activeNodeName) return true;
@@ -253,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Store node selection globally
         nodeSelectionGlobal = nodeSelection;
     
-        const labels = graphGroup.append('g')
+        var labels = graphGroup.append('g')
             .attr('class', 'labels')
             .selectAll('text')
             .data(nodes)
@@ -269,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
         currentActiveNodeName = data.name;
     
-        const foundActiveNode = nodes.find(node => node.data.name === data.name);
+        var foundActiveNode = nodes.find(node => node.data.name === data.name);
         if (foundActiveNode) {
             simulation.alpha(1).restart();
             foundActiveNode.fx = width / 2;
@@ -284,7 +288,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 .attr('y2', d => d.target.y);
     
             nodeSelection
-                .attr("transform", d => `translate(${d.x},${d.y})`);
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+                // Alternatively, if using 'transform':
+                // .attr("transform", d => `translate(${d.x},${d.y})`);
     
             labels
                 .attr('x', d => d.x)
@@ -328,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function filterDataByVisibleGroups(node) {
         if (!node.children) return;
         node.children = node.children.filter(child => {
-            const key = child.groupType || child.type;
+            var key = child.groupType || child.type;
             if (key && visibleGroups.hasOwnProperty(key)) {
                 if (!visibleGroups[key]) {
                     return false;
@@ -340,10 +347,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleNodeClicked(nodeData) {
-        const clickedName = nodeData.name || nodeData.groupType;
+        var clickedName = nodeData.name || nodeData.groupType;
         if (!clickedName) {
             console.error('Clicked node has neither name nor groupNode:', nodeData);
             return;
+        }
+
+        // Determine if the clicked node is a groupType node
+        var isGroupTypeNode = !!nodeData.groupType;
+
+        if (isGroupTypeNode) {
+            hideGroupToggles();
+        } else {
+            showGroupToggles();
         }
 
         if (clickedName === currentActiveNodeName) {
@@ -385,23 +401,22 @@ document.addEventListener('DOMContentLoaded', () => {
             .on("end", dragended);
     };  
 
-    // Use old code logic to fit graph to the container
     function fitGraphToContainer() {
-        const containerWidth = window.innerWidth * 0.7;
-        const containerHeight = window.innerHeight;
-
+        const containerWidth = document.querySelector('.graph-container').clientWidth;
+        const containerHeight = document.querySelector('.graph-container').clientHeight;
+    
         const nodesBBox = {
             xMin: d3.min(visibleNodes, d => d.x),
             xMax: d3.max(visibleNodes, d => d.x),
             yMin: d3.min(visibleNodes, d => d.y),
             yMax: d3.max(visibleNodes, d => d.y)
         };
-
+    
         const nodesWidth = nodesBBox.xMax - nodesBBox.xMin;
         const nodesHeight = nodesBBox.yMax - nodesBBox.yMin;
-
+    
         let scale, translateX, translateY;
-
+    
         if (nodesWidth === 0 && nodesHeight === 0) {
             // Only one node present
             scale = 1;
@@ -412,19 +427,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 (containerWidth - 2 * graphPadding) / nodesWidth,
                 (containerHeight - 2 * graphPadding) / nodesHeight
             );
-
+    
             translateX = (containerWidth - nodesWidth * scale) / 2 - nodesBBox.xMin * scale;
             translateY = (containerHeight - nodesHeight * scale) / 2 - nodesBBox.yMin * scale;
         }
-
-        svg.transition().duration(0).call(
+    
+        svg.transition().duration(500).call(
             zoom.transform,
             d3.zoomIdentity.translate(translateX, translateY).scale(scale)
         );
     }
 
     function updateDepthSlider() {
-        const value = (depthSlider.value - depthSlider.min) / (depthSlider.max - depthSlider.min) * 100;
+        var value = (depthSlider.value - depthSlider.min) / (depthSlider.max - depthSlider.min) * 100;
         depthSlider.style.setProperty('--value', `${value}%`);
         depthValueLabel.textContent = depthSlider.value;
     }
@@ -444,8 +459,9 @@ document.addEventListener('DOMContentLoaded', () => {
         fitGraphToContainer();
     });
 
-    // Initial fetch
+    // Initial fetch and ensure toggles are visible
     fetchAndRenderGraph();
+    showGroupToggles(); // Make sure toggles are visible on initial load
 
     function updateRightContainer(data) {
         rightContainer.html("");
@@ -457,22 +473,22 @@ document.addEventListener('DOMContentLoaded', () => {
         rightContainer.append("p")
             .html(`<strong>Type: </strong>${data.type || 'Unknown'}`);
 
-        const description = (data.description || 'No description available').replace(/\n/g, '<br>');
+        var description = (data.description || 'No description available').replace(/\n/g, '<br>');
         rightContainer.append("h3").attr("class", "description-header").html("Description");
         rightContainer.append("p").html(description);
 
         rightContainer.append("h3").attr("class", "dependencies-header").html("Dependencies");
 
-        const displayGroupNodes = groupNodeSwitch.checked;
+        var displayGroupNodes = groupNodeSwitch.checked;
 
         if (displayGroupNodes) {
             // Original logic: grouping by groupType
-            const groupNodes = (data.children || []).filter(d => d.groupType);
+            var groupNodes = (data.children || []).filter(d => d.groupType);
 
-            const desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
+            var desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
             groupNodes.sort((a, b) => {
-                const indexA = desiredOrder.indexOf(a.groupType);
-                const indexB = desiredOrder.indexOf(b.groupType);
+                var indexA = desiredOrder.indexOf(a.groupType);
+                var indexB = desiredOrder.indexOf(b.groupType);
                 if (indexA === -1 && indexB === -1) {
                     return a.groupType.localeCompare(b.groupType);
                 } else if (indexA === -1) {
@@ -489,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             function createGroupTypeSection(typeNode) {
-                const typeSection = rightContainer.append("div")
+                var typeSection = rightContainer.append("div")
                     .attr("class", "type-section");
 
                 typeSection.append("p")
@@ -498,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     .html(`<strong>${typeNode.groupType}</strong>`)
                     .style("cursor", "pointer")
                     .on("click", (event) => {
-                        const pseudoNodeData = {
+                        var pseudoNodeData = {
                             name: typeNode.groupType,
                             type: typeNode.groupType,
                             description: typeNode.groupType + " Group Node",
@@ -507,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         handleNodeClicked(pseudoNodeData);
                     });
 
-                const sortedChildren = (typeNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+                var sortedChildren = (typeNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
 
                 sortedChildren.forEach(childNode => {
                     createNodeElement(typeSection, childNode);
@@ -516,16 +532,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } else {
             // DisplayGroups is off, so group by 'type' directly
-            const flatNodes = (data.children || []);
+            var flatNodes = (data.children || []);
             // Group the nodes by their type
-            const nodesByType = d3.group(flatNodes, d => d.type);
+            var nodesByType = d3.group(flatNodes, d => d.type);
 
             // Desired order for types
-            const desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
+            var desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
             // Sort the group keys by desired order
-            const orderedTypes = Array.from(nodesByType.keys()).sort((a, b) => {
-                const indexA = desiredOrder.indexOf(a);
-                const indexB = desiredOrder.indexOf(b);
+            var orderedTypes = Array.from(nodesByType.keys()).sort((a, b) => {
+                var indexA = desiredOrder.indexOf(a);
+                var indexB = desiredOrder.indexOf(b);
 
                 if (indexA === -1 && indexB === -1) {
                     return a.localeCompare(b);
@@ -539,12 +555,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             orderedTypes.forEach(type => {
-                const nodes = nodesByType.get(type);
+                var nodes = nodesByType.get(type);
                 createTypeSection(type, nodes);
             });
 
             function createTypeSection(type, nodes) {
-                const typeSection = rightContainer.append("div")
+                var typeSection = rightContainer.append("div")
                     .attr("class", "type-section");
 
                 typeSection.append("p")
@@ -553,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     .html(`<strong>${type}</strong>`)
                     .style("cursor", "pointer")
                     .on("click", (event) => {
-                        const pseudoNodeData = {
+                        var pseudoNodeData = {
                             name: type,
                             type: type,
                             description: type + " Group Node",
@@ -562,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         handleNodeClicked(pseudoNodeData);
                     });
 
-                const sortedChildren = nodes.slice().sort((a, b) => a.name.localeCompare(b.name));
+                var sortedChildren = nodes.slice().sort((a, b) => a.name.localeCompare(b.name));
                 sortedChildren.forEach(childNode => {
                     createNodeElement(typeSection, childNode);
                 });
@@ -570,7 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function createNodeElement(parentContainer, node) {
-            const nodeContainer = parentContainer.append("div")
+            var nodeContainer = parentContainer.append("div")
                 .attr("class", "dependency-node-container");
 
             nodeContainer.append("p")
@@ -582,6 +598,25 @@ document.addEventListener('DOMContentLoaded', () => {
             nodeContainer.append("div")
                 .attr("class", "hover-box")
                 .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
+        }
+    }
+
+    // Function to hide all group toggles except labelNodesSwitch
+    function hideGroupToggles() {
+        var dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
+        
+        if (dynamicTogglesContainer) {
+            dynamicTogglesContainer.style.display = 'none';
+            groupNodeSwitch.parentElement.style.display = 'none';
+        }
+    }
+
+    // Function to show all group toggles
+    function showGroupToggles() {
+        var dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
+        
+        if (dynamicTogglesContainer) {
+            dynamicTogglesContainer.style.display = 'block';
         }
     }
 });
