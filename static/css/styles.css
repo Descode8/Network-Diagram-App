@@ -126,14 +126,16 @@ text, circle text {
 }
 
 .failed-search {
-    color: white;
+    color: black;
     font-size: .7rem;
     text-align: left;
-    background-color: var(--pane-ttle-bg-clr);
-    padding: 10px;
+    background-color: #d98880;
+    padding: 2px 10px;
     margin: 0 auto;
     border-radius: 3px;
-    opacity: 0.8;
+    opacity: 1;
+    animation: fadeInOut 5s;
+    display: none; /* Ensure it is hidden by default */
 }
 
 title {
@@ -275,7 +277,7 @@ title {
     display: flex;
     flex-direction: column; /* Stack elements vertically */
     width: 90%;
-    max-height: 20%;
+    max-height: 15%;
     margin: 0 auto;
     background-color: var(--page-bg-clr);
     border-radius: 15px; 
@@ -313,6 +315,10 @@ title {
 
 #autocompleteSuggestions {
     overflow: auto;
+}
+
+#autocompleteSuggestions::-webkit-scrollbar {
+    width: 5px;
 }
 
 .search-menu {

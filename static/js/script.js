@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('searchInput');
     const clearButton = document.getElementById('clearButton');
     const searchButton = document.getElementById('searchButton');
+    const failedSearch = document.querySelector('.failed-search'); // For displaying invalid search
     const rightContainer = d3.select('.right-pane');
 
     const labelNodesSwitch = document.getElementById('labelNodesSwitch');
@@ -42,13 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (input) {
             clearButton.style.display = 'flex'; // Show clear button
             dropdown.style.display = 'block'; // Show dropdown
-            // Add logic to populate dropdown suggestions
         } else {
             clearButton.style.display = 'none'; // Hide clear button
             dropdown.style.display = 'none'; // Hide dropdown
             dropdown.innerHTML = ''; // Clear dropdown content
         }
-    });    
+    });
 
     clearButton.addEventListener('click', (event) => {
         event.preventDefault();
@@ -57,7 +57,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const dropdown = document.getElementById('autocompleteSuggestions');
         dropdown.style.display = 'none'; // Temporarily hide dropdown
         dropdown.innerHTML = ''; // Clear dropdown content
-    });      
+    });
+
+    // Function to show the "Invalid Search" message
+    function showInvalidSearchMessage() {
+        failedSearch.style.display = 'block'; // Show the message
+        failedSearch.textContent = 'Invalid search'; // Set message content
+
+        // Hide the message after 3 seconds
+        setTimeout(() => {
+            failedSearch.style.display = 'none'; // Hide the message
+            failedSearch.textContent = ''; // Clear the message content
+        }, 3000);
+    }
 
     // Initialize nodes for dropdown matching
     function populateNodeList(data) {
@@ -74,7 +86,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function searchNode() {
         const query = searchInput.value.trim();
         if (query) {
-            fetchAndRenderGraph(depthSlider.value, query);
+            const matchingNode = allNodes.find(node => node.toLowerCase() === query.toLowerCase());
+            if (matchingNode) {
+                fetchAndRenderGraph(depthSlider.value, query); // Valid search, proceed with rendering
+            } else {
+                showInvalidSearchMessage(); // Invalid search, show message
+            }
+        } else {
+            showInvalidSearchMessage(); // Empty search, show message
         }
     }
 
