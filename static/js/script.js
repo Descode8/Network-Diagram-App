@@ -60,9 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Function to show the "Invalid Search" message
-    function showInvalidSearchMessage() {
+    function showInvalidSearchMessage(input) {
         failedSearch.style.display = 'block'; // Show the message
-        failedSearch.textContent = 'Invalid search'; // Set message content
+
+        if(!input) {
+            failedSearch.textContent = 'Please enter a search term'; // Set message content
+            return;
+        }
+
+        failedSearch.textContent = `${input} does not exist`; // Set message content
 
         // Hide the message after 3 seconds
         setTimeout(() => {
@@ -84,16 +90,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Search function
     function searchNode() {
-        const query = searchInput.value.trim();
-        if (query) {
-            const matchingNode = allNodes.find(node => node.toLowerCase() === query.toLowerCase());
+        const input = searchInput.value.trim();
+        if (input) {
+            const matchingNode = allNodes.find(node => node.toLowerCase() === input.toLowerCase());
             if (matchingNode) {
-                fetchAndRenderGraph(depthSlider.value, query); // Valid search, proceed with rendering
+                fetchAndRenderGraph(depthSlider.value, input); // Valid search, proceed with rendering
             } else {
-                showInvalidSearchMessage(); // Invalid search, show message
+                showInvalidSearchMessage(input); // Invalid search, show message
             }
         } else {
-            showInvalidSearchMessage(); // Empty search, show message
+            showInvalidSearchMessage(input); // Empty search, show message
         }
     }
 
