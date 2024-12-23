@@ -8,6 +8,7 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx') -> tuple:
             raise FileNotFoundError(f"{excel_file} not found.")
         
         data = pd.read_excel(excel_file)
+        # Assuming the active node is provided elsewhere; replace with actual logic if needed
         active_node = data.loc[0, 'CI_Name']
         return data, active_node
     except Exception as e:
@@ -17,172 +18,325 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx') -> tuple:
 def build_hierarchy(data, depth, active_node):
     """
     Builds a symmetrical hierarchical JSON structure showing both upward and downward
-    relationships around the active_node, including type nodes.
-    For a type node:
-        - depth=1 returns just the type node
-        - depth>1 returns the type node, all nodes of that type as children,
-        and for each of those children, their parents and children according to the reduced depth.
+    relationships around the active_node, including group nodes.
     """
+    # Identify all unique types
     all_types = set(data['CI_Type'].dropna().unique().tolist() + data['Dependency_Type'].dropna().unique().tolist())
+    print("All Types:", all_types)
 
-    # Determine if active_node is CI, Dependency, or Type node
+    # Determine if active_node is a CI, Dependency, or Type node
     is_type_node = False
+    is_group_node = False
     if active_node in data['CI_Name'].values:
         node_data = data[data['CI_Name'] == active_node].iloc[0]
         node_type = node_data['CI_Type'] if pd.notna(node_data['CI_Type']) else active_node
         node_desc = node_data['CI_Descrip'] if pd.notna(node_data['CI_Descrip']) else "No description available..."
         node_rel = node_data['Rel_Type'] or None
+        is_group_node = False
     elif active_node in data['Dependency_Name'].values:
         node_data = data[data['Dependency_Name'] == active_node].iloc[0]
         node_type = node_data['Dependency_Type'] if pd.notna(node_data['Dependency_Type']) else active_node
         node_desc = node_data['Dependency_Descrip'] if pd.notna(node_data['Dependency_Descrip']) else "No description available..."
         node_rel = node_data['Rel_Type'] or None
+        is_group_node = False
     elif active_node in all_types:
         # It's a type node
         is_type_node = True
         node_type = active_node
         node_desc = f"{active_node} Group Node"
         node_rel = None
+        is_group_node = True
     else:
         return {"error": f"No data found for active node: {active_node}"}
 
-    active_node_relationships = {
+    # Initialize the root node with separate 'children' and 'parents'
+    root = {
         "name": active_node,
         "type": node_type,
         "relationship": node_rel,
         "directRelationship": True,
         "description": node_desc,
-        "children": []
+        "children": [],  # Downward relationships
+        "parents": [],   # Upward relationships
+        "isGroupNode": is_group_node
     }
 
     # If depth = 1, just return the node
     if depth == 1:
-        active_node_relationships["totalNodesDisplayed"] = 1
-        return active_node_relationships
+        root["totalNodesDisplayed"] = 1
+        return root
 
+    # Initialize BFS queue
+    # Each entry: (current_node_dict, node_name, current_depth, direction)
+    # direction: 'both' indicates to process both parents and children
+    queue = deque()
     visited = set([active_node])
     total_names_count = 1
-    queue = deque()
 
-    # If it's a type node, we first add all nodes of that type as children
-    # Then we run BFS expansions from these children.
     if is_type_node:
-        type_data = data[(data['CI_Type'] == active_node) | (data['Dependency_Type'] == active_node)]
-        
-        # If no members of that type are found, just return the type node
-        if type_data.empty:
-            active_node_relationships["totalNodesDisplayed"] = 1
-            return active_node_relationships
-
-        # Add all members as children of the type node
-        for _, row in type_data.iterrows():
-            child_name = row['CI_Name'] if pd.notna(row['CI_Name']) else row['Dependency_Name']
-            # Determine child's properties
-            child_type = row['CI_Type'] if pd.notna(row['CI_Type']) else row['Dependency_Type']
-            child_descrip = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else row['Dependency_Descrip']
-            child_rel = row['Rel_Type'] or None
-
-            if child_name not in visited:
+        # Process downward relationships (children) where CI_Type == active_node
+        ci_type_data = data[data['CI_Type'] == active_node]
+        for _, row in ci_type_data.iterrows():
+            child_name = row['CI_Name']
+            if pd.notna(child_name) and child_name not in visited:
                 visited.add(child_name)
+                child_type = row['CI_Type'] if pd.notna(row['CI_Type']) else "Unknown"
+                child_descrip = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else row['Dependency_Descrip']
+                child_rel = row['Rel_Type'] or None
+
                 c_node = {
                     "name": child_name,
                     "type": child_type,
                     "relationship": child_rel,
                     "description": child_descrip or "No description available...",
-                    "children": []
+                    "children": [],
+                    "parents": [],
+                    "isGroupNode": False  # Regular node
                 }
 
+                root["children"].append(c_node)
+                print(f"Added child (CI_Type match): {child_name}")
                 total_names_count += 1
-                active_node_relationships["children"].append(c_node)
 
-                # Add this child to the BFS queue with depth-1 (because we've used one "level" to get here)
-                if depth > 2:  # Only enqueue if we have more depth to go
-                    queue.append((c_node, child_name, depth - 1))
+                # Enqueue for further exploration if depth allows
+                if depth > 2:
+                    queue.append((c_node, child_name, depth - 1, 'both'))
 
+        # Process downward relationships where Dependency_Type == active_node
+        dependency_type_data = data[data['Dependency_Type'] == active_node]
+        for _, row in dependency_type_data.iterrows():
+            dependency_name = row['Dependency_Name']
+            if pd.notna(dependency_name) and dependency_name not in visited:
+                visited.add(dependency_name)
+                dependency_type = row['Dependency_Type'] if pd.notna(row['Dependency_Type']) else "Unknown"
+                dependency_descrip = row['Dependency_Descrip'] if pd.notna(row['Dependency_Descrip']) else row['CI_Descrip']
+                dependency_rel = row['Rel_Type'] or None
+
+                dep_node = {
+                    "name": dependency_name,
+                    "type": dependency_type,
+                    "relationship": dependency_rel,
+                    "description": dependency_descrip or "No description available...",
+                    "children": [],
+                    "parents": [],
+                    "isGroupNode": False  # Regular node
+                }
+
+                root["children"].append(dep_node)
+                print(f"Added child (Dependency_Type match): {dependency_name}")
+                total_names_count += 1
+
+                # Enqueue for further exploration if depth allows
+                if depth > 2:
+                    queue.append((dep_node, dependency_name, depth - 1, 'both'))
+
+        # Process upward relationships where Dependency_Type == active_node
+        # This seems incorrect; for type nodes, it's appropriate
+        for _, row in dependency_type_data.iterrows():
+            parent_name = row['CI_Name']
+            if pd.notna(parent_name) and parent_name not in visited:
+                visited.add(parent_name)
+                parent_type = row['CI_Type'] if pd.notna(row['CI_Type']) else "Unknown"
+                parent_descrip = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else row['Dependency_Descrip']
+                parent_rel = row['Rel_Type'] or None
+
+                p_node = {
+                    "name": parent_name,
+                    "type": parent_type,
+                    "relationship": parent_rel,
+                    "description": parent_descrip or "No description available...",
+                    "children": [],
+                    "parents": [],
+                    "isGroupNode": False  # Regular node
+                }
+
+                root["parents"].append(p_node)
+                print(f"Added parent: {parent_name}")
+                total_names_count += 1
+
+                # Enqueue for further exploration if depth allows
+                if depth > 2:
+                    queue.append((p_node, parent_name, depth - 1, 'both'))
     else:
-        # If not a type node, we start BFS directly from the active node
-        queue.append((active_node_relationships, active_node, depth))
+        # Not a type node, process as a regular node
 
-    # BFS to expand parents/children symmetrically
+        # **1. Process Downward Relationships via CI_Type == active_node**
+        ci_type_data = data[data['CI_Type'] == active_node]
+        for _, row in ci_type_data.iterrows():
+            child_name = row['CI_Name']
+            if pd.notna(child_name) and child_name not in visited:
+                visited.add(child_name)
+                child_type = row['CI_Type'] if pd.notna(row['CI_Type']) else "Unknown"
+                child_descrip = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else row['Dependency_Descrip']
+                child_rel = row['Rel_Type'] or None
+
+                c_node = {
+                    "name": child_name,
+                    "type": child_type,
+                    "relationship": child_rel,
+                    "description": child_descrip or "No description available...",
+                    "children": [],
+                    "parents": [],
+                    "isGroupNode": False  # Regular node
+                }
+
+                root["children"].append(c_node)
+                print(f"Added child (CI_Type match): {child_name}")
+                total_names_count += 1
+
+                # Enqueue for further exploration if depth allows
+                if depth > 2:
+                    queue.append((c_node, child_name, depth - 1, 'both'))
+
+        # **2. Process Downward Relationships via Dependencies (CI_Name == active_node)**
+        dependencies_data = data[data['CI_Name'] == active_node]
+        for _, row in dependencies_data.iterrows():
+            dependency_type = row['Dependency_Type']
+            dependency_name = row['Dependency_Name']
+            dependency_descrip = row['Dependency_Descrip'] if pd.notna(row['Dependency_Descrip']) else row['CI_Descrip']
+            dependency_rel = row['Rel_Type'] or None
+
+            if pd.notna(dependency_name) and dependency_name not in visited:
+                visited.add(dependency_name)
+                c_node = {
+                    "name": dependency_name,
+                    "type": dependency_type if pd.notna(dependency_type) else "Unknown",
+                    "relationship": dependency_rel,
+                    "description": dependency_descrip or "No description available...",
+                    "children": [],
+                    "parents": [],
+                    "isGroupNode": False
+                }
+
+                root["children"].append(c_node)
+                print(f"Added child (Dependency of {active_node}): {dependency_name}")
+                total_names_count += 1
+
+                # Enqueue for further exploration if depth allows
+                if depth > 2:
+                    queue.append((c_node, dependency_name, depth - 1, 'both'))
+
+        # **3. Process Upward Relationships (Parents) via Dependency_Name == active_node**
+        dependency_name_data = data[data['Dependency_Name'] == active_node]
+        for _, row in dependency_name_data.iterrows():
+            parent_name = row['CI_Name']
+            if pd.notna(parent_name) and parent_name not in visited:
+                visited.add(parent_name)
+                parent_type = row['CI_Type'] if pd.notna(row['CI_Type']) else "Unknown"
+                parent_descrip = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else row['Dependency_Descrip']
+                parent_rel = row['Rel_Type'] or None
+
+                p_node = {
+                    "name": parent_name,
+                    "type": parent_type,
+                    "relationship": parent_rel,
+                    "description": parent_descrip or "No description available...",
+                    "children": [],
+                    "parents": [],
+                    "isGroupNode": False  # Regular node
+                }
+
+                root["parents"].append(p_node)
+                print(f"Added parent: {parent_name}")
+                total_names_count += 1
+
+                # Enqueue for further exploration if depth allows
+                if depth > 2:
+                    queue.append((p_node, parent_name, depth - 1, 'both'))
+
+    # BFS to expand both parents and children
     while queue:
-        current_node, current_name, current_depth = queue.popleft()
+        current_node, current_name, current_depth, direction = queue.popleft()
         if current_depth <= 1:
             continue
 
-        # Parents: where current_name = Dependency_Name
-        parent_data = data[data['Dependency_Name'] == current_name]
-        # Children: where current_name = CI_Name
-        child_data = data[data['CI_Name'] == current_name]
+        if direction in ['child', 'both']:
+            # **1. Process Children via CI_Type == current_name**
+            child_data = data[data['CI_Type'] == current_name]
+            for _, row in child_data.iterrows():
+                child_name = row['CI_Name']
+                if pd.notna(child_name) and child_name not in visited:
+                    visited.add(child_name)
+                    child_type = row['CI_Type'] if pd.notna(row['CI_Type']) else "Unknown"
+                    child_descrip = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else row['Dependency_Descrip']
+                    child_rel = row['Rel_Type'] or None
 
-        # Handle parents
-        if not parent_data.empty:
-            parents_by_type = parent_data.groupby('CI_Type')
-            for p_type, p_group in parents_by_type:
-                parent_group = {
-                    "groupType": p_type if pd.notna(p_type) else "Unknown",
-                    "relationship": p_group.iloc[0]['Rel_Type'] or None,
-                    "children": []
-                }
+                    c_node = {
+                        "name": child_name,
+                        "type": child_type,
+                        "relationship": child_rel,
+                        "description": child_descrip or "No description available...",
+                        "children": [],
+                        "parents": [],
+                        "isGroupNode": False  # Regular node
+                    }
 
-                for _, row in p_group.iterrows():
-                    p_name = row['CI_Name']
-                    if p_name not in visited:
-                        visited.add(p_name)
-                        p_type_val = row['CI_Type'] if pd.notna(row['CI_Type']) else "Unknown"
-                        p_desc = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else "No description available..."
-                        p_rel = row['Rel_Type'] or None
+                    current_node["children"].append(c_node)
+                    print(f"Added child (BFS CI_Type match): {child_name}")
+                    total_names_count += 1
 
-                        p_node = {
-                            "name": p_name,
-                            "type": p_type_val,
-                            "relationship": p_rel,
-                            "description": p_desc,
-                            "children": []
-                        }
+                    # Enqueue for further exploration if depth allows
+                    if current_depth > 2:
+                        queue.append((c_node, child_name, current_depth - 1, 'both'))
 
-                        total_names_count += 1
-                        parent_group["children"].append(p_node)
+            # **2. Process Children via Dependencies (CI_Name == current_name)**
+            dependencies_data = data[data['CI_Name'] == current_name]
+            for _, row in dependencies_data.iterrows():
+                dependency_type = row['Dependency_Type']
+                dependency_name = row['Dependency_Name']
+                dependency_descrip = row['Dependency_Descrip'] if pd.notna(row['Dependency_Descrip']) else row['CI_Descrip']
+                dependency_rel = row['Rel_Type'] or None
 
-                        if current_depth > 2:
-                            queue.append((p_node, p_name, current_depth - 1))
+                if pd.notna(dependency_name) and dependency_name not in visited:
+                    visited.add(dependency_name)
+                    dep_node = {
+                        "name": dependency_name,
+                        "type": dependency_type if pd.notna(dependency_type) else "Unknown",
+                        "relationship": dependency_rel,
+                        "description": dependency_descrip or "No description available...",
+                        "children": [],
+                        "parents": [],
+                        "isGroupNode": False
+                    }
 
-                if parent_group["children"]:
-                    current_node["children"].append(parent_group)
+                    current_node["children"].append(dep_node)
+                    print(f"Added child (BFS Dependency match): {dependency_name}")
+                    total_names_count += 1
 
-        # Handle children
-        if not child_data.empty:
-            children_by_type = child_data.groupby('Dependency_Type')
-            for c_type, c_group in children_by_type:
-                child_group = {
-                    "groupType": c_type if pd.notna(c_type) else "Unknown",
-                    "relationship": c_group.iloc[0]['Rel_Type'] or None,
-                    "children": []
-                }
+                    # Enqueue for further exploration if depth allows
+                    if current_depth > 2:
+                        queue.append((dep_node, dependency_name, current_depth - 1, 'both'))
 
-                for _, row in c_group.iterrows():
-                    c_name = row['Dependency_Name']
-                    if c_name not in visited:
-                        visited.add(c_name)
-                        c_type_val = row['Dependency_Type'] if pd.notna(row['Dependency_Type']) else "Unknown"
-                        c_desc = row['Dependency_Descrip'] if pd.notna(row['Dependency_Descrip']) else "No description available..."
-                        c_rel = row['Rel_Type'] or None
+        if direction in ['parent', 'both']:
+            # **Process Parents via Dependency_Name == current_name**
+            parent_data = data[data['Dependency_Name'] == current_name]
+            for _, row in parent_data.iterrows():
+                parent_name = row['CI_Name']
+                if pd.notna(parent_name) and parent_name not in visited:
+                    visited.add(parent_name)
+                    parent_type = row['CI_Type'] if pd.notna(row['CI_Type']) else "Unknown"
+                    parent_descrip = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else row['Dependency_Descrip']
+                    parent_rel = row['Rel_Type'] or None
 
-                        c_node = {
-                            "name": c_name,
-                            "type": c_type_val,
-                            "relationship": c_rel,
-                            "description": c_desc,
-                            "children": []
-                        }
+                    p_node = {
+                        "name": parent_name,
+                        "type": parent_type,
+                        "relationship": parent_rel,
+                        "description": parent_descrip or "No description available...",
+                        "children": [],
+                        "parents": [],
+                        "isGroupNode": False  # Regular node
+                    }
 
-                        total_names_count += 1
-                        child_group["children"].append(c_node)
+                    current_node["parents"].append(p_node)
+                    print(f"Added parent (BFS): {parent_name}")
+                    total_names_count += 1
 
-                        if current_depth > 2:
-                            queue.append((c_node, c_name, current_depth - 1))
+                    # Enqueue for further exploration if depth allows
+                    if current_depth > 2:
+                        queue.append((p_node, parent_name, current_depth - 1, 'both'))
 
-                if child_group["children"]:
-                    current_node["children"].append(child_group)
+    # Set total nodes displayed
+    root["totalNodesDisplayed"] = total_names_count
 
-    active_node_relationships["totalNodesDisplayed"] = total_names_count
-    return active_node_relationships
+    return root
