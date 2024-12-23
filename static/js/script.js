@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     let width = document.querySelector('.graph-container').clientWidth;
     let height = document.querySelector('.graph-container').clientHeight;
+    let rootNode = null;
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 6.5;
     const nodeSize = 5;
@@ -242,8 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
-        var url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
-
+        const url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
+    
         fetch(url, { headers: { 'Accept': 'application/json' } })
             .then(response => {
                 if (!response.ok) {
@@ -252,6 +253,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(data => {
+                if (!rootNode) {
+                    rootNode = data;
+                }
+                console.log('Root Node:', rootNode);
                 populateNodeList(data); // Refresh node list for dropdown
                 initializeGroupToggles(data);
                 renderGraph(data);
@@ -261,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error fetching graph data:', error);
             });
     }
+    
 
     function getUniqueGroups(node, groups = new Set()) {
         if (!node) return groups;
@@ -275,6 +281,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initializeGroupToggles(data) {
         var allGroups = Array.from(getUniqueGroups(data));
+    
+        // Filter out groups that don't have children in the active node
+        allGroups = allGroups.filter(group => {
+            const childrenOfType = (data.children || []).some(child => (child.groupType || child.type) === group);
+            return childrenOfType;
+        });
     
         if (Object.keys(visibleGroups).length === 0) {
             allGroups.forEach(group => {
@@ -298,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
             var input = document.createElement('input');
             input.type = 'checkbox';
-            input.checked = visibleGroups[group];
+            input.checked = visibleGroups[group] ?? true;
     
             var span = document.createElement('span');
             span.className = 'slider round';
@@ -320,12 +332,17 @@ document.addEventListener('DOMContentLoaded', () => {
             dynamicTogglesContainer.appendChild(label);
     
             input.addEventListener('change', () => {
+                if (group === data.groupType && !input.checked) {
+                    // Prevent hiding the active node
+                    input.checked = true;
+                    return;
+                }
                 visibleGroups[group] = input.checked;
                 fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
             });
         });
     }
-
+    
     function renderGraph(data) {
         graphGroup.selectAll('*').remove();
     
@@ -440,11 +457,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!node.children || node.children.length === 0) {
             return node;
         }
-
+    
         let flattenedChildren = [];
-
+    
         node.children.forEach(child => {
-            if (child.groupType && !displayGroupNodes) {
+            if (child.groupType && !displayGroupNodes && child.groupType !== node.groupType) {
                 if (child.children && child.children.length > 0) {
                     child.children.forEach(grandChild => {
                         hideGroupNodes(grandChild, displayGroupNodes);
@@ -456,10 +473,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 flattenedChildren.push(child);
             }
         });
-
+    
         node.children = flattenedChildren;
         return node;
-    }
+    }    
 
     function filterDataByVisibleGroups(node) {
         if (!node.children) return;

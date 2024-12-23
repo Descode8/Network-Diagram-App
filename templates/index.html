@@ -37,6 +37,7 @@ Right Pane: Displays details for the selected node.
     }
 </style>
 <body>
+    <p>{{ rootNode }}</p>
     <div class="left-side-wrapper" style="display: flex; flex-direction: column;">
         <div class="left-pane">
             <h2>CIO Dashboard</h2>
@@ -48,6 +49,7 @@ Right Pane: Displays details for the selected node.
                     <img src="{{ url_for('static', filename='images/refresh.svg') }}" alt="Refresh Icon" class="refresh-icon">
                 </button>
             </div>
+            <hr>
             <div class="failed-search" style="display: none;"></div>
             <div class="search-container">
                 <div class="search-input-and-button">
@@ -73,14 +75,14 @@ Right Pane: Displays details for the selected node.
                     <span class="slider round">
                         <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
-                    Groups
+                    Group Nodes
                 </label>
                 <label class="switch">
                     <input type="checkbox" id="labelNodesSwitch" checked>
                     <span class="slider round">
                         <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
-                    Assets
+                    Asset Nodes
                 </label>           
             </div>
         </div>

@@ -39,10 +39,6 @@ text, circle text {
     padding: 3px;
 }
 
-.right-pane {
-    gap: 0px;
-}
-
 .settings {
     background-color: var(--pane-bg-clr);
     padding-left: 5%;
@@ -82,6 +78,20 @@ text, circle text {
     padding: 3px;
     margin: 0;
     font-size: .8rem;
+}
+
+.right-pane {
+    gap: 0px;
+}
+
+hr {
+    height: 1px; 
+    width: 90%; 
+    background: var(--pane-ttle-bg-clr); 
+    border: 2px solid var(--pane-ttle-bg-clr);
+    border-radius: 5px;
+    margin: -10px auto;
+
 }
 
 .description-header, .dependencies-header {
