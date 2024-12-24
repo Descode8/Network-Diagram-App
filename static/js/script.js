@@ -386,15 +386,22 @@ document.addEventListener('DOMContentLoaded', () => {
         // 4) Set up simulation with new nodes
         simulation
             .nodes(nodes)
+            // Add collision force
+            // .force('collide', d3.forceCollide().radius(10))
+            // Increase link distance
             .force("link", d3.forceLink(links).id(d => d.data.name).distance(100))
-            .force("charge", d3.forceManyBody().strength(-400))
+            // Increase repulsion force
+            .force("charge", d3.forceManyBody().strength(-300))
+            // Keep it around center
             .force("center", d3.forceCenter(width / 2, height / 2))
+            // Slow down the cooling, allow more time to "spread"
             .alphaDecay(0.01)     // Speed the graph settles
             .alphaMin(0.001)     
-            .alpha(1)             // reset alpha to 1
+            .alpha(0.001)             // reset alpha to 1
             .restart();
     
-        simulation.force("link").links(links);
+        simulation
+            .force("link").links(links);
     
         // 5) Utility function: do we draw a circle for this node?
         const activeNodeName = data.name;
