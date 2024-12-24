@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let graphPadding = 75;
     let visibleNodes = [];
     let visibleGroups = {};
-    let isNodeClicked = false;
 
     const depthSlider = document.getElementById('depthSlider');
     const depthValueLabel = document.getElementById('depthValue');
@@ -218,9 +217,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const graphGroup = svg.append('g'); 
 
+    // Keep references to the existing sets of nodes/links
+    let linkSelection = graphGroup.selectAll('line.link');   // NEW
+    let nodeSelection = graphGroup.selectAll('circle.node'); // NEW
+    let labelSelection = graphGroup.selectAll('text.label'); // NEW
+
     const simulation = d3.forceSimulation()
         .force('link', d3.forceLink().id(d => d.id).distance(100))
-        .force('charge', d3.forceManyBody().strength(-300))
+        .force('charge', d3.forceManyBody().strength(-50))
         .force('center', d3.forceCenter(width / 2, height / 2));
 
     onHomeButton.addEventListener('click', () => {
@@ -260,7 +264,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 populateNodeList(data); // Refresh node list for dropdown
                 initializeGroupToggles(data);
                 renderGraph(data);
-                fitGraphToContainer();
+                // We call fitGraphToContainer later from within the simulation's tick
+                // if you want it immediate, you could call it here as well
             })
             .catch(error => {
                 console.error('Error fetching graph data:', error);
@@ -363,114 +368,163 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderGraph(data) {
-        graphGroup.selectAll('*').remove();
+        // 1) Decide how to display group vs. asset nodes
+        const displayGroupNodes = groupNodeSwitch.checked;
+        const displayAssetNodes = labelNodesSwitch.checked;
     
-        var displayGroupNodes = groupNodeSwitch.checked;
-        var displayAssetNodes = labelNodesSwitch.checked;
-    
+        // 2) Transform data per your existing logic
         hideGroupNodes(data, displayGroupNodes);
         filterDataByVisibleGroups(data);
     
-        var root = d3.hierarchy(data);
-        var links = root.links();
-        var nodes = root.descendants();
+        // 3) Build hierarchy
+        const root = d3.hierarchy(data);
+        const links = root.links();
+        const nodes = root.descendants();
     
-        visibleNodes = nodes;
+        visibleNodes = nodes; // for fitGraphToContainer
     
-        simulation.nodes(nodes)
+        // 4) Set up simulation with new nodes
+        simulation
+            .nodes(nodes)
             .force("link", d3.forceLink(links).id(d => d.data.name).distance(100))
-            .force("charge", d3.forceManyBody().strength(-300))
-            .force("center", d3.forceCenter(width / 2, height / 2));
+            .force("charge", d3.forceManyBody().strength(-400))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .alphaDecay(0.01)     // Speed the graph settles
+            .alphaMin(0.001)     
+            .alpha(1)             // reset alpha to 1
+            .restart();
     
         simulation.force("link").links(links);
     
-        var link = graphGroup.append('g')
-            .attr('class', 'links')
-            .selectAll('line')
-            .data(links)
-            .enter().append('line')
-            .attr('stroke', linkColor)
-            .attr('stroke-width', linkWidth);
-    
-        // Store link selection globally
-        linkSelectionGlobal = link;
-    
-        var activeNodeName = data.name;
-    
+        // 5) Utility function: do we draw a circle for this node?
+        const activeNodeName = data.name;
         function shouldHaveCircle(d) {
             if (d.data.name === activeNodeName) return true;
             if (d.data.groupType) return true;
-            if (displayAssetNodes) return true;
-            return false;
+            return displayAssetNodes;
         }
     
-        let nodeSelection = graphGroup.append('g')
-            .attr('class', 'nodes')
-            .selectAll('circle')
-            .data(nodes);
+        // ----------------------------------------------------------------------------
+        // 6) Create or select dedicated <g> elements for links, nodes, labels
+        //    The order here ensures links < nodes < labels in the DOM.
+        // ----------------------------------------------------------------------------
     
-        nodeSelection = nodeSelection.enter()
-            .filter(d => shouldHaveCircle(d))
+        // If these groups don’t exist yet, create them in order
+        let linkGroup = graphGroup.select('g.links');
+        if (linkGroup.empty()) {
+            linkGroup = graphGroup.append('g').attr('class', 'links');
+        }
+        let nodeGroup = graphGroup.select('g.nodes');
+        if (nodeGroup.empty()) {
+            nodeGroup = graphGroup.append('g').attr('class', 'nodes');
+        }
+        let labelGroup = graphGroup.select('g.labels');
+        if (labelGroup.empty()) {
+            labelGroup = graphGroup.append('g').attr('class', 'labels');
+        }
+    
+        // ----------------------------------------------------------------------------
+        // 7) Update pattern for LINKS
+        // ----------------------------------------------------------------------------
+        let linkSelection = linkGroup
+            .selectAll('line.link')
+            .data(links, d => d.source.data.name + '->' + d.target.data.name);
+    
+        linkSelection.exit().remove();
+    
+        let linkEnter = linkSelection.enter()
+            .append('line')
+            .attr('class', 'link')
+            .attr('stroke', linkColor)
+            .attr('stroke-width', linkWidth);
+    
+        linkSelection = linkEnter.merge(linkSelection);
+        linkSelectionGlobal = linkSelection;  // store globally if desired
+    
+        // ----------------------------------------------------------------------------
+        // 8) Update pattern for NODES
+        // ----------------------------------------------------------------------------
+        let nodeSelection = nodeGroup
+            .selectAll('circle.node')
+            .data(nodes.filter(shouldHaveCircle), d => d.data.name);
+    
+        nodeSelection.exit().remove();
+    
+        let nodeEnter = nodeSelection.enter()
             .append('circle')
+            .attr('class', 'node')
             .attr('r', d => d.data.name === activeNodeName ? activeNodeSize : nodeSize)
             .attr('fill', d => nodeColor(d))
             .attr('stroke', nodeBorderColor)
+            .on('click', (event, d) => handleNodeClicked(d.data))
             .call(drag(simulation));
     
-        nodeSelection.on('click', (event, d) => handleNodeClicked(d.data));
-    
-        // Store node selection globally
+        nodeSelection = nodeEnter.merge(nodeSelection);
         nodeSelectionGlobal = nodeSelection;
     
-        var labels = graphGroup.append('g')
-            .attr('class', 'labels')
-            .selectAll('text')
-            .data(nodes)
-            .enter().append('text')
+        // ----------------------------------------------------------------------------
+        // 9) Update pattern for LABELS
+        // ----------------------------------------------------------------------------
+        let labelSelection = labelGroup
+            .selectAll('text.label')
+            .data(nodes, d => d.data.name);
+    
+        labelSelection.exit().remove();
+    
+        let labelEnter = labelSelection.enter()
+            .append('text')
+            .attr('class', 'label')
             .attr('text-anchor', 'middle')
             .attr('dy', d => shouldHaveCircle(d) ? 5 : 0)
             .attr('fill', 'black')
             .text(d => d.data.name)
-            .on('click', (event, d) => handleNodeClicked(d.data)); // Enable label click handling
+            .on('click', (event, d) => handleNodeClicked(d.data));
     
-        // Store labels selection globally
-        labelsSelectionGlobal = labels;
+        labelSelection = labelEnter.merge(labelSelection);
+        labelsSelectionGlobal = labelSelection;
     
         currentActiveNodeName = data.name;
     
-        var foundActiveNode = nodes.find(node => node.data.name === data.name);
+        // ----------------------------------------------------------------------------
+        // 10) Optionally pin the active node at center
+        // ----------------------------------------------------------------------------
+        let foundActiveNode = nodes.find(d => d.data.name === data.name);
         if (foundActiveNode) {
             simulation.alpha(1).restart();
             foundActiveNode.fx = width / 2;
             foundActiveNode.fy = height / 2;
+        } else {
+            simulation.alpha(1).restart();
         }
     
+        // ----------------------------------------------------------------------------
+        // 11) TICK: position links & nodes, then fit to container
+        // ----------------------------------------------------------------------------
         simulation.on('tick', () => {
-            link
+            linkSelection
                 .attr('x1', d => d.source.x)
                 .attr('y1', d => d.source.y)
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
     
             nodeSelection
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y);
-                // Alternatively, if using 'transform':
-                // .attr("transform", d => `translate(${d.x},${d.y})`);
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
     
-            labels
+            labelSelection
                 .attr('x', d => d.x)
                 .attr('y', d => shouldHaveCircle(d) ? d.y - 15 : d.y);
     
             if (simulation.alpha() < 0.05) {
-                fitGraphToContainer();
                 simulation.stop();
+                fitGraphToContainer();
             }
         });
     
-        fitGraphToContainer();
+        // Update the right-side container
         updateRightContainer(data);
-    }    
+    }
+    
 
     function hideGroupNodes(node, displayGroupNodes) {
         if (!node.children || node.children.length === 0) {
@@ -583,14 +637,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (child.groupType) {
                 // If we've not seen this groupType yet, store it.
                 if (!groupNodesMap.has(child.groupType)) {
-                groupNodesMap.set(child.groupType, child);
+                    groupNodesMap.set(child.groupType, child);
                 } else {
-                // Already have a node for this groupType -> merge child’s children
-                let existing = groupNodesMap.get(child.groupType);
-        
-                // Combine children arrays (avoid duplicates if needed)
-                existing.children = existing.children.concat(child.children || []);
-                // Optionally deduplicate `existing.children` by name if desired.
+                    // Already have a node for this groupType -> merge child’s children
+                    let existing = groupNodesMap.get(child.groupType);
+            
+                    // Combine children arrays (avoid duplicates if needed)
+                    existing.children = existing.children.concat(child.children || []);
+                    // Optionally deduplicate `existing.children` by name if desired.
                 }
             } else {
                 // Normal (non-group) child, just keep as-is
@@ -607,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return node;
     }
 
-    function fitGraphToContainer() {
+    function fitGraphToContainer(noTransition = false) {
         const containerWidth = document.querySelector('.graph-container').clientWidth;
         const containerHeight = document.querySelector('.graph-container').clientHeight;
     
@@ -637,11 +691,19 @@ document.addEventListener('DOMContentLoaded', () => {
             translateX = (containerWidth - nodesWidth * scale) / 2 - nodesBBox.xMin * scale;
             translateY = (containerHeight - nodesHeight * scale) / 2 - nodesBBox.yMin * scale;
         }
-    
-        svg.transition().duration(500).call(
-            zoom.transform,
-            d3.zoomIdentity.translate(translateX, translateY).scale(scale)
-        );
+
+        // Optionally remove or shorten the transition if you dislike the flicker
+        if (noTransition) {
+            svg.call(
+                zoom.transform,
+                d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+            );
+        } else {
+            svg.transition().duration(500).call(
+                zoom.transform,
+                d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+            );
+        }
     }
 
     function updateDepthSlider() {
@@ -662,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('resize', () => {
-        fitGraphToContainer();
+        fitGraphToContainer(/* noTransition = false */);
     });
 
     // Initial fetch and ensure toggles are visible
@@ -824,4 +886,9 @@ document.addEventListener('DOMContentLoaded', () => {
             dynamicTogglesContainer.style.display = 'block';
         }
     }
+
+    // Initial
+    fetchAndRenderGraph();
+    showGroupToggles(); // Make sure toggles are visible on initial load
 });
+
