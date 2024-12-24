@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 6.5;
     const nodeSize = 5;
-    const linkWidth = 0.5;
+    const linkWidth = 0.75;
     const linkColor = 'var(--link-clr)';
     const nodeBorderColor = 'var(--nde-bdr-clr)';
 
@@ -204,13 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function nodeColor(node) {
         var nodes = node.data.groupType || node.data.type; 
         switch (nodes) {
-            case 'Applications': return 'var(--app-nde-clr, #3498DB)';
-            case 'People': return 'var(--ppl-nde-clr, #229954)';
-            case 'Technology': return 'var(--tech-nde-clr, #C0504D)';
-            case 'Data': return 'var(--data-nde-clr, #A5A5A5)';
-            case 'Procurements': return 'var(--procure-nde-clr, #F79646)';
-            case 'Facilities': return 'var(--fclty-nde-clr, #8064A2)';
-            default: return 'var(--home-nde-clr, #2E4053)';
+            case 'Applications': return 'var(--app-nde-clr)';
+            case 'People': return 'var(--ppl-nde-clr)';
+            case 'Technology': return 'var(--tech-nde-clr)';
+            case 'Data': return 'var(--data-nde-clr)';
+            case 'Procurements': return 'var(--procure-nde-clr)';
+            case 'Facilities': return 'var(--fclty-nde-clr)';
+            default: return 'var(--home-nde-clr)';
         }
     }
 
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(!rootNode) {
                     rootNode = data;
                 }
-                console.log('Root Node:', rootNode);
+                mergeSameGroupNodes(data);
                 populateNodeList(data); // Refresh node list for dropdown
                 initializeGroupToggles(data);
                 renderGraph(data);
@@ -277,6 +277,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return groups;
     }
+
+    function flattenMatchingGroupTypes(node) {
+        if (!node.children) return node;
+    
+        // First do a DFS to flatten deeper
+        node.children.forEach(child => flattenMatchingGroupTypes(child));
+
+        // Then if child's groupType == node.type, merge child's children into node
+        let flattenedChildren = [];
+        for (const child of node.children) {
+            if (child.groupType && child.groupType === node.type) {
+                // Merge child's children into parent's children
+                flattenedChildren.push(...(child.children || []));
+            } else {
+                flattenedChildren.push(child);
+            }
+        }
+        node.children = flattenedChildren;
+        return node;
+    }  
 
     function initializeGroupToggles(data) {
         var allGroups = Array.from(getUniqueGroups(data));
@@ -545,6 +565,47 @@ document.addEventListener('DOMContentLoaded', () => {
             .on("drag", dragged)
             .on("end", dragended);
     };  
+
+    function mergeSameGroupNodes(node) {
+        if (!node.children || node.children.length === 0) {
+            return node;
+        }
+
+        // First, recurse on each child to merge deeper duplicates.
+        node.children.forEach(child => mergeSameGroupNodes(child));
+
+        // We'll track group nodes in a Map by `groupType`, 
+        // plus track non-group children separately.
+        const groupNodesMap = new Map(); 
+        const newChildren = [];
+    
+        for (const child of node.children) {
+            if (child.groupType) {
+                // If we've not seen this groupType yet, store it.
+                if (!groupNodesMap.has(child.groupType)) {
+                groupNodesMap.set(child.groupType, child);
+                } else {
+                // Already have a node for this groupType -> merge child’s children
+                let existing = groupNodesMap.get(child.groupType);
+        
+                // Combine children arrays (avoid duplicates if needed)
+                existing.children = existing.children.concat(child.children || []);
+                // Optionally deduplicate `existing.children` by name if desired.
+                }
+            } else {
+                // Normal (non-group) child, just keep as-is
+                newChildren.push(child);
+            }
+        }
+    
+        // Now add the unique group nodes from the map into `newChildren`
+        for (const [, groupNode] of groupNodesMap) {
+            newChildren.push(groupNode);
+        }
+    
+        node.children = newChildren;
+        return node;
+    }
 
     function fitGraphToContainer() {
         const containerWidth = document.querySelector('.graph-container').clientWidth;
