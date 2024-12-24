@@ -12,7 +12,7 @@
             flex-direction: column;
             height: 100vh;
             color: white;
-            background-color: #34495e; /* Dark background */
+            background-color: #000033; 
         }
 
         h1, h2 {
@@ -30,31 +30,40 @@
             width: 50%;
             padding: 20px;
             box-sizing: border-box;
-            background-color: #1b2631; 
-            border-right: 2px solid #abb2b9;
-            border: 2px solid #abb2b9;
+            background-color: #330099; 
+            border: 2px solid white;
+            border-right: none;
             border-radius: 10px;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
             overflow-y: auto;
         }
 
         /* Right Panel: JSON Display */
-        .right-panel{
+        .right-panel {
+            display: flex;
             width: 50%;
-            padding: 20px;
+            flex-direction: column;
             padding-top: 0;
             padding-right: 0;
             box-sizing: border-box;
-            background-color: #34495e;
+            background-color: #330099;
             overflow-y: auto;
+            border-radius: 10px;
+            border: 2px solid white;
+            border-left: none;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            align-items: center;
         }
 
         input {
             margin-top: 10px;
             width: 100%;
             padding: 8px;
-            background-color: #2c3e50;
-            color: #abb2b9;
-            border: 2px solid #abb2b9;
+            background-color: #3300FF ;
+            color: white;
+            border: 2px solid white;
             border-radius: 5px;
             box-sizing: border-box;
         }
@@ -75,14 +84,15 @@
         }
 
         #jsonDisplay, #expressionResult {
-            color: #abb2b9; /* Light grey text */
+            color: white; /* Light grey text */
             white-space: pre-wrap;
-            background-color: #212f3d; /* Dark box */
+            background-color: #330099; /* Dark box */
             padding: 10px;
-            border: 2px solid #abb2b9;
+            border: 2px solid white;
             border-radius: 10px;
-            margin: 10px 0;
             font-family: monospace;
+            width: 90%;
+            box-shadow: 0 0 10px black;
         }
 
         h1, h2 {
