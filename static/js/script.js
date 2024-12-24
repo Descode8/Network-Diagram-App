@@ -243,8 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
-        const url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
-    
+        var url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
+
         fetch(url, { headers: { 'Accept': 'application/json' } })
             .then(response => {
                 if (!response.ok) {
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(data => {
-                if (!rootNode) {
+                if(!rootNode) {
                     rootNode = data;
                 }
                 console.log('Root Node:', rootNode);
@@ -266,7 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error fetching graph data:', error);
             });
     }
-    
 
     function getUniqueGroups(node, groups = new Set()) {
         if (!node) return groups;
@@ -457,11 +456,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!node.children || node.children.length === 0) {
             return node;
         }
-    
+
         let flattenedChildren = [];
-    
+
         node.children.forEach(child => {
-            if (child.groupType && !displayGroupNodes && child.groupType !== node.groupType) {
+            if (child.groupType && !displayGroupNodes) {
                 if (child.children && child.children.length > 0) {
                     child.children.forEach(grandChild => {
                         hideGroupNodes(grandChild, displayGroupNodes);
@@ -473,10 +472,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 flattenedChildren.push(child);
             }
         });
-    
+
         node.children = flattenedChildren;
         return node;
-    }    
+    }
 
     function filterDataByVisibleGroups(node) {
         if (!node.children) return;

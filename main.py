@@ -31,7 +31,7 @@ def index():
             return jsonify({"error": str(e)}), 500
     else:
         # Render the HTML page for non-JSON requests
-        return render_template('object.html')
+        return render_template('index.html')
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

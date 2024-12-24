@@ -3,425 +3,314 @@ import pandas as pd
 from collections import deque
 
 def fetch_graph_data(excel_file='data/network_diagram.xlsx') -> tuple:
-    """
-    Fetches graph data from an Excel file.
-
-    Parameters:
-        excel_file (str): Path to the Excel file containing network data.
-
-    Returns:
-        tuple: A tuple containing the pandas DataFrame and the default active node name.
-    """
     try:
         if not os.path.exists(excel_file):
             raise FileNotFoundError(f"{excel_file} not found.")
         
         data = pd.read_excel(excel_file)
-        if data.empty:
-            raise ValueError("Excel file is empty.")
-        
-        # Determine a default active node, e.g., the first CI_Name
+        # For example, let's just pick the first row's CI_Name as active node
         active_node = data.loc[0, 'CI_Name']
         return data, active_node
     except Exception as e:
-        print(f"An error occurred while fetching graph data: {e}")
+        print(f"An error occurred: {e}")
         return None, None
 
-def build_hierarchy(data, depth, active_node, group_nodes=False):
+def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     """
-    Builds a symmetrical hierarchical JSON structure showing both upward and downward
-    relationships around the active_node, including group nodes if group_nodes is True.
+    Builds a symmetrical hierarchical JSON structure around `active_node`.
+    
+    If active_node is a Type (e.g. 'Procurements'):
+      - children = all (CI_Name, Dependency_Name) typed 'Procurements'
+      - parents  = any that depend on 'Procurements'
+    
+    If active_node is a normal node (CI_Name or Dependency_Name):
+      - parents = rows where `Dependency_Name == active_node`
+      - children = rows where `CI_Name == active_node`
+      
+    BFS continues up to `depth`.
 
-    Parameters:
-        data (pd.DataFrame): DataFrame containing network data.
-        depth (int): The depth of the hierarchy to explore.
-        active_node (str): The name of the active node.
-        group_nodes (bool): Whether to group child nodes under their types.
-
-    Returns:
-        dict: Hierarchical JSON structure representing the network graph.
+    :param data: Your DataFrame with columns:
+       [CI_Type, CI_Name, CI_Descrip, Rel_Type, Dependency_Type, Dependency_Name, Dependency_Descrip]
+    :param depth: int, how many "layers" of expansion
+    :param active_node: str, the root node (could be type name, CI_Name, or dependency_name)
+    :return: dict hierarchy
     """
-    # Identify all unique types from CI_Type and Dependency_Type
-    all_types = set(data['CI_Type'].dropna().unique().tolist() + data['Dependency_Type'].dropna().unique().tolist())
 
-    # Determine the nature of the active node
-    is_group_node = False
-    node_type = "Unknown"
-    node_desc = "No description available..."
-    node_rel = None
+    # 1) Identify all known type names
+    all_types = set(
+        data['CI_Type'].dropna().unique().tolist() +
+        data['Dependency_Type'].dropna().unique().tolist()
+    )
 
+    # 2) Determine if active_node is Type, CI_Name, or Dependency_Name
     if active_node in data['CI_Name'].values:
-        # Active node is a CI (Configuration Item)
-        node_data = data[data['CI_Name'] == active_node].iloc[0]
-        node_type = node_data['CI_Type'] if pd.notna(node_data['CI_Type']) else active_node
-        node_desc = node_data['CI_Descrip'] if pd.notna(node_data['CI_Descrip']) else node_desc
-        node_rel = node_data['Rel_Type'] if pd.notna(node_data['Rel_Type']) else node_rel
+        row = data[data['CI_Name'] == active_node].iloc[0]
+        node_type = row['CI_Type'] if pd.notna(row['CI_Type']) else active_node
+        node_desc = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else "No description available..."
+        node_rel  = row['Rel_Type'] or None
+        is_type_node = False
+
     elif active_node in data['Dependency_Name'].values:
-        # Active node is a Dependency
-        node_data = data[data['Dependency_Name'] == active_node].iloc[0]
-        node_type = node_data['Dependency_Type'] if pd.notna(node_data['Dependency_Type']) else active_node
-        node_desc = node_data['Dependency_Descrip'] if pd.notna(node_data['Dependency_Descrip']) else node_desc
-        node_rel = node_data['Rel_Type'] if pd.notna(node_data['Rel_Type']) else node_rel
+        row = data[data['Dependency_Name'] == active_node].iloc[0]
+        node_type = row['Dependency_Type'] if pd.notna(row['Dependency_Type']) else active_node
+        node_desc = row['Dependency_Descrip'] if pd.notna(row['Dependency_Descrip']) else "No description available..."
+        node_rel  = row['Rel_Type'] or None
+        is_type_node = False
+
     elif active_node in all_types:
-        # Active node is a Group Node (Type)
-        is_group_node = True
         node_type = active_node
         node_desc = f"{active_node} Group Node"
-        node_rel = None
+        node_rel  = None
+        is_type_node = True
+
     else:
         return {"error": f"No data found for active node: {active_node}"}
 
-    # Initialize the active node data
-    active_node_data = {
+    # 3) Build the top-level node
+    root = {
         "name": active_node,
         "type": node_type,
         "relationship": node_rel,
         "directRelationship": True,
         "description": node_desc,
-        "children": [],
-        "parents": [],
-        "isGroupNode": is_group_node
+        "children": []
     }
 
-    # If depth is 1, return the active node only
     if depth == 1:
-        active_node_data["totalNodesDisplayed"] = 1
-        return active_node_data
+        root["totalNodesDisplayed"] = 1
+        return root
 
-    # Initialize BFS queue
-    # Each entry: (current_node_dict, node_name, current_depth, direction)
-    # direction: 'child', 'parent', 'both' indicates which relationships to process
-    queue = deque()
     visited = set([active_node])
-    total_nodes_count = 1
+    total_count = 1
 
-    if is_group_node:
-        # Active node is a Group Node
-        # Fetch children: Nodes where Dependency_Type == active_node
-        children_data = data[data['Dependency_Type'] == active_node]
+    # BFS each item is (node_dict, node_name, current_depth, is_type_node).
+    queue = deque([(root, active_node, depth, is_type_node)])
 
-        for _, record in children_data.iterrows():
-            child_name = record['Dependency_Name'] if pd.notna(record['Dependency_Name']) else record['CI_Name']
-            if pd.isna(child_name) or child_name in visited:
-                continue
-
-            child_type = record['Dependency_Type'] if pd.notna(record['Dependency_Type']) else record['CI_Type']
-            child_type = child_type if pd.notna(child_type) else "Unknown"
-
-            child_descrip = record['Dependency_Descrip'] if pd.notna(record['Dependency_Descrip']) else record['CI_Descrip']
-            child_descrip = child_descrip if pd.notna(child_descrip) else "No description available..."
-
-            child_rel = record['Rel_Type'] if pd.notna(record['Rel_Type']) else None
-
-            # Create child node
-            child_node = {
-                "name": child_name,
-                "type": child_type,
-                "relationship": child_rel,
-                "description": child_descrip,
-                "children": [],
-                "parents": [],
-                "isGroupNode": False
-            }
-
-            active_node_data["children"].append(child_node)
-            visited.add(child_name)
-            total_nodes_count += 1
-
-            # Enqueue child node for further exploration if depth allows
-            if depth > 2:
-                queue.append((child_node, child_name, depth - 1, 'both'))
-
-        # Fetch parents: Nodes where Dependency_Name == active_node
-        parents_data = data[data['Dependency_Name'] == active_node]
-
-        for _, record in parents_data.iterrows():
-            parent_name = record['CI_Name']
-            if pd.isna(parent_name) or parent_name in visited:
-                continue
-
-            parent_type = record['CI_Type'] if pd.notna(record['CI_Type']) else "Unknown"
-            parent_descrip = record['CI_Descrip'] if pd.notna(record['CI_Descrip']) else record['Dependency_Descrip']
-            parent_descrip = parent_descrip if pd.notna(parent_descrip) else "No description available..."
-
-            parent_rel = record['Rel_Type'] if pd.notna(record['Rel_Type']) else None
-
-            # Create parent node
-            parent_node = {
-                "name": parent_name,
-                "type": parent_type,
-                "relationship": parent_rel,
-                "description": parent_descrip,
-                "children": [],
-                "parents": [],
-                "isGroupNode": False
-            }
-
-            active_node_data["parents"].append(parent_node)
-            visited.add(parent_name)
-            total_nodes_count += 1
-
-            # Enqueue parent node for further exploration if depth allows
-            if depth > 2:
-                queue.append((parent_node, parent_name, depth - 1, 'both'))
-
-    else:
-        # Active node is a Regular Node
-        if group_nodes:
-            # Group children under their respective types
-            # Fetch children where CI_Type == active_node or Dependency_Name == active_node
-            ci_children = data[data['CI_Type'] == active_node]
-            dependency_children = data[data['CI_Name'] == active_node]
-
-            # Create a combined DataFrame
-            combined_children = pd.concat([ci_children, dependency_children], ignore_index=True)
-
-            # Group by Dependency_Type for consistent grouping
-            grouped = combined_children.groupby('Dependency_Type')
-
-            for group_type, records in grouped:
-                group_type = group_type if pd.notna(group_type) else "Unknown"
-
-                # Create group node
-                group_node = {
-                    "name": group_type,
-                    "type": group_type,
-                    "relationship": None,
-                    "description": f"{group_type} Group Node",
-                    "isGroupNode": True,
-                    "children": [],
-                    "parents": []
-                }
-
-                for _, record in records.iterrows():
-                    # Correctly assign child names by prioritizing Dependency_Name
-                    child_name = record['Dependency_Name'] if pd.notna(record['Dependency_Name']) else record['CI_Name']
-                    if pd.isna(child_name):
-                        continue  # Skip if no valid child name
-
-                    child_type = record['Dependency_Type'] if pd.notna(record['Dependency_Type']) else record['CI_Type']
-                    child_type = child_type if pd.notna(child_type) else "Unknown"
-
-                    child_descrip = record['Dependency_Descrip'] if pd.notna(record['Dependency_Descrip']) else record['CI_Descrip']
-                    child_descrip = child_descrip if pd.notna(child_descrip) else "No description available..."
-
-                    child_rel = record['Rel_Type'] if pd.notna(record['Rel_Type']) else None
-
-                    # Create child node
-                    child_node = {
-                        "name": child_name,
-                        "type": child_type,
-                        "relationship": child_rel,
-                        "description": child_descrip,
-                        "children": [],
-                        "parents": [],
-                        "isGroupNode": False
-                    }
-
-                    group_node["children"].append(child_node)
-                    visited.add(child_name)
-                    total_nodes_count += 1
-
-                if group_node["children"]:
-                    active_node_data["children"].append(group_node)
-                    total_nodes_count += 1
-
-                    # Enqueue group node for further exploration if depth allows
-                    if depth > 2:
-                        queue.append((group_node, group_type, depth - 1, 'both'))
-        else:
-            # Directly add child nodes without grouping
-            ci_children = data[data['CI_Type'] == active_node]
-            dependency_children = data[data['CI_Name'] == active_node]
-
-            combined_children = pd.concat([ci_children, dependency_children], ignore_index=True)
-
-            for _, record in combined_children.iterrows():
-                child_name = record['Dependency_Name'] if pd.notna(record['Dependency_Name']) else record['CI_Name']
-                if pd.isna(child_name) or child_name in visited:
-                    continue
-
-                child_type = record['Dependency_Type'] if pd.notna(record['Dependency_Type']) else record['CI_Type']
-                child_type = child_type if pd.notna(child_type) else "Unknown"
-
-                child_descrip = record['Dependency_Descrip'] if pd.notna(record['Dependency_Descrip']) else record['CI_Descrip']
-                child_descrip = child_descrip if pd.notna(child_descrip) else "No description available..."
-
-                child_rel = record['Rel_Type'] if pd.notna(record['Rel_Type']) else None
-
-                # Create child node
-                child_node = {
-                    "name": child_name,
-                    "type": child_type,
-                    "relationship": child_rel,
-                    "description": child_descrip,
-                    "children": [],
-                    "parents": [],
-                    "isGroupNode": False
-                }
-
-                active_node_data["children"].append(child_node)
-                visited.add(child_name)
-                total_nodes_count += 1
-
-                # Enqueue child node for further exploration if depth allows
-                if depth > 2:
-                    queue.append((child_node, child_name, depth - 1, 'both'))
-
-        # Fetch parents: Nodes where Dependency_Name == active_node
-        parents_data = data[data['Dependency_Name'] == active_node]
-
-        for _, record in parents_data.iterrows():
-            parent_name = record['CI_Name']
-            if pd.isna(parent_name) or parent_name in visited:
-                continue
-
-            parent_type = record['CI_Type'] if pd.notna(record['CI_Type']) else "Unknown"
-            parent_descrip = record['CI_Descrip'] if pd.notna(record['CI_Descrip']) else record['Dependency_Descrip']
-            parent_descrip = parent_descrip if pd.notna(parent_descrip) else "No description available..."
-
-            parent_rel = record['Rel_Type'] if pd.notna(record['Rel_Type']) else None
-
-            # Create parent node
-            parent_node = {
-                "name": parent_name,
-                "type": parent_type,
-                "relationship": parent_rel,
-                "description": parent_descrip,
-                "children": [],
-                "parents": [],
-                "isGroupNode": False
-            }
-
-            active_node_data["parents"].append(parent_node)
-            visited.add(parent_name)
-            total_nodes_count += 1
-
-            # Enqueue parent node for further exploration if depth allows
-            if depth > 2:
-                queue.append((parent_node, parent_name, depth - 1, 'both'))
-
-    # BFS to traverse the graph
     while queue:
-        current_node, current_name, current_depth, direction = queue.popleft()
+        current_dict, current_name, current_depth, current_is_type_node = queue.popleft()
 
-        if current_depth <= 1:
-            continue
+        # If we're at the last layer, we do not enqueue further expansions
+        expand_further = (current_depth > 2)
 
-        if direction in ['child', 'both']:
-            if current_node["isGroupNode"]:
-                # For group nodes, process their children based on group type
-                group_type = current_node["name"]
+        # 4) Gather parents/children
+        if current_is_type_node:
+            # -----------------------------------------------------
+            # If the current node is a "Type" like "Procurements":
+            #    children = all CI_Name or Dependency_Name that are typed 'Procurements'
+            #    parents  = all distinct CIs that "depend on" 'Procurements'
+            # -----------------------------------------------------
 
-                # Fetch children where Dependency_Type == group_type
-                group_children = data[data['Dependency_Type'] == group_type]
+            # 4A) Parents => rows where `Dependency_Type == current_name`
+            #      The "parent" is the CI_Name or the Dependency_Name in those rows 
+            #      (commonly it's the CI_Name, because OIT depends on this type)
+            parent_rows = data[data['Dependency_Type'] == current_name]
 
-                for _, record in group_children.iterrows():
-                    # Correctly assign child names by prioritizing Dependency_Name
-                    child_name = record['Dependency_Name'] if pd.notna(record['Dependency_Name']) else record['CI_Name']
-                    if pd.isna(child_name) or child_name in visited:
-                        continue
+            # 4B) Children => union of:
+            #    - all CI_Name where `CI_Type == current_name`
+            #    - all Dependency_Name where `Dependency_Type == current_name`
+            child_rows_ci = data[data['CI_Type'] == current_name]
+            child_rows_dep = data[data['Dependency_Type'] == current_name]
 
-                    child_type = record['Dependency_Type'] if pd.notna(record['Dependency_Type']) else record['CI_Type']
-                    child_type = child_type if pd.notna(child_type) else "Unknown"
+            #
+            # We'll do some "grouping" so you can keep the same structure of "groupType" etc.
+            #
 
-                    child_descrip = record['Dependency_Descrip'] if pd.notna(record['Dependency_Descrip']) else record['CI_Descrip']
-                    child_descrip = child_descrip if pd.notna(child_descrip) else "No description available..."
-
-                    child_rel = record['Rel_Type'] if pd.notna(record['Rel_Type']) else None
-
-                    # Create child node
-                    child_node = {
-                        "name": child_name,
-                        "type": child_type,
-                        "relationship": child_rel,
-                        "description": child_descrip,
-                        "children": [],
-                        "parents": [],
-                        "isGroupNode": False
+            # ============ PARENTS ============
+            if not parent_rows.empty:
+                # We'll group parents by their CI_Type (assuming the parent is the CI_Name)
+                #   e.g. if OIT is an "Organization", groupType = "Organization"
+                parents_by_type = parent_rows.groupby(parent_rows['CI_Type'].fillna("Unknown"))
+                for p_type, p_group in parents_by_type:
+                    parent_group = {
+                        "groupType": p_type,
+                        "relationship": p_group.iloc[0]['Rel_Type'] or None,
+                        "children": []
                     }
+                    for _, p_row in p_group.iterrows():
+                        p_name = p_row['CI_Name']  # The parent is typically the CI_Name
+                        if pd.notna(p_name):
+                            p_name = str(p_name)
+                            if p_name not in visited:
+                                visited.add(p_name)
+                                p_desc = p_row['CI_Descrip'] if pd.notna(p_row['CI_Descrip']) else "No description available..."
+                                p_rel = p_row['Rel_Type'] or None
+                                p_node_type = p_row['CI_Type'] if pd.notna(p_row['CI_Type']) else "Unknown"
+                                # Decide if that parent might also be a type node
+                                is_parent_type_node = (p_name in all_types)
 
-                    current_node["children"].append(child_node)
-                    visited.add(child_name)
-                    total_nodes_count += 1
+                                p_node = {
+                                    "name": p_name,
+                                    "type": p_node_type,
+                                    "relationship": p_rel,
+                                    "description": p_desc,
+                                    "children": []
+                                }
+                                parent_group["children"].append(p_node)
+                                total_count += 1
 
-                    # Enqueue child node for further exploration if depth allows
-                    if current_depth > 2:
-                        queue.append((child_node, child_name, current_depth - 1, 'both'))
-            else:
-                # For regular nodes, process both CI_Type and Dependency_Name relationships
-                ci_children = data[data['CI_Type'] == current_name]
-                dependency_children = data[data['CI_Name'] == current_name]
+                                # Enqueue if we can go deeper
+                                if expand_further:
+                                    queue.append((p_node, p_name, current_depth - 1, is_parent_type_node))
 
-                combined_children = pd.concat([ci_children, dependency_children], ignore_index=True)
+                    if parent_group["children"]:
+                        current_dict["children"].append(parent_group)
 
-                for _, record in combined_children.iterrows():
-                    child_name = record['Dependency_Name'] if pd.notna(record['Dependency_Name']) else record['CI_Name']
-                    if pd.isna(child_name) or child_name in visited:
+            # ============ CHILDREN ============
+            # Collect all distinct "child" names from both sets (CI rows + Dependency rows)
+            # For the BFS structure you have, you might want to group them by their type as well.
+            # We'll do that in two parts:
+            combined_children_rows = pd.concat([child_rows_ci, child_rows_dep], ignore_index=True)
+
+            if not combined_children_rows.empty:
+                # Let's group them by whichever column indicates "the child's type."
+                # Actually we have 2 columns for type: CI_Type, Dependency_Type. 
+                # But in this scenario, we know the child's type must be `current_name`.
+                # For consistency, let's group by "CI_Type" if the row has a non-null CI_Name,
+                # or by "Dependency_Type" if it's referencing the dependency side.
+                # 
+                # To unify, let's create a column "ChildName" and "ChildType" in a small pre-processing step:
+                child_info = []
+                for _, c_row in combined_children_rows.iterrows():
+                    # If c_row['CI_Type'] == current_name, the child is c_row['CI_Name']
+                    # If c_row['Dependency_Type'] == current_name, the child is c_row['Dependency_Name']
+                    # We'll pick which columns to use:
+                    if pd.notna(c_row['CI_Type']) and c_row['CI_Type'] == current_name:
+                        c_name = str(c_row['CI_Name'])
+                        c_type = str(c_row['CI_Type'])
+                        c_desc = str(c_row['CI_Descrip']) if pd.notna(c_row['CI_Descrip']) else "No description..."
+                        c_rel = c_row['Rel_Type'] or None
+                    elif pd.notna(c_row['Dependency_Type']) and c_row['Dependency_Type'] == current_name:
+                        c_name = str(c_row['Dependency_Name'])
+                        c_type = str(c_row['Dependency_Type'])
+                        c_desc = str(c_row['Dependency_Descrip']) if pd.notna(c_row['Dependency_Descrip']) else "No description..."
+                        c_rel = c_row['Rel_Type'] or None
+                    else:
+                        # skip if neither condition applies
                         continue
+                    
+                    child_info.append({
+                        "groupType": c_type,  # or we can do something else if needed
+                        "name": c_name,
+                        "description": c_desc,
+                        "relationship": c_rel
+                    })
 
-                    child_type = record['Dependency_Type'] if pd.notna(record['Dependency_Type']) else record['CI_Type']
-                    child_type = child_type if pd.notna(child_type) else "Unknown"
+                if child_info:
+                    # group by "groupType"
+                    import itertools
+                    child_info.sort(key=lambda x: x["groupType"])
+                    for group_type, items_in_group in itertools.groupby(child_info, key=lambda x: x["groupType"]):
+                        group_type = group_type if group_type else "Unknown"
+                        # relationship might differ row by row; pick first if consistent
+                        items_in_group = list(items_in_group)
+                        relationship_val = items_in_group[0]["relationship"]  # or None
 
-                    child_descrip = record['Dependency_Descrip'] if pd.notna(record['Dependency_Descrip']) else record['CI_Descrip']
-                    child_descrip = child_descrip if pd.notna(child_descrip) else "No description available..."
+                        new_group = {
+                            "groupType": group_type,
+                            "relationship": relationship_val,
+                            "children": []
+                        }
+                        for obj in items_in_group:
+                            c_name = obj["name"]
+                            if c_name not in visited:
+                                visited.add(c_name)
+                                c_desc = obj["description"]
+                                c_rel  = obj["relationship"]
+                                
+                                # check if it's a type node 
+                                c_node_is_type = (c_name in all_types)
 
-                    child_rel = record['Rel_Type'] if pd.notna(record['Rel_Type']) else None
+                                c_node = {
+                                    "name": c_name,
+                                    "type": group_type,
+                                    "relationship": c_rel,
+                                    "description": c_desc,
+                                    "children": []
+                                }
+                                new_group["children"].append(c_node)
+                                total_count += 1
 
-                    # Create child node
-                    child_node = {
-                        "name": child_name,
-                        "type": child_type,
-                        "relationship": child_rel,
-                        "description": child_descrip,
-                        "children": [],
-                        "parents": [],
-                        "isGroupNode": False
-                    }
+                                if expand_further:
+                                    queue.append((c_node, c_name, current_depth - 1, c_node_is_type))
+                        
+                        if new_group["children"]:
+                            current_dict["children"].append(new_group)
 
-                    current_node["children"].append(child_node)
-                    visited.add(child_name)
-                    total_nodes_count += 1
-
-                    # Enqueue child node for further exploration if depth allows
-                    if current_depth > 2:
-                        queue.append((child_node, child_name, current_depth - 1, 'both'))
-
-        if direction in ['parent', 'both']:
-            # Process parents via Dependency_Name == current_name
+        else:
+            # -----------------------------------------------------
+            # If current node is NOT a type node => normal BFS
+            #   parents = rows where Dependency_Name == current_name
+            #   children = rows where CI_Name == current_name
+            # -----------------------------------------------------
             parent_data = data[data['Dependency_Name'] == current_name]
+            child_data  = data[data['CI_Name'] == current_name]
 
-            for _, record in parent_data.iterrows():
-                parent_name = record['CI_Name']
-                if pd.isna(parent_name) or parent_name in visited:
-                    continue
+            # --- Parents ---
+            if not parent_data.empty:
+                parents_by_type = parent_data.groupby(parent_data['CI_Type'].fillna("Unknown"))
+                for p_type, p_group in parents_by_type:
+                    parent_group = {
+                        "groupType": p_type,
+                        "relationship": p_group.iloc[0]['Rel_Type'] or None,
+                        "children": []
+                    }
+                    for _, p_row in p_group.iterrows():
+                        p_name = str(p_row['CI_Name'])
+                        if p_name not in visited:
+                            visited.add(p_name)
+                            p_desc = p_row['CI_Descrip'] if pd.notna(p_row['CI_Descrip']) else "No description available..."
+                            p_rel  = p_row['Rel_Type'] or None
+                            p_node_is_type = (p_name in all_types)
 
-                parent_type = record['CI_Type'] if pd.notna(record['CI_Type']) else "Unknown"
-                parent_descrip = record['CI_Descrip'] if pd.notna(record['CI_Descrip']) else record['Dependency_Descrip']
-                parent_descrip = parent_descrip if pd.notna(parent_descrip) else "No description available..."
+                            p_node = {
+                                "name": p_name,
+                                "type": p_type,
+                                "relationship": p_rel,
+                                "description": p_desc,
+                                "children": []
+                            }
+                            parent_group["children"].append(p_node)
+                            total_count += 1
 
-                parent_rel = record['Rel_Type'] if pd.notna(record['Rel_Type']) else None
+                            if expand_further:
+                                queue.append((p_node, p_name, current_depth - 1, p_node_is_type))
 
-                # Create parent node
-                parent_node = {
-                    "name": parent_name,
-                    "type": parent_type,
-                    "relationship": parent_rel,
-                    "description": parent_descrip,
-                    "children": [],
-                    "parents": [],
-                    "isGroupNode": False
-                }
+                    if parent_group["children"]:
+                        current_dict["children"].append(parent_group)
 
-                current_node["parents"].append(parent_node)
-                visited.add(parent_name)
-                total_nodes_count += 1
+            # --- Children ---
+            if not child_data.empty:
+                children_by_type = child_data.groupby(child_data['Dependency_Type'].fillna("Unknown"))
+                for c_type, c_group in children_by_type:
+                    child_group = {
+                        "groupType": c_type,
+                        "relationship": c_group.iloc[0]['Rel_Type'] or None,
+                        "children": []
+                    }
+                    for _, c_row in c_group.iterrows():
+                        c_name = str(c_row['Dependency_Name'])
+                        if c_name not in visited:
+                            visited.add(c_name)
+                            c_desc = c_row['Dependency_Descrip'] if pd.notna(c_row['Dependency_Descrip']) else "No description available..."
+                            c_rel  = c_row['Rel_Type'] or None
+                            c_node_is_type = (c_name in all_types)
 
-                # Enqueue parent node for further exploration if depth allows
-                if current_depth > 2:
-                    queue.append((parent_node, parent_name, current_depth - 1, 'both'))
+                            c_node = {
+                                "name": c_name,
+                                "type": c_type,
+                                "relationship": c_rel,
+                                "description": c_desc,
+                                "children": []
+                            }
+                            child_group["children"].append(c_node)
+                            total_count += 1
 
-    # Set total nodes displayed
-    active_node_data["totalNodesDisplayed"] = total_nodes_count
+                            if expand_further:
+                                queue.append((c_node, c_name, current_depth - 1, c_node_is_type))
 
-    return active_node_data
+                    if child_group["children"]:
+                        current_dict["children"].append(child_group)
+
+    # 5) Once BFS is done, attach total count
+    root["totalNodesDisplayed"] = total_count
+    return root
