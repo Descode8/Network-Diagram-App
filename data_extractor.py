@@ -20,17 +20,17 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     Builds a symmetrical hierarchical JSON structure around `active_node`.
     
     If active_node is a Type (e.g. 'Procurements'):
-      - children = all (CI_Name, Dependency_Name) typed 'Procurements'
-      - parents  = any that depend on 'Procurements'
+        - children = all (CI_Name, Dependency_Name) typed 'Procurements'
+        - parents  = any that depend on 'Procurements'
     
     If active_node is a normal node (CI_Name or Dependency_Name):
-      - parents = rows where `Dependency_Name == active_node`
-      - children = rows where `CI_Name == active_node`
-      
+        - parents = rows where `Dependency_Name == active_node`
+        - children = rows where `CI_Name == active_node`
+    
     BFS continues up to `depth`.
 
     :param data: Your DataFrame with columns:
-       [CI_Type, CI_Name, CI_Descrip, Rel_Type, Dependency_Type, Dependency_Name, Dependency_Descrip]
+        [CI_Type, CI_Name, CI_Descrip, Rel_Type, Dependency_Type, Dependency_Name, Dependency_Descrip]
     :param depth: int, how many "layers" of expansion
     :param active_node: str, the root node (could be type name, CI_Name, or dependency_name)
     :return: dict hierarchy

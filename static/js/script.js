@@ -5,13 +5,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 6.5;
     const nodeSize = 5;
-    const linkWidth = 0.75;
+    const linkWidth = 0.6;
     const linkColor = 'var(--link-clr)';
     const nodeBorderColor = 'var(--nde-bdr-clr)';
 
     let currentActiveNodeName = null;
     let graphPadding = 75;
-    let visibleNodes = [];
+    let nodesDisplayed = [];
     let visibleGroups = {};
 
     const depthSlider = document.getElementById('depthSlider');
@@ -215,12 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     svg.attr('width', width).attr('height', height);
 
-    const graphGroup = svg.append('g'); 
-
-    // Keep references to the existing sets of nodes/links
-    let linkSelection = graphGroup.selectAll('line.link');   // NEW
-    let nodeSelection = graphGroup.selectAll('circle.node'); // NEW
-    let labelSelection = graphGroup.selectAll('text.label'); // NEW
+    const graphGroup = svg.append('g'); // Container for links, nodes, labels
 
     const simulation = d3.forceSimulation()
         .force('link', d3.forceLink().id(d => d.id).distance(100))
@@ -239,11 +234,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function resetNodeForces() {
-        visibleNodes.forEach(d => {
+        nodesDisplayed.forEach(d => {
             d.fx = null;
             d.fy = null;
         });
-        simulation.alpha(2).restart();
+        simulation
+            .alphaDecay(0.01)     // Speed the graph settles
+            .alphaMin(0.001)     
+            .alpha(1)
+            .restart();
     }
 
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
@@ -257,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(data => {
+                // console.log('Graph data:', data);
                 if(!rootNode) {
                     rootNode = data;
                 }
@@ -368,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderGraph(data) {
+        currentActiveNodeName = data.name;
         // 1) Decide how to display group vs. asset nodes
         const displayGroupNodes = groupNodeSwitch.checked;
         const displayAssetNodes = labelNodesSwitch.checked;
@@ -381,25 +382,84 @@ document.addEventListener('DOMContentLoaded', () => {
         const links = root.links();
         const nodes = root.descendants();
     
-        visibleNodes = nodes; // for fitGraphToContainer
+        nodesDisplayed = nodes; // for fitGraphToContainer
     
         // 4) Set up simulation with new nodes
+        // Apply common forces for both group and asset nodes
         simulation
             .nodes(nodes)
-            // Add collision force
-            // .force('collide', d3.forceCollide().radius(10))
-            // Increase link distance
-            .force("link", d3.forceLink(links).id(d => d.data.name).distance(100))
-            // Increase repulsion force
             .force("charge", d3.forceManyBody().strength(-300))
             // Keep it around center
             .force("center", d3.forceCenter(width / 2, height / 2))
             // Slow down the cooling, allow more time to "spread"
             .alphaDecay(0.01)     // Speed the graph settles
             .alphaMin(0.001)     
-            .alpha(0.001)             // reset alpha to 1
+            .alpha(1)
             .restart();
-    
+
+        // Apply different forces when displaying group nodes is ON or OFF
+        if(displayGroupNodes) {
+            // Add collision force
+            for(const n in nodes) {
+                if(nodes[n].data.name === currentActiveNodeName) {
+                    simulation
+                    .force("link", 
+                        d3
+                            .forceLink(links)
+                            .id(d => d.data.name)
+                            .distance(0))
+                    } else {
+                        simulation
+                        .force("link", 
+                            d3
+                                .forceLink(links)
+                                .id(d => d.data.name)
+                                .distance(25))
+                    }
+                }
+            simulation
+                .force('collide', 
+                    d3
+                        .forceCollide()
+                        .radius(25))
+                .force("radial", 
+                    d3
+                        .forceRadial(100, width / 2, height / 2));
+        }
+
+        const assests = new Set();
+        if(!displayGroupNodes) {
+            // Add collision force
+            for(const n in nodes) {
+                if(nodes[n].data.name === currentActiveNodeName) {
+                    simulation
+                    .force("link", 
+                        d3
+                            .forceLink(links)
+                            .id(d => d.data.name)
+                            .distance(0))
+                    } else {
+                        simulation
+                        .force("link", 
+                            d3
+                                .forceLink(links)
+                                .id(d => d.data.name)
+                                .distance(50))
+                        assests.add(nodes[n].data.type);
+                    }
+                    
+                }
+            simulation
+                .force('collide', 
+                    d3
+                        .forceCollide()
+                        .radius(25))
+                .force("radial", 
+                    d3
+                        .forceRadial(100, width / 2, height / 2));
+        }
+        
+        console.log(assests);
         simulation
             .force("link").links(links);
     
@@ -489,8 +549,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
         labelSelection = labelEnter.merge(labelSelection);
         labelsSelectionGlobal = labelSelection;
-    
-        currentActiveNodeName = data.name;
     
         // ----------------------------------------------------------------------------
         // 10) Optionally pin the active node at center
@@ -599,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const drag = simulation => {
         function dragstarted(event, d) {
-            visibleNodes.forEach(node => {
+            nodesDisplayed.forEach(node => {
                 if (node !== d) {
                     node.fx = node.x;
                     node.fy = node.y;
@@ -673,10 +731,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const containerHeight = document.querySelector('.graph-container').clientHeight;
     
         const nodesBBox = {
-            xMin: d3.min(visibleNodes, d => d.x),
-            xMax: d3.max(visibleNodes, d => d.x),
-            yMin: d3.min(visibleNodes, d => d.y),
-            yMax: d3.max(visibleNodes, d => d.y)
+            xMin: d3.min(nodesDisplayed, d => d.x),
+            xMax: d3.max(nodesDisplayed, d => d.x),
+            yMin: d3.min(nodesDisplayed, d => d.y),
+            yMax: d3.max(nodesDisplayed, d => d.y)
         };
     
         const nodesWidth = nodesBBox.xMax - nodesBBox.xMin;
