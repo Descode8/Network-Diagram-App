@@ -4,7 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let rootNode = null;
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 6.5;
-    const nodeSize = 5;
+    const groupNodeSize = 5;
+    const nodeSize = 4;
     const linkWidth = 0.6;
     const linkColor = 'var(--link-clr)';
     const nodeBorderColor = 'var(--nde-bdr-clr)';
@@ -185,9 +186,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // Adjust node, link, label sizes based on zoom
             if (nodeSelectionGlobal) {
                 nodeSelectionGlobal
-                    .attr('r', d => d.data.name === currentActiveNodeName ? (activeNodeSize / currentZoomScale) : (nodeSize / currentZoomScale))
-                    .attr('stroke-width', (1 / currentZoomScale));
-            }
+                    .attr('r', d => {
+                        if (d.data.name === currentActiveNodeName) {
+                            return activeNodeSize / currentZoomScale; // Active node size scales with zoom
+                        } else if (d.data.groupType) {
+                            return groupNodeSize / currentZoomScale; // Group node size scales with zoom
+                        } else {
+                            return nodeSize / currentZoomScale; // Default node size scales with zoom
+                        }
+                    })
+                    .attr('stroke-width', 1 / currentZoomScale); // Scale stroke width with zoom
+            }            
 
             if (linkSelectionGlobal) {
                 linkSelectionGlobal.attr('stroke-width', linkWidth / currentZoomScale);
@@ -239,8 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             d.fy = null;
         });
         simulation
-            .alphaDecay(0.01)     // Speed the graph settles
-            .alphaMin(0.001)     
+            .alphaDecay(0.009)     // Speed the graph settles    
             .alpha(1)
             .restart();
     }
@@ -385,83 +393,116 @@ document.addEventListener('DOMContentLoaded', () => {
         nodesDisplayed = nodes; // for fitGraphToContainer
     
         // 4) Set up simulation with new nodes
-        // Apply common forces for both group and asset nodes
         simulation
             .nodes(nodes)
-            .force("charge", d3.forceManyBody().strength(-300))
-            // Keep it around center
+            .force("charge", d3.forceManyBody().strength(-350))
             .force("center", d3.forceCenter(width / 2, height / 2))
-            // Slow down the cooling, allow more time to "spread"
-            .alphaDecay(0.01)     // Speed the graph settles
-            .alphaMin(0.001)     
+            .force("collide", d3.forceCollide().radius(25))
+            .force("radial", d3.forceRadial(300, width / 2, height / 2))
+            .alphaDecay(0.01)
+            .alphaMin(0.001)
             .alpha(1)
             .restart();
-
-        // Apply different forces when displaying group nodes is ON or OFF
-        if(displayGroupNodes) {
-            // Add collision force
-            for(const n in nodes) {
-                if(nodes[n].data.name === currentActiveNodeName) {
-                    simulation
-                    .force("link", 
-                        d3
-                            .forceLink(links)
-                            .id(d => d.data.name)
-                            .distance(0))
-                    } else {
-                        simulation
-                        .force("link", 
-                            d3
-                                .forceLink(links)
-                                .id(d => d.data.name)
-                                .distance(25))
+    
+        // -------------------------------------------------------
+        // Custom force that arranges each parent’s children
+        // evenly spaced in a circle of radius X (e.g. 200)
+        // -------------------------------------------------------
+        function forceCircularChildren(radius) {
+            let nodesByParent = {};
+            let allNodes = [];
+    
+            function force(alpha) {
+                // For each parent, place its children in a circle
+                Object.values(nodesByParent).forEach(childArr => {
+                    if (!childArr.length) return;
+                    const parent = childArr[0].parentNode;
+                    if (!parent) return;
+    
+                    const n = childArr.length;
+                    childArr.forEach((child, i) => {
+                        const angle = (2 * Math.PI / n) * i;
+                        const targetX = parent.x + radius * Math.cos(angle);
+                        const targetY = parent.y + radius * Math.sin(angle);
+    
+                        // The factor (e.g. 0.1 * alpha) controls how strongly
+                        // the child is pulled toward its circular target
+                        child.vx += (targetX - child.x) * 0.5 * alpha;
+                        child.vy += (targetY - child.y) * 0.5 * alpha;
+                    });
+                });
+            }
+    
+            force.initialize = function(ns) {
+                allNodes = ns;
+                nodesByParent = {};
+    
+                // Group each node by its parent
+                ns.forEach(node => {
+                    const pName = node.data.parent;  // depends on your data
+                    if (!pName) return; // no parent => likely the root node
+                    if (!nodesByParent[pName]) {
+                        nodesByParent[pName] = [];
                     }
-                }
-            simulation
-                .force('collide', 
-                    d3
-                        .forceCollide()
-                        .radius(25))
-                .force("radial", 
-                    d3
-                        .forceRadial(100, width / 2, height / 2));
+                    nodesByParent[pName].push(node);
+    
+                    // Find the actual parent node object and store it
+                    node.parentNode = ns.find(n => n.data.name === pName);
+                });
+            };
+    
+            return force;
         }
-
-        const assests = new Set();
-        if(!displayGroupNodes) {
-            // Add collision force
-            for(const n in nodes) {
-                if(nodes[n].data.name === currentActiveNodeName) {
-                    simulation
-                    .force("link", 
-                        d3
-                            .forceLink(links)
-                            .id(d => d.data.name)
-                            .distance(0))
-                    } else {
-                        simulation
-                        .force("link", 
-                            d3
-                                .forceLink(links)
-                                .id(d => d.data.name)
-                                .distance(50))
-                        assests.add(nodes[n].data.type);
+        // -------------------------------------------------------
+    
+        // Define dynamic distance for links based on active node
+        if (displayGroupNodes) {
+            // =====================================
+            // If group nodes are displayed
+            // =====================================
+            simulation
+                .force("link", d3.forceLink(links)
+                    .id(d => d.data.name)
+                    .distance(link => {
+                        const source = link.source.data.name;
+                        if (source === currentActiveNodeName) {
+                            // Longer links for direct children
+                            return 100;
+                        }
+                        // Default for others
+                        return 25;
+                    })
+                )
+                .force("center", d3.forceCenter(width / 2, height / 2));
+    
+        } else {
+            // =====================================
+            // If group nodes are NOT displayed
+            // => Place children evenly around parent
+            // =====================================
+            simulation
+                .force("link", d3.forceLink(links)
+                .id(d => d.data.name)
+                .distance(link => {
+                    const source = link.source.data.name;
+                    if (source === currentActiveNodeName) {
+                        // Longer links for direct children
+                        return 100;
                     }
-                    
-                }
-            simulation
-                .force('collide', 
-                    d3
-                        .forceCollide()
-                        .radius(25))
-                .force("radial", 
-                    d3
-                        .forceRadial(100, width / 2, height / 2));
+                    // Default for others
+                    return 10;
+                })
+            )
+                .force("charge", d3.forceManyBody()
+                    .strength(d => -500)
+                )
+                // Pull children in a circle around parent
+                .force("circularChildren", forceCircularChildren(200))
+                .force("center", d3.forceCenter(width / 2, height / 2));
         }
-        
-        console.log(assests);
-        simulation
-            .force("link").links(links);
+    
+        // Update the link force with link data
+        simulation.force("link").links(links);
     
         // 5) Utility function: do we draw a circle for this node?
         const activeNodeName = data.name;
@@ -473,10 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
         // ----------------------------------------------------------------------------
         // 6) Create or select dedicated <g> elements for links, nodes, labels
-        //    The order here ensures links < nodes < labels in the DOM.
         // ----------------------------------------------------------------------------
-    
-        // If these groups don’t exist yet, create them in order
         let linkGroup = graphGroup.select('g.links');
         if (linkGroup.empty()) {
             linkGroup = graphGroup.append('g').attr('class', 'links');
@@ -506,7 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('stroke-width', linkWidth);
     
         linkSelection = linkEnter.merge(linkSelection);
-        linkSelectionGlobal = linkSelection;  // store globally if desired
+        linkSelectionGlobal = linkSelection;  // optional global reference
     
         // ----------------------------------------------------------------------------
         // 8) Update pattern for NODES
@@ -520,7 +558,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let nodeEnter = nodeSelection.enter()
             .append('circle')
             .attr('class', 'node')
-            .attr('r', d => d.data.name === activeNodeName ? activeNodeSize : nodeSize)
+            .attr('r', d => {
+                if (d.data.name === activeNodeName) {
+                    return activeNodeSize; // Active node size
+                } else if (d.data.groupType) {
+                    return groupNodeSize; // Group node size
+                } else {
+                    return nodeSize; // Default node size
+                }
+            })
             .attr('fill', d => nodeColor(d))
             .attr('stroke', nodeBorderColor)
             .on('click', (event, d) => handleNodeClicked(d.data))
@@ -580,6 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .attr('x', d => d.x)
                 .attr('y', d => shouldHaveCircle(d) ? d.y - 15 : d.y);
     
+            // Once alpha is sufficiently low, stop & fit to container
             if (simulation.alpha() < 0.05) {
                 simulation.stop();
                 fitGraphToContainer();
