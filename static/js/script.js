@@ -590,14 +590,19 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('text-anchor', 'middle')
             .attr('dy', d => shouldHaveCircle(d) ? 5 : 0)
             .attr('fill', 'black')
+            .style('cursor', 'pointer')
             .text(d => d.data.name)
-            .on('click', (event, d) => handleNodeClicked(d.data));
+            .on('click', (event, d) => handleNodeClicked(d.data))
+            // Add the drag behavior:
+            .call(drag(simulation))
+            // Optional: give a "move" cursor
+            .style("cursor", "pointer");
     
         labelSelection = labelEnter.merge(labelSelection);
         labelsSelectionGlobal = labelSelection;
     
         // ----------------------------------------------------------------------------
-        // 10) Optionally pin the active node at center
+        // 10) Optionally pin the active node at center                               
         // ----------------------------------------------------------------------------
         let foundActiveNode = nodes.find(d => d.data.name === data.name);
         if (foundActiveNode) {

@@ -121,7 +121,12 @@ hr {
     background-color: var(--descrip-clr);
     font-weight: bold;
     color: white;
-    /* border-radius: 5px; */
+    border-top: 2px solid var(--bdr-clr);
+    border-bottom: 2px solid var(--bdr-clr);
+}
+
+.dependencies-header {
+    border-bottom: .5px solid var(--bdr-clr);
 }
 
 .right-pane .dependencies-header {
@@ -130,7 +135,6 @@ hr {
 
 .right-pane .dependency-type {
     color: white;
-    border-bottom: none;
 }
 
 .right-pane .dependency-node {
@@ -412,6 +416,8 @@ span {
     margin: 0;
     padding: 5px;
     cursor: pointer;
+    border-top: 1.5px solid var(--bdr-clr);
+    border-bottom: 1.5px solid var(--bdr-clr);
 }
 
 .dependency-type:hover, .dependency-node:hover {
@@ -503,6 +509,7 @@ span {
 
 input:checked + .slider {
     background-color: var(--pane-ttle-bg-clr);
+    border: 1px solid black;
     cursor: pointer;
 }
 
@@ -516,6 +523,7 @@ input:checked + .slider:before {
 
 input + .slider {
     background-color: var(--bdr-clr);
+    border: 1px solid var(--pane-bg-clr);
     transition: 0.4s;
 }
 
