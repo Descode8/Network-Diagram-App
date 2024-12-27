@@ -32,7 +32,7 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     :param data: Your DataFrame with columns:
         [CI_Type, CI_Name, CI_Descrip, Rel_Type, Dependency_Type, Dependency_Name, Dependency_Descrip]
     :param depth: int, how many "layers" of expansion
-    :param active_node: str, the root node (could be type name, CI_Name, or dependency_name)
+    :param active_node: str, the active_node_relationships node (could be type name, CI_Name, or dependency_name)
     :return: dict hierarchy
     """
 
@@ -67,24 +67,25 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
         return {"error": f"No data found for active node: {active_node}"}
 
     # 3) Build the top-level node
-    root = {
+    active_node_relationships = {
         "name": active_node,
         "type": node_type,
         "relationship": node_rel,
         "directRelationship": True,
         "description": node_desc,
+        "parent": None,  # active_node_relationships has no parent
         "children": []
     }
 
     if depth == 1:
-        root["totalNodesDisplayed"] = 1
-        return root
+        active_node_relationships["totalNodesDisplayed"] = 1
+        return active_node_relationships
 
     visited = set([active_node])
     total_count = 1
 
     # BFS each item is (node_dict, node_name, current_depth, is_type_node).
-    queue = deque([(root, active_node, depth, is_type_node)])
+    queue = deque([(active_node_relationships, active_node, depth, is_type_node)])
 
     while queue:
         current_dict, current_name, current_depth, current_is_type_node = queue.popleft()
@@ -101,8 +102,6 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
             # -----------------------------------------------------
 
             # 4A) Parents => rows where `Dependency_Type == current_name`
-            #      The "parent" is the CI_Name or the Dependency_Name in those rows 
-            #      (commonly it's the CI_Name, because OIT depends on this type)
             parent_rows = data[data['Dependency_Type'] == current_name]
 
             # 4B) Children => union of:
@@ -111,14 +110,8 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
             child_rows_ci = data[data['CI_Type'] == current_name]
             child_rows_dep = data[data['Dependency_Type'] == current_name]
 
-            #
-            # We'll do some "grouping" so you can keep the same structure of "groupType" etc.
-            #
-
             # ============ PARENTS ============
             if not parent_rows.empty:
-                # We'll group parents by their CI_Type (assuming the parent is the CI_Name)
-                #   e.g. if OIT is an "Organization", groupType = "Organization"
                 parents_by_type = parent_rows.groupby(parent_rows['CI_Type'].fillna("Unknown"))
                 for p_type, p_group in parents_by_type:
                     parent_group = {
@@ -127,7 +120,7 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                         "children": []
                     }
                     for _, p_row in p_group.iterrows():
-                        p_name = p_row['CI_Name']  # The parent is typically the CI_Name
+                        p_name = p_row['CI_Name']  # Typically the parent is the CI_Name
                         if pd.notna(p_name):
                             p_name = str(p_name)
                             if p_name not in visited:
@@ -140,6 +133,7 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
 
                                 p_node = {
                                     "name": p_name,
+                                    "parent": current_dict["name"],  # <--- ADD PARENT
                                     "type": p_node_type,
                                     "relationship": p_rel,
                                     "description": p_desc,
@@ -148,7 +142,6 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                 parent_group["children"].append(p_node)
                                 total_count += 1
 
-                                # Enqueue if we can go deeper
                                 if expand_further:
                                     queue.append((p_node, p_name, current_depth - 1, is_parent_type_node))
 
@@ -156,24 +149,13 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                         current_dict["children"].append(parent_group)
 
             # ============ CHILDREN ============
-            # Collect all distinct "child" names from both sets (CI rows + Dependency rows)
-            # For the BFS structure you have, you might want to group them by their type as well.
-            # We'll do that in two parts:
             combined_children_rows = pd.concat([child_rows_ci, child_rows_dep], ignore_index=True)
 
             if not combined_children_rows.empty:
-                # Let's group them by whichever column indicates "the child's type."
-                # Actually we have 2 columns for type: CI_Type, Dependency_Type. 
-                # But in this scenario, we know the child's type must be `current_name`.
-                # For consistency, let's group by "CI_Type" if the row has a non-null CI_Name,
-                # or by "Dependency_Type" if it's referencing the dependency side.
-                # 
-                # To unify, let's create a column "ChildName" and "ChildType" in a small pre-processing step:
+                import itertools
+                # Create a standardized child list that has (groupType, name, description, relationship)
                 child_info = []
                 for _, c_row in combined_children_rows.iterrows():
-                    # If c_row['CI_Type'] == current_name, the child is c_row['CI_Name']
-                    # If c_row['Dependency_Type'] == current_name, the child is c_row['Dependency_Name']
-                    # We'll pick which columns to use:
                     if pd.notna(c_row['CI_Type']) and c_row['CI_Type'] == current_name:
                         c_name = str(c_row['CI_Name'])
                         c_type = str(c_row['CI_Type'])
@@ -185,23 +167,18 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                         c_desc = str(c_row['Dependency_Descrip']) if pd.notna(c_row['Dependency_Descrip']) else "No description..."
                         c_rel = c_row['Rel_Type'] or None
                     else:
-                        # skip if neither condition applies
                         continue
-                    
                     child_info.append({
-                        "groupType": c_type,  # or we can do something else if needed
+                        "groupType": c_type, 
                         "name": c_name,
                         "description": c_desc,
                         "relationship": c_rel
                     })
 
                 if child_info:
-                    # group by "groupType"
-                    import itertools
                     child_info.sort(key=lambda x: x["groupType"])
                     for group_type, items_in_group in itertools.groupby(child_info, key=lambda x: x["groupType"]):
                         group_type = group_type if group_type else "Unknown"
-                        # relationship might differ row by row; pick first if consistent
                         items_in_group = list(items_in_group)
                         relationship_val = items_in_group[0]["relationship"]  # or None
 
@@ -216,12 +193,11 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                 visited.add(c_name)
                                 c_desc = obj["description"]
                                 c_rel  = obj["relationship"]
-                                
-                                # check if it's a type node 
                                 c_node_is_type = (c_name in all_types)
 
                                 c_node = {
                                     "name": c_name,
+                                    "parent": current_dict["name"],  # <--- ADD PARENT
                                     "type": group_type,
                                     "relationship": c_rel,
                                     "description": c_desc,
@@ -264,6 +240,7 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
 
                             p_node = {
                                 "name": p_name,
+                                "parent": current_dict["name"],  # <--- ADD PARENT
                                 "type": p_type,
                                 "relationship": p_rel,
                                 "description": p_desc,
@@ -297,6 +274,7 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
 
                             c_node = {
                                 "name": c_name,
+                                "parent": current_dict["name"],  # <--- ADD PARENT
                                 "type": c_type,
                                 "relationship": c_rel,
                                 "description": c_desc,
@@ -312,5 +290,5 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                         current_dict["children"].append(child_group)
 
     # 5) Once BFS is done, attach total count
-    root["totalNodesDisplayed"] = total_count
-    return root
+    active_node_relationships["totalNodesDisplayed"] = total_count
+    return active_node_relationships
