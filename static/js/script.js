@@ -169,8 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     groupNodeSwitch.addEventListener('change', () => {
+        resetSimulationForForces();    
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
-    });
+    });    
 
     // Define zoom behavior similar to old code
     const zoom = d3.zoom()
@@ -373,6 +374,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
             });
         });
+    }
+
+    function resetSimulationForForces() {
+        // Stop the simulation before clearing
+        simulation.stop();
+    
+        // Remove all forces
+        simulation.force('charge', null);
+        simulation.force('center', null);
+        simulation.force('collide', null);
+        simulation.force('radial', null);
+        simulation.force('circularChildren', null);
     }
     
     function renderGraph(data) {
