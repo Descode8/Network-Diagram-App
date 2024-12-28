@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-    let width = document.querySelector('.graph-container').clientWidth;
-    let height = document.querySelector('.graph-container').clientHeight;
+    let width = $('.graph-container')[0].clientWidth;
+    let height = $('.graph-container')[0].clientHeight;
     let rootNode = null;
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 6.5;
@@ -11,11 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const nodeBorderColor = 'var(--nde-bdr-clr)';
 
     let currentActiveNodeName = null;
-    let graphPadding = 75;
     let nodesDisplayed = [];
     let visibleGroups = {};
 
-    const depthSlider = document.getElementById('depthSlider');
+    const depthSlider = $('#depthSlider')[0]; 
     const depthValueLabel = document.getElementById('depthValue');
     const searchInput = document.getElementById('searchInput');
     const clearButton = document.getElementById('clearButton');
@@ -493,9 +492,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     return 10;
                 })
             )
-                .force("charge", d3.forceManyBody()
-                    .strength(d => -500)
-                )
                 // Pull children in a circle around parent
                 .force("circularChildren", forceCircularChildren(200))
                 .force("center", d3.forceCenter(width / 2, height / 2));
@@ -782,17 +778,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const containerWidth = document.querySelector('.graph-container').clientWidth;
         const containerHeight = document.querySelector('.graph-container').clientHeight;
     
+        // Filter out group nodes
+        const nonGroupNodes = nodesDisplayed.filter(node => !node.isGroup);
+    
         const nodesBBox = {
-            xMin: d3.min(nodesDisplayed, d => d.x),
-            xMax: d3.max(nodesDisplayed, d => d.x),
-            yMin: d3.min(nodesDisplayed, d => d.y),
-            yMax: d3.max(nodesDisplayed, d => d.y)
+            xMin: d3.min(nonGroupNodes, d => d.x),
+            xMax: d3.max(nonGroupNodes, d => d.x),
+            yMin: d3.min(nonGroupNodes, d => d.y),
+            yMax: d3.max(nonGroupNodes, d => d.y)
         };
     
         const nodesWidth = nodesBBox.xMax - nodesBBox.xMin;
         const nodesHeight = nodesBBox.yMax - nodesBBox.yMin;
     
         let scale, translateX, translateY;
+    
+        // Adjust graphPadding based on the number of non-group nodes
+        let graphPadding = 25; // Default padding
+        if (nonGroupNodes.length < 10) {
+            graphPadding = 200;
+        } else if (nonGroupNodes.length < 20) {
+            graphPadding = 150;
+        }
     
         if (nodesWidth === 0 && nodesHeight === 0) {
             // Only one node present
@@ -808,20 +815,20 @@ document.addEventListener('DOMContentLoaded', () => {
             translateX = (containerWidth - nodesWidth * scale) / 2 - nodesBBox.xMin * scale;
             translateY = (containerHeight - nodesHeight * scale) / 2 - nodesBBox.yMin * scale;
         }
-
-        // Optionally remove or shorten the transition if you dislike the flicker
+    
         if (noTransition) {
             svg.call(
                 zoom.transform,
                 d3.zoomIdentity.translate(translateX, translateY).scale(scale)
             );
         } else {
-            svg.transition().duration(500).call(
+            svg.transition().duration(0).call(
                 zoom.transform,
                 d3.zoomIdentity.translate(translateX, translateY).scale(scale)
             );
         }
     }
+    
 
     function updateDepthSlider() {
         var value = (depthSlider.value - depthSlider.min) / (depthSlider.max - depthSlider.min) * 100;
