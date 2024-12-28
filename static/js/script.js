@@ -313,22 +313,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }  
 
     function initializeGroupToggles(data) {
-        var allGroups = Array.from(getUniqueGroups(data));
+        // 1) Gather every group from all descendants
+        let allGroups = Array.from(getUniqueGroups(data));
     
-        // Filter out groups that don't have children in the active node
-        allGroups = allGroups.filter(group => {
-            const childrenOfType = (data.children || []).some(child => (child.groupType || child.type) === group);
-            return childrenOfType;
-        });
-    
+        // 2) If we have never set `visibleGroups`, then turn them all on
         if (Object.keys(visibleGroups).length === 0) {
             allGroups.forEach(group => {
-                visibleGroups[group] = true;
+            visibleGroups[group] = true;
             });
         }
     
+        // 3) Create or clear the toggles container
         let dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
-    
         if (!dynamicTogglesContainer) {
             dynamicTogglesContainer = document.createElement('div');
             dynamicTogglesContainer.className = 'dynamic-group-toggles';
@@ -337,25 +333,24 @@ document.addEventListener('DOMContentLoaded', () => {
             dynamicTogglesContainer.innerHTML = '';
         }
     
+        // 4) Build a checkbox for each group we found
         allGroups.forEach(group => {
-            var label = document.createElement('label');
+            const label = document.createElement('label');
             label.className = 'switch';
-    
-            var input = document.createElement('input');
+        
+            const input = document.createElement('input');
             input.type = 'checkbox';
             input.checked = visibleGroups[group] ?? true;
-    
-            var span = document.createElement('span');
+        
+            const span = document.createElement('span');
             span.className = 'slider round';
-    
-            // Use nodeColor to get the color dynamically for the group
             span.style.backgroundColor = nodeColor({ data: { groupType: group } });
-    
-            var checkImg = document.createElement('img');
+        
+            const checkImg = document.createElement('img');
             checkImg.src = "/static/images/check.svg";
             checkImg.className = "checkmark";
             checkImg.alt = "Checkmark";
-    
+
             span.appendChild(checkImg);
     
             label.appendChild(input);
@@ -363,18 +358,13 @@ document.addEventListener('DOMContentLoaded', () => {
             label.append(` ${group}`);
     
             dynamicTogglesContainer.appendChild(label);
-    
-            input.addEventListener('change', () => {
-                if (group === data.groupType && !input.checked) {
-                    // Prevent hiding the active node
-                    input.checked = true;
-                    return;
-                }
-                visibleGroups[group] = input.checked;
-                fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
+
+        input.addEventListener('change', () => {
+            visibleGroups[group] = input.checked;
+            fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
             });
         });
-    }
+    }      
 
     function resetSimulationForForces() {
         // Stop the simulation before clearing
@@ -607,9 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .style('cursor', 'pointer')
             .text(d => d.data.name)
             .on('click', (event, d) => handleNodeClicked(d.data))
-            // Add the drag behavior:
             .call(drag(simulation))
-            // Optional: give a "move" cursor
             .style("cursor", "pointer");
     
         labelSelection = labelEnter.merge(labelSelection);
@@ -643,7 +631,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
             labelSelection
                 .attr('x', d => d.x)
-                .attr('y', d => shouldHaveCircle(d) ? d.y - 15 : d.y);
+                .attr('y', d => {
+                const r = getCircleScreenRadius(d);
+                if (d.data.name === currentActiveNodeName) {
+                    return d.y - (r + 10);
+                }
+                if(!displayAssetNodes) {
+                    return d.y - (r + 3);
+                }
+                return d.y - (r + 10);
+            });
     
             // Once alpha is sufficiently low, stop & fit to container
             if (simulation.alpha() < 0.05) {
@@ -656,6 +653,42 @@ document.addEventListener('DOMContentLoaded', () => {
         updateRightContainer(data);
     }
     
+    function getCircleScreenRadius(d) {
+        if (d.data.name === currentActiveNodeName) {
+            return activeNodeSize / currentZoomScale;
+        } else if (d.data.groupType) {
+            return groupNodeSize / currentZoomScale;
+        } else {
+            return nodeSize / currentZoomScale;
+        }
+    }
+
+    simulation.on('tick', () => {
+        linkSelection
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+
+        nodeSelection
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y);
+
+        labelSelection
+            .attr('x', d => d.x)
+            .attr('y', d => {
+            if (!shouldHaveCircle(d)) {
+              return d.y; // no circle => no offset
+            }
+            const r = getCircleScreenRadius(d);
+            return d.y - (r + 5); // 5px above the circle’s radius
+        });
+
+        if (simulation.alpha() < 0.05) {
+            simulation.stop();
+            fitGraphToContainer();
+        }
+    });
 
     function hideGroupNodes(node, displayGroupNodes) {
         if (!node.children || node.children.length === 0) {
@@ -723,12 +756,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const drag = simulation => {
         function dragstarted(event, d) {
-            nodesDisplayed.forEach(node => {
-                if (node !== d) {
-                    node.fx = node.x;
-                    node.fy = node.y;
-                }
-            });
+            // nodesDisplayed.forEach(node => {
+            //     if (node !== d) {
+            //         node.fx = node.x;
+            //         node.fy = node.y;
+            //     }
+            // });
             d.fx = d.x;
             d.fy = d.y;
             simulation.alphaTarget(0.1).restart();
@@ -749,7 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended);
-    };  
+    };
 
     function mergeSameGroupNodes(node) {
         if (!node.children || node.children.length === 0) return node;
