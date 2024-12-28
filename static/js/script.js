@@ -209,15 +209,17 @@ document.addEventListener('DOMContentLoaded', () => {
     svg.call(zoom);
 
     function nodeColor(node) {
-        var nodes = node.data.groupType || node.data.type; 
+        var nodes = node.data.groupType || node.data.type;
+
         switch (nodes) {
+            case 'Organization': return 'var(--org-nde-clr)';
             case 'Applications': return 'var(--app-nde-clr)';
             case 'People': return 'var(--ppl-nde-clr)';
             case 'Technology': return 'var(--tech-nde-clr)';
             case 'Data': return 'var(--data-nde-clr)';
             case 'Procurements': return 'var(--procure-nde-clr)';
             case 'Facilities': return 'var(--fclty-nde-clr)';
-            default: return 'var(--home-nde-clr)';
+            default: return 'yellow';
         }
     }
 
@@ -263,16 +265,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(data => {
-                // console.log('Graph data:', data);
+                console.log('Raw data from server:', data);
                 if(!rootNode) {
                     rootNode = data;
                 }
+                
                 mergeSameGroupNodes(data);
-                populateNodeList(data); // Refresh node list for dropdown
+                populateNodeList(data); 
                 initializeGroupToggles(data);
                 renderGraph(data);
-                // We call fitGraphToContainer later from within the simulation's tick
-                // if you want it immediate, you could call it here as well
             })
             .catch(error => {
                 console.error('Error fetching graph data:', error);
@@ -375,6 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderGraph(data) {
+        graphGroup.selectAll('g.links').remove();
+        graphGroup.selectAll('g.nodes').remove();
+        graphGroup.selectAll('g.labels').remove();
+
         currentActiveNodeName = data.name;
         // 1) Decide how to display group vs. asset nodes
         const displayGroupNodes = groupNodeSwitch.checked;
@@ -670,13 +675,13 @@ document.addEventListener('DOMContentLoaded', () => {
             var key = child.groupType || child.type;
             if (key && visibleGroups.hasOwnProperty(key)) {
                 if (!visibleGroups[key]) {
-                    return false;
+                    return false; // Filter out if the group is not visible
                 }
             }
-            filterDataByVisibleGroups(child);
+            filterDataByVisibleGroups(child); // Recursively filter children
             return true;
         });
-    }
+    }    
 
     function handleNodeClicked(nodeData) {
         var clickedName = nodeData.name || nodeData.groupType;
@@ -734,38 +739,30 @@ document.addEventListener('DOMContentLoaded', () => {
     };  
 
     function mergeSameGroupNodes(node) {
-        if (!node.children || node.children.length === 0) {
-            return node;
-        }
-
-        // First, recurse on each child to merge deeper duplicates.
+        if (!node.children || node.children.length === 0) return node;
+    
+        // Recurse first
         node.children.forEach(child => mergeSameGroupNodes(child));
-
-        // We'll track group nodes in a Map by `groupType`, 
-        // plus track non-group children separately.
+    
+        // We'll track group nodes in a Map by `groupType`.
         const groupNodesMap = new Map(); 
         const newChildren = [];
     
         for (const child of node.children) {
             if (child.groupType) {
-                // If we've not seen this groupType yet, store it.
                 if (!groupNodesMap.has(child.groupType)) {
                     groupNodesMap.set(child.groupType, child);
                 } else {
-                    // Already have a node for this groupType -> merge child’s children
                     let existing = groupNodesMap.get(child.groupType);
-            
-                    // Combine children arrays (avoid duplicates if needed)
+                    // Merge the child’s children
                     existing.children = existing.children.concat(child.children || []);
-                    // Optionally deduplicate `existing.children` by name if desired.
                 }
             } else {
-                // Normal (non-group) child, just keep as-is
                 newChildren.push(child);
             }
         }
     
-        // Now add the unique group nodes from the map into `newChildren`
+        // Now re‐add the unique group nodes
         for (const [, groupNode] of groupNodesMap) {
             newChildren.push(groupNode);
         }
@@ -773,6 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
         node.children = newChildren;
         return node;
     }
+    
 
     function fitGraphToContainer(noTransition = false) {
         const containerWidth = document.querySelector('.graph-container').clientWidth;
@@ -794,7 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let scale, translateX, translateY;
     
         // Adjust graphPadding based on the number of non-group nodes
-        let graphPadding = 25; // Default padding
+        let graphPadding = 50; // Default padding
         if (nonGroupNodes.length < 10) {
             graphPadding = 200;
         } else if (nonGroupNodes.length < 20) {
@@ -816,6 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
             translateY = (containerHeight - nodesHeight * scale) / 2 - nodesBBox.yMin * scale;
         }
     
+        // Optionally remove or shorten the transition if you dislike the flicker
         if (noTransition) {
             svg.call(
                 zoom.transform,
@@ -1010,9 +1009,5 @@ document.addEventListener('DOMContentLoaded', () => {
             dynamicTogglesContainer.style.display = 'block';
         }
     }
-
-    // Initial
-    fetchAndRenderGraph();
-    showGroupToggles(); // Make sure toggles are visible on initial load
 });
 
