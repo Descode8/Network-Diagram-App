@@ -158,7 +158,7 @@ hr {
 }
 
 .failed-search {
-    color: black;
+    color: #282828;
     font-size: .7rem;
     text-align: left;
     background-color: #d98880;
@@ -230,7 +230,7 @@ title {
 
 ::-webkit-scrollbar {
     width: 10px;
-    background-color: var(--page-bg-clr);
+    background-color: white;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -295,14 +295,26 @@ title {
     background-color: var(--page-bg-clr);
     border-radius: 15px; 
     border: 1px solid var(--pane-bg-clr);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Subtle shadow */
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
+.search-container, #depthSlider, .switch span {
+    transition: 0.5s ease-in-out; 
+}
+
 .search-container:active, .search-container:focus-within {
-    border: 1px solid var(--pane-ttle-bg-clr); /* Subtle shadow */
+    border: 1px solid var(--pane-ttle-bg-clr); 
+}
+
+.search-container:hover, #depthSlider:hover, .switch span:hover {
+    box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
+    border-radius: 15px;
+}
+
+.switch span:hover {
+    box-shadow: var(--bdr-clr) 0px 2px 2px 0px;;
 }
 
 .autocomplete-suggestions {
@@ -356,7 +368,7 @@ title {
     border: none;
     outline: none;
     background-color: transparent;
-    color: black; 
+    color: #282828; 
     white-space: nowrap; 
     text-overflow: ellipsis;
     padding: 0;
@@ -429,27 +441,42 @@ span {
     opacity: 0;
     visibility: hidden;
     position: absolute;
-    bottom: 100%; /* Position above the dependency node */
+    bottom: 120%; /* Adjusted to make space for the arrow */
     left: 50%;
     transform: translateX(-50%);
     background-color: var(--svg-bg-clr);
-    border: 1px solid var(--bdr-clr);
+    border: 0.75px solid var(--bdr-clr);
     padding: 10px;
     border-radius: 5px;
-    box-shadow: 0 4px 6px var(--pane-ttle-bg-clr);
+    box-shadow: var(--bdr-clr) 0px 2px 8px 0px;
     z-index: 100; 
     width: max-content;
+    max-width: 95%;
     height: max-content;
     white-space: nowrap;
     font-size: 0.8rem;
     pointer-events: none; /* Prevent interaction issues */
-    transition: opacity 0.3s ease, visibility 0.3s ease; /* Smooth transition */
+    transition: opacity 0.5s ease, visibility 0.5s ease; /* Smooth transition */
+}
+
+.hover-box::after {
+    z-index: -1;
+    content: "";
+    position: absolute;
+    top: 100%; /* Position the arrow at the bottom of the hover-box */
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 8px; /* Size of the arrow */
+    border-style: solid;
+    border-color: var(--svg-bg-clr) transparent transparent transparent; /* Arrow pointing down */
+    /* Optional: Add a gradient or adjust colors to match the hover-box */
 }
 
 .dependency-node-container:hover .hover-box {
     opacity: 1;
     visibility: visible;
     pointer-events: auto; /* Enable interaction when visible */
+    transition: 1s ease-in-out;
 }
 
 .dependency-node:hover + .hover-box {
@@ -457,8 +484,6 @@ span {
 }
 
 .switches-container, .dynamic-group-toggles {
-    /* background-color: var(--page-bg-clr);
-    border-radius: 10px; */
     width: 100%;
     margin: 0 auto;
 }
@@ -505,7 +530,7 @@ span {
 
 input:checked + .slider {
     background-color: var(--pane-ttle-bg-clr);
-    border: 1px solid black;
+    border: 1px solid #282828;
     cursor: pointer;
 }
 

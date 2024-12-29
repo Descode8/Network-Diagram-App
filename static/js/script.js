@@ -596,7 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('class', 'label')
             .attr('text-anchor', 'middle')
             .attr('dy', d => shouldHaveCircle(d) ? 5 : 0)
-            .attr('fill', 'black')
+            .attr('fill', '#282828')
             .style('cursor', 'pointer')
             .text(d => d.data.name)
             .on('click', (event, d) => handleNodeClicked(d.data))
@@ -1023,7 +1023,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 .html(`${node.name}`)
                 .on("click", (event) => handleNodeClicked(node));
 
-            nodeContainer.append("div")
+            nodeContainer
+                .append("div")
                 .attr("class", "hover-box")
                 .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
         }
