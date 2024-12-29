@@ -1,5 +1,5 @@
 body, html {
-    font-family: 'Roboto Flex', sans-serif;
+    font-family: 'Segoe UI', sans-serif;
     display: flex;
     flex-direction: row;
     margin: 0;
@@ -10,8 +10,8 @@ body, html {
     background-color: var(--page-bg-clr);
 }
 
-input, button, select, textarea {
-    font-family: 'Roboto Flex', sans-serif;
+input, button, select, textarea, .search-container {
+    font-family: 'Segoe UI', sans-serif;
 }
 
 circle {
@@ -81,7 +81,7 @@ text, circle text {
 .right-pane h2, .left-pane h2 {
     font-size: 1.5rem;
     margin: 0;
-    padding: 5px 0; 
+    padding: 3px 0; 
     text-align: center;
     font-weight: bold;
     color: white;
@@ -106,7 +106,7 @@ hr {
     height: 1px; 
     width: 90%; 
     background: var(--pane-ttle-bg-clr); 
-    border: 2px solid var(--pane-ttle-bg-clr);
+    border: 1px solid var(--pane-ttle-bg-clr);
     border-radius: 5px;
     margin: -10px auto;
 
@@ -114,9 +114,9 @@ hr {
 
 .description-header, .dependencies-header {
     margin-top: 0;
-    font-size: 1rem;
+    font-size: .9rem;
     margin: 0;
-    padding: 3px; 
+    padding: 1px; 
     text-align: center;
     background-color: var(--descrip-clr);
     font-weight: bold;
@@ -140,7 +140,7 @@ hr {
 .right-pane .dependency-node {
     padding: 3px;
     margin: 0;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     text-align: left;
 }
 
@@ -148,7 +148,7 @@ hr {
     cursor: pointer;
 }
 
-.dependency-node:hover {
+.dependency-node:hover, .dependency-type:hover {
     font-weight: bold;
     text-decoration: underline;
 }
@@ -181,8 +181,7 @@ title {
 
 .custom-slider {
     width: 90%;
-    margin: 10px auto;
-    margin-top: 0px;
+    margin: -10px auto;
 }
 
 .custom-slider input[type="range"] {
@@ -295,16 +294,15 @@ title {
     margin: 0 auto;
     background-color: var(--page-bg-clr);
     border-radius: 15px; 
-    border: 2px solid transparent;
+    border: 1px solid var(--pane-bg-clr);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Subtle shadow */
-    font-family: 'Roboto Flex', sans-serif;
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
 .search-container:active, .search-container:focus-within {
-    border: 2px solid var(--pane-ttle-bg-clr); /* Subtle shadow */
+    border: 1px solid var(--pane-ttle-bg-clr); /* Subtle shadow */
 }
 
 .autocomplete-suggestions {
@@ -393,18 +391,17 @@ label, span {
     text-align: left;
     padding: 0;
     margin: 0;
-    font-weight: bold;
-    color: black;
-    font-size: .7rem;
+    font-size: .75rem;
     margin-left: 10%;
 }
 
 .switches-container label {
     font-size: .75rem;
+    font-weight: normal;
 }
 
 .depthSlider {
-    margin: -10px auto;
+    margin: 0px auto;
 }
 
 span {
@@ -460,9 +457,9 @@ span {
 }
 
 .switches-container, .dynamic-group-toggles {
-    background-color: var(--toggle-bg-clr);
-    border-radius: 10px;
-    width: 90%;
+    /* background-color: var(--page-bg-clr);
+    border-radius: 10px; */
+    width: 100%;
     margin: 0 auto;
 }
 
@@ -483,13 +480,13 @@ span {
 .slider {
     position: relative;
     display: inline-block;
-    width: 37px;
-    height: 23px;
+    width: 25px; /* Toggle width */
+    height: 15px; /* Toggle height */
     margin-right: 5px;
 }
 
 .slider.round {
-    border-radius: 15px;
+    border-radius: 10px; /* Matches reduced height for a circular appearance */
 }
 
 .slider.round:before {
@@ -499,12 +496,11 @@ span {
 .slider:before {
     position: absolute;
     content: "";
-    height: 12px;
-    width: 12px;
-    left: 4px;
-    bottom: 5.5px;
+    height: 8px; /* Adjusted knob size */
+    width: 8px; /* Adjusted knob size */
+    left: 2.5px; /* Centering horizontally within the toggle */
+    top: 3.5px; /* Centering vertically within the toggle */
     background-color: white;
-    transition: 0.4s;
 }
 
 input:checked + .slider {
@@ -514,31 +510,33 @@ input:checked + .slider {
 }
 
 input:checked + .slider:before {
-    transform: translateX(14px);
-    height: 16px;
-    width: 16px;
-    right: 0px;
-    bottom: 3.5px;
+    transform: translateX(12px); 
+    position: absolute;
+    content: "";
+    height: 12px; /* Adjusted knob size */
+    width: 12px; /* Adjusted knob size */
+    left: -.5px; /* Centering horizontally within the toggle */
+    top: 1.5px; 
 }
 
 input + .slider {
     background-color: var(--bdr-clr);
-    border: 1px solid var(--pane-bg-clr);
-    transition: 0.4s;
+    border: 1px solid transparent;
 }
 
 .checkmark {
     position: absolute;
-    top: 50%;
-    left: 70%;
-    transform: translate(-50%, -50%);
-    width: 20px;
-    height: 20px;
+    top: 50%; /* Center vertically */
+    left: 73%; /* Center horizontally */
+    transform: translate(-50%, -50%); /* Align the checkmark center */
+    width: 10px; /* Smaller size for the checkmark */
+    height: 10px; /* Smaller size for the checkmark */
     opacity: 0; 
     pointer-events: none;
-    transition: opacity 0s ease-out, transform 1s ease-in;
+    transition: opacity 0.4s ease-out, transform 0.2s ease-in;
 }
 
 input:checked + .slider .checkmark {
     opacity: 1;
 }
+
