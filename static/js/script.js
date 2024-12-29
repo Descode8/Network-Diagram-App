@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let visibleGroups = {};
 
     const depthSlider = $('#depthSlider')[0]; 
-    const depthValueLabel = document.getElementById('depthValue');
+    const depthValueLabel = $('#depthValue');
     const searchInput = document.getElementById('searchInput');
     const clearButton = document.getElementById('clearButton');
     const searchButton = document.getElementById('searchButton');
@@ -421,9 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // evenly spaced in a circle of radius X (e.g. 200)
         // -------------------------------------------------------
         function forceCircularChildren(radius) {
-            let nodesByParent = {};
-            let allNodes = [];
-    
+            let nodesByParent = {};    
             function force(alpha) {
                 // For each parent, place its children in a circle
                 Object.values(nodesByParent).forEach(childArr => {
@@ -482,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             return 100;
                         }
                         // Default for others
-                        return 25;
+                        return 50;
                     })
                 )
                 .force("center", d3.forceCenter(width / 2, height / 2));
@@ -855,8 +853,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateDepthSlider() {
         var value = (depthSlider.value - depthSlider.min) / (depthSlider.max - depthSlider.min) * 100;
-        depthSlider.style.setProperty('--value', `${value}%`);
-        depthValueLabel.textContent = depthSlider.value;
+        $(depthSlider).css('--value', `${value}%`);
+        $(depthValueLabel).text(depthSlider.value);
     }
 
     updateDepthSlider();
@@ -881,19 +879,34 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateRightContainer(data) {
         rightContainer.html("");
 
-        rightContainer.append("h2")
+        rightContainer
+            .append("h2")
             .style("background-color", nodeColor({data: {type: data.type}}))
             .html(`${data.name}`);
 
-        rightContainer.append("p")
+        rightContainer
+            .append("p")
             .html(`<strong>Type: </strong>${data.type || 'Unknown'}`);
 
         var description = (data.description || 'No description available').replace(/\n/g, '<br>');
-        rightContainer.append("h3").attr("class", "description-header").html("Description");
-        rightContainer.append("p").html(description);
+        rightContainer 
+            .append("h3")
+            .attr("class", "description-header")
+            .html("Description");
+        rightContainer
+        .append("p")
+        .html(description);
 
-        rightContainer.append("h3").attr("class", "dependencies-header").html("Relationships");
+        rightContainer
+            .append("h3")
+            .attr("class", "dependencies-header")
+            .html("Relationships");
 
+        rightContainer
+            .append("p")
+            .html(`<strong>Total:</strong> ${--data.totalNodesDisplayed}`)
+            .style("border-top", "1.5px solid var(--bdr-clr)");
+        
         var displayGroupNodes = groupNodeSwitch.checked;
 
         if (displayGroupNodes) {
@@ -923,7 +936,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 var typeSection = rightContainer.append("div")
                     .attr("class", "type-section");
 
-                typeSection.append("p")
+                typeSection
+                    .append("p")
                     .style("background-color", nodeColor({data: {type: typeNode.groupType}}))
                     .attr("class", "dependency-type")
                     .html(`${typeNode.groupType}`)
