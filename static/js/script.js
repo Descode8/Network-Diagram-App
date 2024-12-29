@@ -345,12 +345,19 @@ document.addEventListener('DOMContentLoaded', () => {
             span.style.backgroundColor = nodeColor({ data: { groupType: group } })
             span.title = `Toggle ${group} Nodes ON/OFF`;
         
-            var checkImg = document.createElement('img');
-            checkImg.src = "/static/images/check.svg";
-            checkImg.className = "checkmark";
-            checkImg.alt = "Checkmark";
+            var checkSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            checkSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+            checkSvg.setAttribute("height", "10px");
+            checkSvg.setAttribute("width", "10px");
+            checkSvg.setAttribute("viewBox", "0 -960 960 960");
+            checkSvg.setAttribute("class", "checkmark"); // Use setAttribute to set the class
 
-            span.appendChild(checkImg);
+            var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", "M382-200 113-469l97-97 172 173 369-369 97 96-466 466Z");
+            path.setAttribute("fill", nodeColor({ data: { groupType: group } })); // Dynamic color matching the toggle
+
+            checkSvg.appendChild(path);
+            span.appendChild(checkSvg);
     
             label.appendChild(input);
             label.appendChild(span);
@@ -405,8 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("collide", d3.forceCollide().radius(25))
             .force("radial", d3.forceRadial(150, width / 2, height / 2))
-            .alphaDecay(0.009)
-            .alphaMin(0.009)
+            .alphaDecay(0.01)
             .alpha(1)
             .restart();
     

@@ -527,7 +527,7 @@ input + .slider {
 .checkmark {
     position: absolute;
     top: 50%; /* Center vertically */
-    left: 73%; /* Center horizontally */
+    left: 72%; /* Center horizontally */
     transform: translate(-50%, -50%); /* Align the checkmark center */
     width: 10px; /* Smaller size for the checkmark */
     height: 10px; /* Smaller size for the checkmark */
