@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+$(document).ready(function() {
     let width = $('.graph-container')[0].clientWidth;
     let height = $('.graph-container')[0].clientHeight;
     let rootNode = null;
@@ -595,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .append('text')
             .attr('class', 'label')
             .attr('text-anchor', 'middle')
-            .attr('dy', d => shouldHaveCircle(d) ? 5 : 0)
+            .attr('dy', d => shouldHaveCircle(d) ? 0 : 0)
             .attr('fill', '#282828')
             .style('cursor', 'pointer')
             .text(d => d.data.name)
@@ -814,11 +814,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let scale, translateX, translateY;
     
         // Adjust graphPadding based on the number of non-group nodes
-        let graphPadding = 100; // Default padding
+        var graphPadding = 50; // Default padding
         if (nonGroupNodes.length < 20) {
             graphPadding = 250;
         } else if (nonGroupNodes.length < 5) {
             graphPadding = 500;
+        }
+        else if (nonGroupNodes.length <= 3 ) {
+            graphPadding = 1000;
+            console.log("graphPadding", graphPadding);
         }
     
         if (nodesWidth === 0 && nodesHeight === 0) {

@@ -109,7 +109,7 @@ hr {
     border: 1px solid var(--pane-ttle-bg-clr);
     border-radius: 5px;
     margin: -10px auto;
-
+    box-shadow: var(--pane-ttle-bg-clr) 0px 2px 4px 0px;
 }
 
 .description-header, .dependencies-header {
@@ -151,6 +151,10 @@ hr {
 .dependency-node:hover, .dependency-type:hover {
     font-weight: bold;
     text-decoration: underline;
+}
+
+.right-pane h2, .left-pane h2, .description-header, .dependencies-header, .dependency-type {
+    box-shadow: var(--pane-ttle-bg-clr) 0px 6px 10px -4px;
 }
 
 .right-pane h4 {
@@ -306,6 +310,7 @@ title {
 
 .search-container:active, .search-container:focus-within {
     border: 1px solid var(--pane-ttle-bg-clr); 
+    box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
 .search-container:hover, #depthSlider:hover, .switch span:hover {
@@ -466,10 +471,9 @@ span {
     top: 100%; /* Position the arrow at the bottom of the hover-box */
     left: 50%;
     transform: translateX(-50%);
-    border-width: 8px; /* Size of the arrow */
+    border-width: 12px; /* Size of the arrow */
     border-style: solid;
     border-color: var(--svg-bg-clr) transparent transparent transparent; /* Arrow pointing down */
-    /* Optional: Add a gradient or adjust colors to match the hover-box */
 }
 
 .dependency-node-container:hover .hover-box {
@@ -481,6 +485,10 @@ span {
 
 .dependency-node:hover + .hover-box {
     display: block; 
+}
+
+.dependency-node p:hover {
+    border: 2px solid red;
 }
 
 .switches-container, .dynamic-group-toggles {
