@@ -14,6 +14,10 @@ $(document).ready(function() {
     let nodesDisplayed = [];
     let visibleGroups = {};
 
+    const collapseLeftPane = $('.expand-collapse-buttonLeft');
+    let leftPaneIsVisible = true;
+    let rightPaneIsVisible = true;
+    const collapseRightPane = $('.expand-collapse-buttonRight');
     const depthSlider = $('#depthSlider')[0]; 
     const depthValueLabel = $('#depthValue');
     const searchInput = document.getElementById('searchInput');
@@ -34,6 +38,62 @@ $(document).ready(function() {
     searchInput.parentNode.appendChild(dropdown);
 
     let allNodes = []; // Holds all node names and group types
+
+    collapseLeftPane.click(function() {
+        if ($('.left-pane').is(':visible')) {
+            $('.left-pane').css('display', 'none');
+            leftPaneIsVisible = false;
+            $('.expand-collapse-buttonLeft').css('transform', 'rotate(180deg)');
+            $('.graph-container').css('width', '85vw');
+            $('.expand-collapse-buttonLeft').attr('title', 'Expand Left Pane');
+        } else {
+            if(!rightPaneIsVisible) {
+                $('.left-pane').css({'display': 'flex', 'width': '15vw',});
+                $('.expand-collapse-buttonLeft').css('transform', 'rotate(0deg)');
+                $('.graph-container').css('width', '85vw');
+            } else {
+                $('.left-pane').css({'display': 'flex', 'width': '15vw',});
+                $('.expand-collapse-buttonLeft').css('transform', 'rotate(0deg)');
+                $('.graph-container').css('width', '70vw');
+                leftPaneIsVisible = true;
+            }
+        }
+        checkBothPanesVisibility(); // Check after each click
+        fitGraphToContainer();
+    });
+    
+    collapseRightPane.click(function() {
+        if ($('.right-pane').is(':visible')) {
+            $('.right-pane').css('display', 'none');
+            rightPaneIsVisible = false;
+            $('.expand-collapse-buttonRight').css('transform', 'rotate(180deg)');
+            $('.graph-container').css('width', '85vw');
+            $('.expand-collapse-buttonRight').attr('title', 'Expand Right Pane');
+        } else {
+            if (!leftPaneIsVisible) {
+                $('.right-pane').css({'display': 'flex','width': '15vw'});
+                $('.expand-collapse-buttonRight').css('transform', 'rotate(0deg)');
+                $('.graph-container').css('width', '85vw');
+            } else {
+                $('.right-pane').css({'display': 'flex','width': '15vw'});
+                $('.expand-collapse-buttonRight').css('transform', 'rotate(0deg)');
+                $('.graph-container').css('width', '70vw');
+                rightPaneIsVisible = true;
+            }
+        }
+        checkBothPanesVisibility(); // Check after each click
+        fitGraphToContainer();
+    });
+    
+    // Function to check if both panes are hidden
+    function checkBothPanesVisibility() {
+        if (!leftPaneIsVisible && !rightPaneIsVisible) {
+            console.log('Both panes are hidden');
+            $('.graph-container').css('width', '100vw');
+        }
+    }
+    
+    
 
     // Show the clear button and dropdown when input has text
     searchInput.addEventListener('input', () => {
@@ -290,26 +350,6 @@ $(document).ready(function() {
         return groups;
     }
 
-    function flattenMatchingGroupTypes(node) {
-        if (!node.children) return node;
-    
-        // First do a DFS to flatten deeper
-        node.children.forEach(child => flattenMatchingGroupTypes(child));
-
-        // Then if child's groupType == node.type, merge child's children into node
-        let flattenedChildren = [];
-        for (const child of node.children) {
-            if (child.groupType && child.groupType === node.type) {
-                // Merge child's children into parent's children
-                flattenedChildren.push(...(child.children || []));
-            } else {
-                flattenedChildren.push(child);
-            }
-        }
-        node.children = flattenedChildren;
-        return node;
-    }  
-
     function initializeGroupToggles(data) {
         // 1) Gather every group from all descendants
         let allGroups = Array.from(getUniqueGroups(data));
@@ -334,7 +374,7 @@ $(document).ready(function() {
         // 4) Build a checkbox for each group we found
         allGroups.forEach(group => {
             var label = document.createElement('label');
-            label.className = 'switch';
+            label.className = 'switch span';
         
             var input = document.createElement('input');
             input.type = 'checkbox';
@@ -814,16 +854,20 @@ $(document).ready(function() {
         let scale, translateX, translateY;
     
         // Adjust graphPadding based on the number of non-group nodes
-        var graphPadding = 50; // Default padding
-        if (nonGroupNodes.length < 20) {
+         // Default padding
+        console.log("nonGroupNodes.length", nonGroupNodes.length);
+        if (nonGroupNodes.length > 50) {
+            graphPadding = 75;
+        } else if (nonGroupNodes.length > 20) {
+            graphPadding = 100;
+        } else if (nonGroupNodes.length > 5) {
             graphPadding = 250;
-        } else if (nonGroupNodes.length < 5) {
-            graphPadding = 500;
+        } else if (nonGroupNodes.length <= 3 ) {
+            graphPadding = 300;
+        } else {
+            var graphPadding = 50;
         }
-        else if (nonGroupNodes.length <= 3 ) {
-            graphPadding = 1000;
-            console.log("graphPadding", graphPadding);
-        }
+        console.log("graphPadding", graphPadding);
     
         if (nodesWidth === 0 && nodesHeight === 0) {
             // Only one node present
@@ -944,6 +988,7 @@ $(document).ready(function() {
                     .append("p")
                     .style("background-color", nodeColor({data: {type: typeNode.groupType}}))
                     .attr("class", "dependency-type")
+                    // .attr("title", `View ${typeNode.groupType}`)
                     .html(`${typeNode.groupType}`)
                     .style("cursor", "pointer")
                     .on("click", (event) => {
@@ -1024,12 +1069,14 @@ $(document).ready(function() {
 
             nodeContainer.append("p")
                 .attr("class", "dependency-node")
+                // .attr("title", `View ${node.name}`)
                 .html(`${node.name}`)
                 .on("click", (event) => handleNodeClicked(node));
 
             nodeContainer
                 .append("div")
                 .attr("class", "hover-box")
+                .attr("z-index", "1000")
                 .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
         }
     }

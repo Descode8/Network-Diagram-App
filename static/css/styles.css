@@ -1,5 +1,29 @@
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Medium.ttf') format('truetype');
+    font-weight: 400; /* Regular (default) weight */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Bold.ttf') format('truetype');
+    font-weight: 700; /* Bold weight */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Thin.ttf') format('truetype');
+    font-weight: 200; /* Thin weight */
+    font-style: normal;
+}
+
 body, html {
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'JetBrains Mono', monospace;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 16px;
     display: flex;
     flex-direction: row;
     margin: 0;
@@ -10,8 +34,8 @@ body, html {
     background-color: var(--page-bg-clr);
 }
 
-input, button, select, textarea, .search-container {
-    font-family: 'Segoe UI', sans-serif;
+input, button, select, textarea, p, .search-container {
+    font-family: 'JetBrains Mono', monospace;
 }
 
 circle {
@@ -24,6 +48,31 @@ text, circle text {
     cursor: pointer;
 }
 
+.expand-collapse-left, .expand-collapse-right {
+    position: relative;
+}
+
+.expand-collapse-buttonLeft, .expand-collapse-buttonRight {
+    position: absolute;
+    top: 50%; 
+    transition: transform 0s ease, left 0s ease;
+    z-index: 10; 
+    cursor: pointer; 
+}
+
+.expand-collapse-buttonLeft {
+    left: 90%; 
+}
+
+.expand-collapse-buttonRight {
+    right: 100%;
+}
+
+.arrow-icon {
+    width: 30px; 
+    height: 30px; 
+}
+
 .right-pane, .left-pane {
     background-color: var(--pane-bg-clr);
     overflow-y: auto;
@@ -33,19 +82,9 @@ text, circle text {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 20px; 
+    gap: 15px; 
     width: 15vw;
     margin: 0 auto;
-}
-
-.right-pane {
-    width: 15vw;
-}
-
-.settings {
-    background-color: var(--pane-bg-clr);
-    padding-left: 5%;
-    padding-bottom: 3%;
 }
 
 .graph-container {
@@ -108,7 +147,7 @@ hr {
     background: var(--pane-ttle-bg-clr); 
     border: 1px solid var(--pane-ttle-bg-clr);
     border-radius: 5px;
-    margin: -10px auto;
+    margin: -7px auto;
     box-shadow: var(--pane-ttle-bg-clr) 0px 2px 4px 0px;
 }
 
@@ -154,7 +193,7 @@ hr {
 }
 
 .right-pane h2, .left-pane h2, .description-header, .dependencies-header, .dependency-type {
-    box-shadow: var(--pane-ttle-bg-clr) 0px 6px 10px -4px;
+    box-shadow: var(--pane-ttle-bg-clr) 0px 4px 8px -3px;
 }
 
 .right-pane h4 {
@@ -264,8 +303,8 @@ title {
 }
 
 .home-icon, .refresh-icon, .settings-icon {
-    width: 35px;
-    height: 35px;
+    width: 30px;
+    height: 30px;
     cursor: pointer;
 }
 
@@ -313,13 +352,9 @@ title {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
-.search-container:hover, #depthSlider:hover, .switch span:hover {
+.search-container:hover, #depthSlider:hover {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
     border-radius: 15px;
-}
-
-.switch span:hover {
-    box-shadow: var(--bdr-clr) 0px 2px 2px 0px;;
 }
 
 .autocomplete-suggestions {
@@ -338,7 +373,7 @@ title {
 }
 
 .autocomplete-suggestions:hover {
-    background-color: var(--pane-bg-clr);
+    background-color: #adb5bd;
     color: white;
 }
 
@@ -456,7 +491,6 @@ span {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px;
     z-index: 100; 
     width: max-content;
-    max-width: 95%;
     height: max-content;
     white-space: nowrap;
     font-size: 0.8rem;
@@ -487,13 +521,9 @@ span {
     display: block; 
 }
 
-.dependency-node p:hover {
-    border: 2px solid red;
-}
-
 .switches-container, .dynamic-group-toggles {
     width: 100%;
-    margin: 0 auto;
+    margin: 10px auto;
 }
 
 .dynamic-group-toggles {

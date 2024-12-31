@@ -17,18 +17,18 @@ Right Pane: Displays details for the selected node.
 <style>
     :root {
         --page-bg-clr: #D7DBDD;
-        --pane-bg-clr: #adb5bd;
+        --pane-bg-clr: #dee2e6;
         --svg-bg-clr: #FFFFFF;
         --pane-ttle-bg-clr: #2E4053;
-        --descrip-clr: #4F81BD;
-        --depend-hdr-clr: #4F81BD;
+        --descrip-clr: #4267ac;
+        --depend-hdr-clr: #4267ac;
         --bdr-clr: #2E4053;
 
         --org-nde-clr: #1C2833;
-        --app-nde-clr: #0070BB;
-        --ppl-nde-clr: #90be6d;
-        --tech-nde-clr:rgb(189, 69, 71);
-        --data-nde-clr:  #f9c74f;
+        --app-nde-clr: #1982c4;
+        --ppl-nde-clr: #8ac926;
+        --tech-nde-clr:rgb(209, 87, 89);
+        --data-nde-clr: #6a4c93;
         --procure-nde-clr: #f3722c;
         --fclty-nde-clr:rgb(93, 112, 130);
 
@@ -38,7 +38,10 @@ Right Pane: Displays details for the selected node.
 </style>
 <body>
     <p>{{ rootNode }}</p>
-    <div class="left-side-wrapper" style="display: flex; flex-direction: column;">
+    <div class="expand-collapse-left">
+        <span class="expand-collapse-buttonLeft" id="expandCollapseButtonLeft" title="Collapse Pane">
+            <img src="{{ url_for('static', filename='images/collapse-left.svg') }}" class="arrow-icon" alt="Arrow Icon">
+        </span>
         <div class="left-pane">
             <h2>CIO Dashboard</h2>
             <div class="button-container">
@@ -59,16 +62,14 @@ Right Pane: Displays details for the selected node.
                     <input type="text" id="searchInput" placeholder="Search...">
                     <button id="clearButton" title="Clear Search">
                         <img src="{{ url_for('static', filename='images/x.svg') }}" class="clear-icon" alt="Clear Icon">
-                    </button>                    
+                    </button>
                 </div>
                 <div id="autocompleteSuggestions"></div>
-            </div>                                          
-        
+            </div>
             <label class="depthSlider" for="depthSlider">Depth<span id="depthValue"> 2</span></label>
             <div class="custom-slider" title="Change Depth">
                 <input type="range" id="depthSlider" min="1" max="4" value="2" step="1">
             </div>
-
             <div class="switches-container">
                 <label class="switch">
                     <input type="checkbox" id="groupNodeSwitch" checked>
@@ -83,16 +84,21 @@ Right Pane: Displays details for the selected node.
                         <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
                     Asset Nodes
-                </label>           
+                </label>                
             </div>
         </div>
     </div>
-
+    
     <div class="graph-container">
         <svg></svg>
     </div>
 
-    <div class="right-pane"></div>
+    <div class="expand-collapse-right">
+        <span class="expand-collapse-buttonRight" id="expandCollapseButton" title="Collapse Right Pane">
+            <img src="{{ url_for('static', filename='images/collapse-right.svg') }}" class="arrow-icon" alt="Arrow Icon">
+        </span>
+        <div class="right-pane"></div>
+    </div>
 
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
