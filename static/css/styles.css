@@ -34,7 +34,7 @@ body, html {
     background-color: var(--page-bg-clr);
 }
 
-input, button, select, textarea, p, .search-container {
+input, button, select, textarea, p, .search-container, .switches-container {
     font-family: 'JetBrains Mono', monospace;
 }
 
@@ -343,7 +343,7 @@ title {
     -ms-overflow-style: none;
 }
 
-.search-container, #depthSlider, .switch span {
+.search-container, #depthSlider {
     transition: 0.5s ease-in-out; 
 }
 
@@ -447,11 +447,6 @@ label, span {
     margin-left: 10%;
 }
 
-.switches-container label {
-    font-size: .75rem;
-    font-weight: normal;
-}
-
 .depthSlider {
     margin: 0px auto;
 }
@@ -517,74 +512,22 @@ span {
     transition: 1s ease-in-out;
 }
 
-.dependency-node:hover + .hover-box {
-    display: block; 
-}
 
-.switches-container, .dynamic-group-toggles {
-    width: 100%;
-    margin: 10px auto;
-}
 
-.dynamic-group-toggles {
-    width: 100%;
-}
 
-.switch {
-    display: flex;
-    align-items: center;
-    margin: 15px auto;
-}
 
-.switch input {
-    display: none;
-}
 
-.slider {
-    position: relative;
-    display: inline-block;
-    width: 25px; /* Toggle width */
-    height: 15px; /* Toggle height */
-    margin-right: 5px;
-}
 
-.slider.round {
-    border-radius: 10px; /* Matches reduced height for a circular appearance */
-}
 
-.slider.round:before {
-    border-radius: 50%;
-}
 
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 8px; /* Adjusted knob size */
-    width: 8px; /* Adjusted knob size */
-    left: 2.5px; /* Centering horizontally within the toggle */
-    top: 3.5px; /* Centering vertically within the toggle */
+
+.switches-container label {
+    border: 1px solid var(--nde-bdr-clr);
     background-color: white;
 }
 
-input:checked + .slider {
-    background-color: var(--pane-ttle-bg-clr);
-    border: 1px solid #282828;
-    cursor: pointer;
-}
-
-input:checked + .slider:before {
-    transform: translateX(12px); 
-    position: absolute;
-    content: "";
-    height: 12px; /* Adjusted knob size */
-    width: 12px; /* Adjusted knob size */
-    left: -.5px; /* Centering horizontally within the toggle */
-    top: 1.5px; 
-}
-
-input + .slider {
-    background-color: var(--bdr-clr);
-    border: 1px solid transparent;
+.switches-container {
+    margin-top: 10px;
 }
 
 .checkmark {
@@ -596,10 +539,56 @@ input + .slider {
     height: 10px; /* Smaller size for the checkmark */
     opacity: 0; 
     pointer-events: none;
-    transition: opacity 0.4s ease-out, transform 0.2s ease-in;
 }
 
-input:checked + .slider .checkmark {
-    opacity: 1;
+.clear {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    clear: both;
+    margin: 10px auto;
+    font-size: 0.8rem;
 }
 
+  /* The main clickable box */
+.checkBox {
+    display: block;
+    cursor: pointer;
+    width: 15px;
+    height: 15px;
+    border: 1px solid var(--bdr-clr);;
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+
+  /* The "rotating" div that slides into place when checked */
+.checkBox div {
+    background-color: var(--bdr-clr);
+    width: 60px;
+    height: 60px;
+    position: absolute;
+    top: -52px;
+    left: -52px;
+    transform: rotateZ(45deg);
+    z-index: 100;
+}
+
+/* The transition class for smooth movement */
+.transition {
+    transition: 300ms ease;
+}
+
+  /* Move the div on :checked */
+.checkBox input[type=checkbox]:checked + div {
+    left: -10px;
+    top: -10px;
+}
+
+  /* Hide the actual checkbox so we only see the .checkBox div */
+.checkBox input[type=checkbox] {
+    position: absolute;
+    left: 50px;
+    visibility: hidden;
+}
