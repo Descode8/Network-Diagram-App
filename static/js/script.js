@@ -3,9 +3,9 @@ $(document).ready(function() {
     let height = $('.graph-container')[0].clientHeight;
     let rootNode = null;
     const svg = d3.select('.graph-container svg');
-    const activeNodeSize = 6;
-    const groupNodeSize = 4;
-    const nodeSize = 3;
+    const activeNodeSize = 7;
+    const groupNodeSize = 5;
+    const nodeSize = 4;
     const linkWidth = 0.6;
     const linkColor = 'var(--link-clr)';
     const nodeBorderColor = 'var(--nde-bdr-clr)';
@@ -635,7 +635,6 @@ $(document).ready(function() {
             .append('text')
             .attr('class', 'label')
             .attr('text-anchor', 'middle')
-            .attr('dy', d => shouldHaveCircle(d) ? 0 : 0)
             .attr('fill', '#282828')
             .style('cursor', 'pointer')
             .text(d => d.data.name)
@@ -862,6 +861,8 @@ $(document).ready(function() {
             graphPadding = 100;
         } else if (nonGroupNodes.length > 5) {
             graphPadding = 250;
+        } else if (nonGroupNodes.length <= 5 && nonGroupNodes.length > 3) {
+            graphPadding = 275;
         } else if (nonGroupNodes.length <= 3 ) {
             graphPadding = 300;
         } else {

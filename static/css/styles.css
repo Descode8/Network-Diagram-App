@@ -148,7 +148,7 @@ hr {
     border: 1px solid var(--pane-ttle-bg-clr);
     border-radius: 5px;
     margin: -7px auto;
-    box-shadow: var(--pane-ttle-bg-clr) 0px 2px 4px 0px;
+    box-shadow: var(--pane-ttle-bg-clr) 0px 1px 3px 0px;
 }
 
 .description-header, .dependencies-header {
