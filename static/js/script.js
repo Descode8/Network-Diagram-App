@@ -6,9 +6,9 @@ $(document).ready(function() {
     const activeNodeSize = 7;
     const groupNodeSize = 5;
     const nodeSize = 4;
-    const linkWidth = 0.6;
-    const linkColor = 'var(--link-clr)';
-    const nodeBorderColor = 'var(--nde-bdr-clr)';
+    const linkWidth = 0.3;
+    const linkColor = 'var(--link-clr)' || 'gray';
+    const nodeBorderColor = 'var(--nde-bdr-clr)' || '#000';
 
     let currentActiveNodeName = null;
     let nodesDisplayed = [];
@@ -23,7 +23,7 @@ $(document).ready(function() {
     const searchInput = document.getElementById('searchInput');
     const clearButton = document.getElementById('clearButton');
     const searchButton = document.getElementById('searchButton');
-    const failedSearch = document.querySelector('.failed-search'); // For displaying invalid search
+    const failedSearch = document.querySelector('.failed-search'); 
     const rightContainer = d3.select('.right-pane');
 
     const labelNodesSwitch = document.getElementById('labelNodesSwitch');
@@ -34,11 +34,14 @@ $(document).ready(function() {
     const onRefreshButton = document.getElementById('refreshButton');
 
     const dropdown = document.createElement('div');
-    dropdown.className = 'search-menu'; // Matches your CSS class
+    dropdown.className = 'search-menu';
     searchInput.parentNode.appendChild(dropdown);
 
     let allNodes = []; // Holds all node names and group types
 
+    // -----------------------------------------------------
+    // Left/Right Pane Toggle
+    // -----------------------------------------------------
     collapseLeftPane.click(function() {
         if ($('.left-pane').is(':visible')) {
             $('.left-pane').css('display', 'none');
@@ -58,7 +61,7 @@ $(document).ready(function() {
                 leftPaneIsVisible = true;
             }
         }
-        checkBothPanesVisibility(); // Check after each click
+        checkBothPanesVisibility(); 
         fitGraphToContainer();
     });
     
@@ -81,11 +84,10 @@ $(document).ready(function() {
                 rightPaneIsVisible = true;
             }
         }
-        checkBothPanesVisibility(); // Check after each click
+        checkBothPanesVisibility(); 
         fitGraphToContainer();
     });
     
-    // Function to check if both panes are hidden
     function checkBothPanesVisibility() {
         if (!leftPaneIsVisible && !rightPaneIsVisible) {
             console.log('Both panes are hidden');
@@ -93,134 +95,137 @@ $(document).ready(function() {
         }
     }
     
-    
-
-    // Show the clear button and dropdown when input has text
+    // -----------------------------------------------------
+    // Search and Clear Buttons
+    // -----------------------------------------------------
     searchInput.addEventListener('input', () => {
         var input = searchInput.value.trim();
         var dropdown = document.getElementById('autocompleteSuggestions');
         
         if (input) {
-            clearButton.style.display = 'flex'; // Show clear button
-            dropdown.style.display = 'block'; // Show dropdown
+            clearButton.style.display = 'flex'; 
+            dropdown.style.display = 'block';
         } else {
-            clearButton.style.display = 'none'; // Hide clear button
-            dropdown.style.display = 'none'; // Hide dropdown
-            dropdown.innerHTML = ''; // Clear dropdown content
+            clearButton.style.display = 'none'; 
+            dropdown.style.display = 'none';
+            dropdown.innerHTML = '';
         }
     });
 
     clearButton.addEventListener('click', (event) => {
         event.preventDefault();
-        searchInput.value = ''; // Clear input field
-        clearButton.style.display = 'none'; // Hide clear button
+        searchInput.value = ''; 
+        clearButton.style.display = 'none'; 
         var dropdown = document.getElementById('autocompleteSuggestions');
-        dropdown.style.display = 'none'; // Temporarily hide dropdown
-        dropdown.innerHTML = ''; // Clear dropdown content
+        dropdown.style.display = 'none'; 
+        dropdown.innerHTML = ''; 
     });
 
-    // Function to show the "Invalid Search" message
     function showInvalidSearchMessage(input) {
-        failedSearch.style.display = 'block'; // Show the message
-
+        failedSearch.style.display = 'block'; 
         if(!input) {
-            failedSearch.textContent = 'Please enter a search term'; // Set message content
+            failedSearch.textContent = 'Please enter a search term';
             return;
         }
-
-        failedSearch.textContent = `${input} does not exist`; // Set message content
-
-        // Hide the message after 3 seconds
+        failedSearch.textContent = `${input} does not exist`;
         setTimeout(() => {
-            failedSearch.style.display = 'none'; // Hide the message
-            failedSearch.textContent = ''; // Clear the message content
+            failedSearch.style.display = 'none'; 
+            failedSearch.textContent = '';
         }, 3000);
     }
 
-    // Initialize nodes for dropdown matching
+    // -----------------------------------------------------
+    // IMPORTANT FIX: Only push strings into allNodes
+    // -----------------------------------------------------
     function populateNodeList(data) {
         function traverse(node) {
-            if (node.name) allNodes.push(node.name);
-            if (node.groupType) allNodes.push(node.groupType);
-            if (node.children) node.children.forEach(traverse);
+            // Only add node.name if it's a string
+            if (typeof node.name === 'string') {
+                allNodes.push(node.name);
+            }
+            // Only add node.groupType if it's a string
+            if (typeof node.groupType === 'string') {
+                allNodes.push(node.groupType);
+            }
+            if (node.children) {
+                node.children.forEach(traverse);
+            }
         }
         traverse(data);
         allNodes = [...new Set(allNodes)]; // Remove duplicates
     }
 
-    // Search function
     function searchNode() {
         var input = searchInput.value.trim();
         if (input) {
-            var matchingNode = allNodes.find(node => node.toLowerCase() === input.toLowerCase());
+            var matchingNode = allNodes.find(node => {
+              // We also ensure node is a string here
+              return (typeof node === 'string') && (node.toLowerCase() === input.toLowerCase());
+            });
             if (matchingNode) {
-                fetchAndRenderGraph(depthSlider.value, input); // Valid search, proceed with rendering
+                fetchAndRenderGraph(depthSlider.value, input);
             } else {
-                showInvalidSearchMessage(input); // Invalid search, show message
+                showInvalidSearchMessage(input);
             }
         } else {
-            showInvalidSearchMessage(input); // Empty search, show message
+            showInvalidSearchMessage(input);
         }
     }
 
-    // Add event listener for Enter key
     searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
             event.preventDefault();
             searchNode();
-            dropdown.innerHTML = ''; // Clear the dropdown
+            dropdown.innerHTML = '';
         }
     });
 
-    // Add event listener for the search button
     searchButton.addEventListener('click', () => {
         searchNode();
-        dropdown.innerHTML = ''; // Clear the dropdown
+        dropdown.innerHTML = '';
     });
 
-    // Dynamic dropdown functionality
+    // -----------------------------------------------------
+    // AUTOCOMPLETE SUGGESTIONS with the FIX
+    // -----------------------------------------------------
     searchInput.addEventListener('input', () => {
         var input = searchInput.value.toLowerCase();
+        var dropdown = document.getElementById('autocompleteSuggestions');
+        dropdown.innerHTML = '';
 
         if (!input) {
-            dropdown.style.display = 'none'; // Hide the dropdown when input is empty
-            dropdown.innerHTML = ''; // Clear any previous suggestions
+            dropdown.style.display = 'none';
             return;
         }
-        
-        var dropdown = document.getElementById('autocompleteSuggestions');
-        dropdown.innerHTML = ''; // Clear previous suggestions
-    
-        if (!input) {
-            dropdown.style.border = 'none'; // Hide the border if the input is empty
-            return;
-        }
-    
-        // Filter and display matching nodes
-        var matches = allNodes.filter(name => name.toLowerCase().includes(input));
-        matches.forEach(match => {
-            var item = document.createElement('div');
-            item.className = 'autocomplete-suggestions';
-            item.textContent = match;
-            item.addEventListener('click', () => {
-                searchInput.value = match; // Set the selected value
-                searchNode();
-                dropdown.innerHTML = ''; // Clear the dropdown
-                dropdown.style.border = 'none'; // Hide the border after selection
-            });
-            dropdown.appendChild(item);
-        });
-    
-        // Handle case where no matches are found
+
+        // Filter only strings & check matches
+        var matches = allNodes.filter(item => 
+          typeof item === 'string' && item.toLowerCase().includes(input)
+        );
+
         if (matches.length === 0) {
             var noMatch = document.createElement('div');
             noMatch.className = 'autocomplete-suggestions';
             noMatch.textContent = 'No matches found';
             dropdown.appendChild(noMatch);
+        } else {
+            matches.forEach(match => {
+                var item = document.createElement('div');
+                item.className = 'autocomplete-suggestions';
+                item.textContent = match;
+                item.addEventListener('click', () => {
+                    searchInput.value = match;
+                    searchNode();
+                    dropdown.innerHTML = '';
+                    dropdown.style.border = 'none';
+                });
+                dropdown.appendChild(item);
+            });
         }
+        dropdown.style.display = 'block';
     });
 
-    // Global references for zoom updates
+    // Global references
     let currentZoomScale = 1; 
     let nodeSelectionGlobal, linkSelectionGlobal, labelsSelectionGlobal;
 
@@ -231,39 +236,41 @@ $(document).ready(function() {
     groupNodeSwitch.addEventListener('change', () => {
         resetSimulationForForces();    
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
-    });    
+    });
 
-    // Define zoom behavior similar to old code
+    // -----------------------------------------------------
+    // Zoom Behavior
+    // -----------------------------------------------------
     const zoom = d3.zoom()
         .scaleExtent([0.5, 10])
         .on('zoom', (event) => {
             var transform = event.transform;
             currentZoomScale = transform.k;
 
-            // Apply transform
             graphGroup.attr('transform', transform);
 
-            // Adjust node, link, label sizes based on zoom
             if (nodeSelectionGlobal) {
                 nodeSelectionGlobal
                     .attr('r', d => {
                         if (d.data.name === currentActiveNodeName) {
-                            return activeNodeSize / currentZoomScale; // Active node size scales with zoom
+                            return activeNodeSize / currentZoomScale;
                         } else if (d.data.groupType) {
-                            return groupNodeSize / currentZoomScale; // Group node size scales with zoom
+                            return groupNodeSize / currentZoomScale;
                         } else {
-                            return nodeSize / currentZoomScale; // Default node size scales with zoom
+                            return nodeSize / currentZoomScale;
                         }
                     })
-                    .attr('stroke-width', 1 / currentZoomScale); // Scale stroke width with zoom
-            }            
+                    .attr('stroke-width', 1 / currentZoomScale);
+            }
 
             if (linkSelectionGlobal) {
-                linkSelectionGlobal.attr('stroke-width', linkWidth / currentZoomScale);
+                linkSelectionGlobal
+                    .attr('stroke-width', linkWidth / currentZoomScale);
             }
 
             if (labelsSelectionGlobal) {
-                labelsSelectionGlobal.attr('font-size', `${12 / currentZoomScale}px`);
+                labelsSelectionGlobal
+                    .attr('font-size', `${12 / currentZoomScale}px`);
             }
         });
 
@@ -271,22 +278,20 @@ $(document).ready(function() {
 
     function nodeColor(node) {
         var nodes = node.data.groupType || node.data.type;
-
         switch (nodes) {
-            case 'Organization': return 'var(--org-nde-clr)';
-            case 'Applications': return 'var(--app-nde-clr)';
-            case 'People': return 'var(--ppl-nde-clr)';
-            case 'Technology': return 'var(--tech-nde-clr)';
-            case 'Data': return 'var(--data-nde-clr)';
-            case 'Procurements': return 'var(--procure-nde-clr)';
-            case 'Facilities': return 'var(--fclty-nde-clr)';
+            case 'Organization': return 'var(--org-nde-clr)' || 'blue';
+            case 'Applications': return 'var(--app-nde-clr)' || 'purple';
+            case 'People': return 'var(--ppl-nde-clr)' || 'orange';
+            case 'Technology': return 'var(--tech-nde-clr)' || 'green';
+            case 'Data': return 'var(--data-nde-clr)' || 'teal';
+            case 'Procurements': return 'var(--procure-nde-clr)' || 'pink';
+            case 'Facilities': return 'var(--fclty-nde-clr)' || 'brown';
             default: return 'yellow';
         }
     }
 
     svg.attr('width', width).attr('height', height);
-
-    const graphGroup = svg.append('g'); // Container for links, nodes, labels
+    const graphGroup = svg.append('g');
 
     const simulation = d3.forceSimulation()
         .force('link', d3.forceLink().id(d => d.id).distance(100))
@@ -299,7 +304,7 @@ $(document).ready(function() {
 
     onRefreshButton.addEventListener('click', () => {
         resetNodeForces();
-        showGroupToggles(); // Ensure toggles are visible on refresh
+        showGroupToggles();
     });
 
     function resetNodeForces() {
@@ -307,15 +312,11 @@ $(document).ready(function() {
             d.fx = null;
             d.fy = null;
         });
-        simulation
-            .alphaDecay(0.009)     // Speed the graph settles    
-            .alpha(1)
-            .restart();
+        simulation.alphaDecay(0.009).alpha(1).restart();
     }
 
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
         var url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
-
         fetch(url, { headers: { 'Accept': 'application/json' } })
             .then(response => {
                 if (!response.ok) {
@@ -324,11 +325,9 @@ $(document).ready(function() {
                 return response.json();
             })
             .then(data => {
-                // console.log('Raw data from server:', data);
                 if(!rootNode) {
                     rootNode = data;
                 }
-                
                 mergeSameGroupNodes(data);
                 populateNodeList(data); 
                 initializeGroupToggles(data);
@@ -351,17 +350,13 @@ $(document).ready(function() {
     }
 
     function initializeGroupToggles(data) {
-        // 1) Gather every group from all descendants
         let allGroups = Array.from(getUniqueGroups(data));
-    
-        // 2) If we have never set `visibleGroups`, then turn them all on
         if (Object.keys(visibleGroups).length === 0) {
             allGroups.forEach(group => {
-            visibleGroups[group] = true;
+              visibleGroups[group] = true;
             });
         }
-    
-        // 3) Create or clear the toggles container
+
         let dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
         if (!dynamicTogglesContainer) {
             dynamicTogglesContainer = document.createElement('div');
@@ -370,8 +365,7 @@ $(document).ready(function() {
         } else {
             dynamicTogglesContainer.innerHTML = '';
         }
-    
-        // 4) Build a checkbox for each group we found
+
         allGroups.forEach(group => {
             var label = document.createElement('label');
             label.className = 'switch span';
@@ -382,7 +376,7 @@ $(document).ready(function() {
         
             var span = document.createElement('span');
             span.className = 'slider round';
-            span.style.backgroundColor = nodeColor({ data: { groupType: group } })
+            span.style.backgroundColor = nodeColor({ data: { groupType: group } });
             span.title = `Toggle ${group} Nodes ON/OFF`;
         
             var checkSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -390,11 +384,11 @@ $(document).ready(function() {
             checkSvg.setAttribute("height", "10px");
             checkSvg.setAttribute("width", "10px");
             checkSvg.setAttribute("viewBox", "0 -960 960 960");
-            checkSvg.setAttribute("class", "checkmark"); // Use setAttribute to set the class
+            checkSvg.setAttribute("class", "checkmark");
 
             var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
             path.setAttribute("d", "M382-200 113-469l97-97 172 173 369-369 97 96-466 466Z");
-            path.setAttribute("fill", nodeColor({ data: { groupType: group } })); // Dynamic color matching the toggle
+            path.setAttribute("fill", nodeColor({ data: { groupType: group } }));
 
             checkSvg.appendChild(path);
             span.appendChild(checkSvg);
@@ -405,47 +399,40 @@ $(document).ready(function() {
     
             dynamicTogglesContainer.appendChild(label);
 
-        input.addEventListener('change', () => {
-            visibleGroups[group] = input.checked;
-            fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
+            input.addEventListener('change', () => {
+                visibleGroups[group] = input.checked;
+                fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
             });
         });
-    }      
+    }
 
     function resetSimulationForForces() {
-        // Stop the simulation before clearing
         simulation.stop();
-    
-        // Remove all forces
         simulation.force('charge', null);
         simulation.force('center', null);
         simulation.force('collide', null);
         simulation.force('radial', null);
         simulation.force('circularChildren', null);
     }
-    
+
     function renderGraph(data) {
         graphGroup.selectAll('g.links').remove();
         graphGroup.selectAll('g.nodes').remove();
         graphGroup.selectAll('g.labels').remove();
 
         currentActiveNodeName = data.name;
-        // 1) Decide how to display group vs. asset nodes
         var displayGroupNodes = groupNodeSwitch.checked;
         var displayAssetNodes = labelNodesSwitch.checked;
     
-        // 2) Transform data per your existing logic
         hideGroupNodes(data, displayGroupNodes);
         filterDataByVisibleGroups(data);
     
-        // 3) Build hierarchy
         var root = d3.hierarchy(data);
         var links = root.links();
         var nodes = root.descendants();
     
-        nodesDisplayed = nodes; // for fitGraphToContainer
-    
-        // 4) Set up simulation with new nodes
+        nodesDisplayed = nodes; 
+
         simulation
             .nodes(nodes)
             .force("charge", d3.forceManyBody().strength(-450))
@@ -455,15 +442,10 @@ $(document).ready(function() {
             .alphaDecay(0.01)
             .alpha(1)
             .restart();
-    
-        // -------------------------------------------------------
-        // Custom force that arranges each parent’s children
-        // evenly spaced in a circle of radius X (e.g. 200)
-        // -------------------------------------------------------
+
         function forceCircularChildren(radius) {
             let nodesByParent = {};    
             function force(alpha) {
-                // For each parent, place its children in a circle
                 Object.values(nodesByParent).forEach(childArr => {
                     if (!childArr.length) return;
                     var parent = childArr[0].parentNode;
@@ -475,8 +457,6 @@ $(document).ready(function() {
                         var targetX = parent.x + radius * Math.cos(angle);
                         var targetY = parent.y + radius * Math.sin(angle);
     
-                        // The factor (e.g. 0.1 * alpha) controls how strongly
-                        // the child is pulled toward its circular target
                         child.vx += (targetX - child.x) * 0.5 * alpha;
                         child.vy += (targetY - child.y) * 0.5 * alpha;
                     });
@@ -484,84 +464,57 @@ $(document).ready(function() {
             }
     
             force.initialize = function(ns) {
-                allNodes = ns;
                 nodesByParent = {};
-    
-                // Group each node by its parent
                 ns.forEach(node => {
-                    var pName = node.data.parent;  // depends on your data
-                    if (!pName) return; // no parent => likely the root node
+                    var pName = node.data.parent;
+                    if (!pName) return;
                     if (!nodesByParent[pName]) {
                         nodesByParent[pName] = [];
                     }
                     nodesByParent[pName].push(node);
-    
-                    // Find the actual parent node object and store it
                     node.parentNode = ns.find(n => n.data.name === pName);
                 });
             };
-    
             return force;
         }
-        // -------------------------------------------------------
-    
-        // Define dynamic distance for links based on active node
+
         if (displayGroupNodes) {
-            // =====================================
-            // If group nodes are displayed
-            // =====================================
             simulation
                 .force("link", d3.forceLink(links)
                     .id(d => d.data.name)
                     .distance(link => {
                         var source = link.source.data.name;
                         if (source === currentActiveNodeName) {
-                            // Longer links for direct children
                             return 100;
                         }
-                        // Default for others
                         return 50;
                     })
                 )
                 .force("center", d3.forceCenter(width / 2, height / 2));
-    
         } else {
-            // =====================================
-            // If group nodes are NOT displayed
-            // => Place children evenly around parent
-            // =====================================
             simulation
                 .force("link", d3.forceLink(links)
-                .id(d => d.data.name)
-                .distance(link => {
-                    var source = link.source.data.name;
-                    if (source === currentActiveNodeName) {
-                        // Longer links for direct children
-                        return 100;
-                    }
-                    // Default for others
-                    return 0;
-                })
-            )
-                // Pull children in a circle around parent
+                    .id(d => d.data.name)
+                    .distance(link => {
+                        var source = link.source.data.name;
+                        if (source === currentActiveNodeName) {
+                            return 100;
+                        }
+                        return 0;
+                    })
+                )
                 .force("circularChildren", forceCircularChildren(200))
                 .force("center", d3.forceCenter(width / 2, height / 2));
         }
-    
-        // Update the link force with link data
         simulation.force("link").links(links);
-    
-        // 5) Utility function: do we draw a circle for this node?
+
         var activeNodeName = data.name;
         function shouldHaveCircle(d) {
             if (d.data.name === activeNodeName) return true;
             if (d.data.groupType) return true;
             return displayAssetNodes;
         }
-    
-        // ----------------------------------------------------------------------------
-        // 6) Create or select dedicated <g> elements for links, nodes, labels
-        // ----------------------------------------------------------------------------
+
         let linkGroup = graphGroup.select('g.links');
         if (linkGroup.empty()) {
             linkGroup = graphGroup.append('g').attr('class', 'links');
@@ -575,9 +528,6 @@ $(document).ready(function() {
             labelGroup = graphGroup.append('g').attr('class', 'labels');
         }
     
-        // ----------------------------------------------------------------------------
-        // 7) Update pattern for LINKS
-        // ----------------------------------------------------------------------------
         let linkSelection = linkGroup
             .selectAll('line.link')
             .data(links, d => d.source.data.name + '->' + d.target.data.name);
@@ -591,11 +541,8 @@ $(document).ready(function() {
             .attr('stroke-width', linkWidth);
     
         linkSelection = linkEnter.merge(linkSelection);
-        linkSelectionGlobal = linkSelection;  // optional global reference
-    
-        // ----------------------------------------------------------------------------
-        // 8) Update pattern for NODES
-        // ----------------------------------------------------------------------------
+        linkSelectionGlobal = linkSelection;
+
         let nodeSelection = nodeGroup
             .selectAll('circle.node')
             .data(nodes.filter(shouldHaveCircle), d => d.data.name);
@@ -607,11 +554,11 @@ $(document).ready(function() {
             .attr('class', 'node')
             .attr('r', d => {
                 if (d.data.name === activeNodeName) {
-                    return activeNodeSize; // Active node size
+                    return activeNodeSize;
                 } else if (d.data.groupType) {
-                    return groupNodeSize; // Group node size
+                    return groupNodeSize;
                 } else {
-                    return nodeSize; // Default node size
+                    return nodeSize;
                 }
             })
             .attr('fill', d => nodeColor(d))
@@ -622,9 +569,6 @@ $(document).ready(function() {
         nodeSelection = nodeEnter.merge(nodeSelection);
         nodeSelectionGlobal = nodeSelection;
     
-        // ----------------------------------------------------------------------------
-        // 9) Update pattern for LABELS
-        // ----------------------------------------------------------------------------
         let labelSelection = labelGroup
             .selectAll('text.label')
             .data(nodes, d => d.data.name);
@@ -644,10 +588,7 @@ $(document).ready(function() {
     
         labelSelection = labelEnter.merge(labelSelection);
         labelsSelectionGlobal = labelSelection;
-    
-        // ----------------------------------------------------------------------------
-        // 10) Optionally pin the active node at center                               
-        // ----------------------------------------------------------------------------
+
         let foundActiveNode = nodes.find(d => d.data.name === data.name);
         if (foundActiveNode) {
             simulation.alpha(1).restart();
@@ -657,9 +598,6 @@ $(document).ready(function() {
             simulation.alpha(1).restart();
         }
     
-        // ----------------------------------------------------------------------------
-        // 11) TICK: position links & nodes, then fit to container
-        // ----------------------------------------------------------------------------
         simulation.on('tick', () => {
             linkSelection
                 .attr('x1', d => d.source.x)
@@ -674,27 +612,25 @@ $(document).ready(function() {
             labelSelection
                 .attr('x', d => d.x)
                 .attr('y', d => {
-                var r = getCircleScreenRadius(d);
-                if (d.data.name === currentActiveNodeName) {
+                    var r = getCircleScreenRadius(d);
+                    if (d.data.name === currentActiveNodeName) {
+                        return d.y - (r + 10);
+                    }
+                    if(!displayAssetNodes) {
+                        return d.y - (r + 3);
+                    }
                     return d.y - (r + 10);
-                }
-                if(!displayAssetNodes) {
-                    return d.y - (r + 3);
-                }
-                return d.y - (r + 10);
-            });
+                });
     
-            // Once alpha is sufficiently low, stop & fit to container
             if (simulation.alpha() < 0.05) {
                 simulation.stop();
                 fitGraphToContainer();
             }
         });
     
-        // Update the right-side container
         updateRightContainer(data);
     }
-    
+
     function getCircleScreenRadius(d) {
         if (d.data.name === currentActiveNodeName) {
             return activeNodeSize / currentZoomScale;
@@ -709,9 +645,7 @@ $(document).ready(function() {
         if (!node.children || node.children.length === 0) {
             return node;
         }
-
         let flattenedChildren = [];
-
         node.children.forEach(child => {
             if (child.groupType && !displayGroupNodes) {
                 if (child.children && child.children.length > 0) {
@@ -725,7 +659,6 @@ $(document).ready(function() {
                 flattenedChildren.push(child);
             }
         });
-
         node.children = flattenedChildren;
         return node;
     }
@@ -736,13 +669,13 @@ $(document).ready(function() {
             var key = child.groupType || child.type;
             if (key && visibleGroups.hasOwnProperty(key)) {
                 if (!visibleGroups[key]) {
-                    return false; // Filter out if the group is not visible
+                    return false; 
                 }
             }
-            filterDataByVisibleGroups(child); // Recursively filter children
+            filterDataByVisibleGroups(child);
             return true;
         });
-    }    
+    }
 
     function handleNodeClicked(nodeData) {
         var clickedName = nodeData.name || nodeData.groupType;
@@ -750,22 +683,10 @@ $(document).ready(function() {
             console.error('Clicked node has neither name nor groupNode:', nodeData);
             return;
         }
-
-        // // Determine if the clicked node is a groupType node
-        // var isGroupTypeNode = !!nodeData.groupType;
-
-        // if (isGroupTypeNode) {
-        //     hideGroupToggles();
-        // } else {
-        //     showGroupToggles();
-        // }
-
         if (clickedName === currentActiveNodeName) {
             return;
         }
-
         searchInput.value = clickedName;
-        isNodeClicked = true;
         fetchAndRenderGraph(depthSlider.value, clickedName);
     }
 
@@ -781,18 +702,15 @@ $(document).ready(function() {
             d.fy = d.y;
             simulation.alphaTarget(0.1).restart();
         }
-
         function dragged(event, d) {
             d.fx = event.x;
             d.fy = event.y;
         }
-
         function dragended(event, d) {
             d.fx = event.x;
             d.fy = event.y;
             simulation.alphaTarget(0);
         }
-
         return d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
@@ -801,11 +719,8 @@ $(document).ready(function() {
 
     function mergeSameGroupNodes(node) {
         if (!node.children || node.children.length === 0) return node;
-    
-        // Recurse first
         node.children.forEach(child => mergeSameGroupNodes(child));
     
-        // We'll track group nodes in a Map by `groupType`.
         var groupNodesMap = new Map(); 
         var newChildren = [];
     
@@ -815,31 +730,24 @@ $(document).ready(function() {
                     groupNodesMap.set(child.groupType, child);
                 } else {
                     let existing = groupNodesMap.get(child.groupType);
-                    // Merge the child’s children
                     existing.children = existing.children.concat(child.children || []);
                 }
             } else {
                 newChildren.push(child);
             }
         }
-    
-        // Now re‐add the unique group nodes
         for (const [, groupNode] of groupNodesMap) {
             newChildren.push(groupNode);
         }
-    
         node.children = newChildren;
         return node;
     }
-    
 
     function fitGraphToContainer(noTransition = false) {
         var containerWidth = document.querySelector('.graph-container').clientWidth;
         var containerHeight = document.querySelector('.graph-container').clientHeight;
-    
-        // Filter out group nodes
         var nonGroupNodes = nodesDisplayed.filter(node => !node.isGroup);
-    
+
         var nodesBBox = {
             xMin: d3.min(nonGroupNodes, d => d.x),
             xMax: d3.max(nonGroupNodes, d => d.x),
@@ -851,10 +759,8 @@ $(document).ready(function() {
         var nodesHeight = nodesBBox.yMax - nodesBBox.yMin;
     
         let scale, translateX, translateY;
-    
-        // Adjust graphPadding based on the number of non-group nodes
-         // Default padding
-        console.log("nonGroupNodes.length", nonGroupNodes.length);
+        let graphPadding;
+
         if (nonGroupNodes.length > 50) {
             graphPadding = 75;
         } else if (nonGroupNodes.length > 20) {
@@ -865,13 +771,13 @@ $(document).ready(function() {
             graphPadding = 275;
         } else if (nonGroupNodes.length <= 3 ) {
             graphPadding = 300;
+        } else if (nonGroupNodes.length === 2 ) {
+            graphPadding = 400;
         } else {
-            var graphPadding = 50;
+            graphPadding = 50;
         }
-        console.log("graphPadding", graphPadding);
-    
+
         if (nodesWidth === 0 && nodesHeight === 0) {
-            // Only one node present
             scale = 1;
             translateX = (containerWidth / 2) - nodesBBox.xMin;
             translateY = (containerHeight / 2) - nodesBBox.yMin;
@@ -880,12 +786,9 @@ $(document).ready(function() {
                 (containerWidth - 2 * graphPadding) / nodesWidth,
                 (containerHeight - 2 * graphPadding) / nodesHeight
             );
-    
             translateX = (containerWidth - nodesWidth * scale) / 2 - nodesBBox.xMin * scale;
             translateY = (containerHeight - nodesHeight * scale) / 2 - nodesBBox.yMin * scale;
         }
-    
-        // Optionally remove or shorten the transition if you dislike the flicker
         if (noTransition) {
             svg.call(
                 zoom.transform,
@@ -898,7 +801,6 @@ $(document).ready(function() {
             );
         }
     }
-    
 
     function updateDepthSlider() {
         var value = (depthSlider.value - depthSlider.min) / (depthSlider.max - depthSlider.min) * 100;
@@ -921,9 +823,8 @@ $(document).ready(function() {
         fitGraphToContainer(/* noTransition = false */);
     });
 
-    // Initial fetch and ensure toggles are visible
     fetchAndRenderGraph();
-    showGroupToggles(); // Make sure toggles are visible on initial load
+    showGroupToggles();
 
     function updateRightContainer(data) {
         rightContainer.html("");
@@ -943,8 +844,8 @@ $(document).ready(function() {
             .attr("class", "description-header")
             .html("Description");
         rightContainer
-        .append("p")
-        .html(description);
+            .append("p")
+            .html(description);
 
         rightContainer
             .append("h3")
@@ -959,9 +860,7 @@ $(document).ready(function() {
         var displayGroupNodes = groupNodeSwitch.checked;
 
         if (displayGroupNodes) {
-            // Original logic: grouping by groupType
             var groupNodes = (data.children || []).filter(d => d.groupType);
-
             var desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
             groupNodes.sort((a, b) => {
                 var indexA = desiredOrder.indexOf(a.groupType);
@@ -976,7 +875,6 @@ $(document).ready(function() {
                     return indexA - indexB;
                 }
             });
-
             groupNodes.forEach(typeNode => {
                 createGroupTypeSection(typeNode);
             });
@@ -989,7 +887,6 @@ $(document).ready(function() {
                     .append("p")
                     .style("background-color", nodeColor({data: {type: typeNode.groupType}}))
                     .attr("class", "dependency-type")
-                    // .attr("title", `View ${typeNode.groupType}`)
                     .html(`${typeNode.groupType}`)
                     .style("cursor", "pointer")
                     .on("click", (event) => {
@@ -1003,25 +900,18 @@ $(document).ready(function() {
                     });
 
                 var sortedChildren = (typeNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
-
                 sortedChildren.forEach(childNode => {
                     createNodeElement(typeSection, childNode);
                 });
             }
-
         } else {
-            // DisplayGroups is off, so group by 'type' directly
             var flatNodes = (data.children || []);
-            // Group the nodes by their type
             var nodesByType = d3.group(flatNodes, d => d.type);
 
-            // Desired order for types
             var desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
-            // Sort the group keys by desired order
             var orderedTypes = Array.from(nodesByType.keys()).sort((a, b) => {
                 var indexA = desiredOrder.indexOf(a);
                 var indexB = desiredOrder.indexOf(b);
-
                 if (indexA === -1 && indexB === -1) {
                     return a.localeCompare(b);
                 } else if (indexA === -1) {
@@ -1070,7 +960,6 @@ $(document).ready(function() {
 
             nodeContainer.append("p")
                 .attr("class", "dependency-node")
-                // .attr("title", `View ${node.name}`)
                 .html(`${node.name}`)
                 .on("click", (event) => handleNodeClicked(node));
 
@@ -1081,13 +970,11 @@ $(document).ready(function() {
                 .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
         }
     }
-    // Function to show all group toggles
+
     function showGroupToggles() {
         var dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
-        
         if (dynamicTogglesContainer) {
             dynamicTogglesContainer.style.display = 'block';
         }
     }
 });
-
