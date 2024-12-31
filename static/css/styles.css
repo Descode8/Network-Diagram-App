@@ -134,7 +134,7 @@ text, circle text {
     text-align: center;
     padding: 3px;
     margin: 0;
-    font-size: .8rem;
+    font-size: .75rem;
 }
 
 .right-pane {
@@ -147,7 +147,7 @@ hr {
     background: var(--pane-ttle-bg-clr); 
     border: 1px solid var(--pane-ttle-bg-clr);
     border-radius: 5px;
-    margin: -7px auto;
+    margin: -2px auto;
     box-shadow: var(--pane-ttle-bg-clr) 0px 1px 3px 0px;
 }
 
@@ -488,7 +488,7 @@ span {
     width: max-content;
     height: max-content;
     white-space: nowrap;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     pointer-events: none; /* Prevent interaction issues */
     transition: opacity 0.5s ease, visibility 0.5s ease; /* Smooth transition */
 }
@@ -547,7 +547,7 @@ span {
     gap: 5px;
     clear: both;
     margin: 10px auto;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
 }
 
   /* The main clickable box */

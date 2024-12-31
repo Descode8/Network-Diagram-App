@@ -352,72 +352,69 @@ $(document).ready(function() {
     function initializeGroupToggles(data) {
         // 1) Gather all groups from the hierarchy
         let allGroups = Array.from(getUniqueGroups(data));
-      
+    
         // 2) If first time, set them all as visible
         if (Object.keys(visibleGroups).length === 0) {
-          allGroups.forEach(group => {
+            allGroups.forEach(group => {
             visibleGroups[group] = true;
-          });
+            });
         }
-      
+    
         // 3) Create or clear the toggles container
         let dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
         if (!dynamicTogglesContainer) {
-          dynamicTogglesContainer = document.createElement('div');
-          dynamicTogglesContainer.className = 'dynamic-group-toggles';
-          switchesContainer.appendChild(dynamicTogglesContainer);
+            dynamicTogglesContainer = document.createElement('div');
+            dynamicTogglesContainer.className = 'dynamic-group-toggles';
+            switchesContainer.appendChild(dynamicTogglesContainer);
         } else {
-          dynamicTogglesContainer.innerHTML = '';
+            dynamicTogglesContainer.innerHTML = '';
         }
-      
+    
         // 4) For each group, create the “rotating checkbox” toggle
         allGroups.forEach(group => {
-          // Outer wrapper so label + text can sit side by side
-          let wrapper = document.createElement('div');
-          wrapper.className = 'clear'; // from your .clear class
-      
-          // Create label with .checkBox + .transition
-          let label = document.createElement('label');
-          label.classList.add('checkBox', 'transition');
-          // Optional: add a group-specific box shadow or border
-          // label.style.boxShadow = `0px 0px 0px 2px ${nodeColor({ data: { groupType: group } })}`;
-      
+            // Outer wrapper so label + text can sit side by side
+            let wrapper = document.createElement('div');
+            wrapper.className = 'clear'; // from your .clear class
+    
+            // Create label with .checkBox + .transition
+            let label = document.createElement('label');
+            label.classList.add('checkBox', 'transition');
+    
           // Create the checkbox
-          let input = document.createElement('input');
-          input.type = 'checkbox';
-          input.checked = !!visibleGroups[group]; 
-          input.addEventListener('change', () => {
+        let input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = !!visibleGroups[group]; 
+        input.addEventListener('change', () => {
             visibleGroups[group] = input.checked;
             // Re-render the graph
             fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
-          });
-          // According to your style snippet, hide the checkbox:
-          input.style.position = 'absolute';
-          input.style.left = '50px';
-          input.style.visibility = 'hidden';
-      
-          // Create the inner <div> that moves when checked
-          let movingDiv = document.createElement('div');
-          movingDiv.classList.add('transition');
-          // Dynamically color it based on the group type:
-          movingDiv.style.backgroundColor = nodeColor({ data: { groupType: group } });
-      
-          // 5) Assemble
-          label.appendChild(input);
-          label.appendChild(movingDiv);
-      
-          // Add label to wrapper
-          wrapper.appendChild(label);
-      
-          // 6) Add the group name as text after the toggle
-          let textNode = document.createTextNode(' ' + group); 
-          wrapper.appendChild(textNode);
-      
-          // 7) Add this wrapper to the container
-          dynamicTogglesContainer.appendChild(wrapper);
         });
-      }
-      
+            // According to your style snippet, hide the checkbox:
+            input.style.position = 'absolute';
+            input.style.left = '50px';
+            input.style.visibility = 'hidden';
+    
+            // Create the inner <div> that moves when checked
+            let movingDiv = document.createElement('div');
+            movingDiv.classList.add('transition');
+            // Dynamically color it based on the group type:
+            movingDiv.style.backgroundColor = nodeColor({ data: { groupType: group } });
+    
+            // 5) Assemble
+            label.appendChild(input);
+            label.appendChild(movingDiv);
+    
+            // Add label to wrapper
+            wrapper.appendChild(label);
+    
+            // 6) Add the group name as text after the toggle
+            let textNode = document.createTextNode(' ' + group); 
+            wrapper.appendChild(textNode);
+    
+          // 7) Add this wrapper to the container
+            dynamicTogglesContainer.appendChild(wrapper);
+        });
+    }
 
     function resetSimulationForForces() {
         simulation.stop();
