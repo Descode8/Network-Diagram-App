@@ -118,7 +118,7 @@ text, circle text {
 }
 
 .right-pane h2, .left-pane h2 {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     margin: 0;
     padding: 3px 0; 
     text-align: center;
@@ -371,7 +371,7 @@ title {
 }
 
 .autocomplete-suggestions {
-    font-size: 0.8rem;
+    font-size: 0.6rem;
     padding: 5px 10px;
     cursor: pointer;
     white-space: nowrap; 

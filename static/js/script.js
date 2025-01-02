@@ -353,7 +353,7 @@ $(document).ready(function() {
         let allGroups = Array.from(getUniqueGroups(data));
         if (Object.keys(visibleGroups).length === 0) {
             allGroups.forEach(group => {
-              visibleGroups[group] = true;
+                visibleGroups[group] = true;
             });
         }
 
@@ -377,7 +377,7 @@ $(document).ready(function() {
             var span = document.createElement('span');
             span.className = 'slider round';
             span.style.backgroundColor = nodeColor({ data: { groupType: group } });
-            span.title = `Toggle ${group} Nodes ON/OFF`;
+            span.title = `Toggle ${group} Nodes`;
         
             var checkSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             checkSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
