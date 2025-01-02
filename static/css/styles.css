@@ -87,6 +87,10 @@ text, circle text {
     margin: 0 auto;
 }
 
+.left-pane {
+    width: 17vw;
+}
+
 .graph-container {
     border-left: 3px solid var(--bdr-clr);
     border-right: 3px solid var(--bdr-clr);
@@ -95,7 +99,7 @@ text, circle text {
     justify-content: center;
     overflow: hidden;  
     position: relative;
-    width: 70vw;
+    width: 68vw;
     height: 100vh; 
     margin: 0 auto; 
     overflow: hidden; 
@@ -139,6 +143,9 @@ text, circle text {
 
 .right-pane {
     gap: 0px;
+    position: relative; 
+    overflow: visible;   
+    z-index: 1;  
 }
 
 hr {
@@ -185,6 +192,7 @@ hr {
 
 .dependency-node {
     cursor: pointer;
+    background-color: var(--svg-bg-clr);
 }
 
 .dependency-node:hover, .dependency-type:hover {
@@ -205,7 +213,7 @@ hr {
     color: #282828;
     font-size: .7rem;
     text-align: left;
-    background-color: #d98880;
+    background-color: var(--err-msg-clr);
     padding: 2px 10px;
     margin: 0 auto;
     border-radius: 3px;
@@ -349,16 +357,16 @@ title {
     -ms-overflow-style: none;
 }
 
-.search-container, .switches-container, #depthSlider, .switch span {
+.search-container, .group-asset-toggle-container, .switches-container, #depthSlider, .switch span {
     transition: 0.5s ease-in-out; 
 }
 
-.search-container:active, .search-container:focus-within,  .switches-container:active {
+.group-asset-toggle-container:active, .search-container:active, .search-container:focus-within, .switches-container:active {
     border: 1px solid var(--pane-ttle-bg-clr); 
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
-.search-container:hover, .switches-container:hover, #depthSlider:hover {
+.search-container:hover, .group-asset-toggle-container:hover, .switches-container:hover, #depthSlider:hover {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
@@ -460,17 +468,18 @@ label, span {
     margin-left: 10%;
 }
 
-.switches-container label {
+.group-asset-toggle-container label, .switches-container label {
     font-size: .75rem;
     font-weight: normal;
-    gap: 10px;
+    gap: 5px;
 }
 
-.switches-container {
+.group-asset-toggle-container, .switches-container {
     background-color: var(--svg-bg-clr);
     border-radius: 10px;
     width: 95%;
-    margin: 15px auto;
+    margin: 0px auto;
+    margin-top: 15px;
 }
 .depthSlider {
     margin: 0px auto;
@@ -509,7 +518,7 @@ span {
     padding: 10px;
     border-radius: 5px;
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px;
-    z-index: 100; 
+    z-index: 9999;
     width: max-content;
     height: max-content;
     white-space: nowrap;
@@ -523,7 +532,7 @@ span {
     content: "";
     position: absolute;
     top: 100%; /* Position the arrow at the bottom of the hover-box */
-    left: 50%;
+    right: 10%;
     transform: translateX(-50%);
     border-width: 12px; /* Size of the arrow */
     border-style: solid;

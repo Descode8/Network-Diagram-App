@@ -3,8 +3,8 @@ $(document).ready(function() {
     let height = $('.graph-container')[0].clientHeight;
     let rootNode = null;
     const svg = d3.select('.graph-container svg');
-    const activeNodeSize = 7;
-    const groupNodeSize = 4.5;
+    const activeNodeSize = 5;
+    const groupNodeSize = 4;
     const nodeSize = 4;
     const linkWidth = 0.3;
     const linkColor = 'var(--link-clr)' || 'gray';
@@ -90,7 +90,6 @@ $(document).ready(function() {
     
     function checkBothPanesVisibility() {
         if (!leftPaneIsVisible && !rightPaneIsVisible) {
-            console.log('Both panes are hidden');
             $('.graph-container').css('width', '100vw');
         }
     }
@@ -160,7 +159,7 @@ $(document).ready(function() {
         if (input) {
             var matchingNode = allNodes.find(node => {
               // We also ensure node is a string here
-              return (typeof node === 'string') && (node.toLowerCase() === input.toLowerCase());
+                return (typeof node === 'string') && (node.toLowerCase() === input.toLowerCase());
             });
             if (matchingNode) {
                 fetchAndRenderGraph(depthSlider.value, input);
@@ -200,7 +199,7 @@ $(document).ready(function() {
 
         // Filter only strings & check matches
         var matches = allNodes.filter(item => 
-          typeof item === 'string' && item.toLowerCase().includes(input)
+            typeof item === 'string' && item.toLowerCase().includes(input)
         );
 
         if (matches.length === 0) {
@@ -292,27 +291,23 @@ $(document).ready(function() {
 
     svg.attr('width', width).attr('height', height);
     const graphGroup = svg.append('g');
-
     const simulation = d3.forceSimulation()
-        .force('link', d3.forceLink().id(d => d.id).distance(100))
-        .force('charge', d3.forceManyBody().strength(-50))
-        .force('center', d3.forceCenter(width / 2, height / 2));
 
     onHomeButton.addEventListener('click', () => {
         location.reload();
     });
 
     onRefreshButton.addEventListener('click', () => {
-        resetNodeForces();
+        shuffleNodeForces();
         showGroupToggles();
     });
 
-    function resetNodeForces() {
+    function shuffleNodeForces() {
         nodesDisplayed.forEach(d => {
             d.fx = null;
             d.fy = null;
         });
-        simulation.alphaDecay(0.009).alpha(1).restart();
+        simulation.alphaDecay(0.01).alpha(1).restart();
     }
 
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
@@ -434,14 +429,14 @@ $(document).ready(function() {
         nodesDisplayed = nodes; 
 
         simulation
-            .nodes(nodes)
-            .force("charge", d3.forceManyBody().strength(-900))
-            .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collide", d3.forceCollide().radius(50))
-            .force("radial", d3.forceRadial(150, width / 2, height / 2))
-            .alphaDecay(0.01)
-            .alpha(1)
-            .restart();
+        .nodes(nodes)
+        .force("charge", d3.forceManyBody().strength(-750))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collide", d3.forceCollide().radius(40))
+        .force("radial", d3.forceRadial(150, width / 2, height / 2))
+        .alphaDecay(0.01)
+        .alpha(1)
+        .restart();
 
         function forceCircularChildren(radius) {
             let nodesByParent = {};    
@@ -485,7 +480,7 @@ $(document).ready(function() {
                     .distance(link => {
                         var source = link.source.data.name;
                         if (source === currentActiveNodeName) {
-                            return 100;
+                            return 120;
                         }
                         return 50;
                     })
@@ -615,12 +610,12 @@ $(document).ready(function() {
                 .attr('y', d => {
                     var r = getCircleScreenRadius(d);
                     if (d.data.name === currentActiveNodeName) {
-                        return d.y - (r + 10);
-                    }
-                    if(!displayAssetNodes) {
                         return d.y - (r + 3);
                     }
-                    return d.y - (r + 10);
+                    if(!displayAssetNodes) {
+                        return d.y;
+                    }
+                    return d.y - (r + 3);
                 });
     
             if (simulation.alpha() < 0.05) {
@@ -628,7 +623,7 @@ $(document).ready(function() {
                 fitGraphToContainer();
             }
         });
-    
+        shuffleNodeForces();
         updateRightContainer(data);
     }
 
@@ -681,7 +676,6 @@ $(document).ready(function() {
     function handleNodeClicked(nodeData) {
         var clickedName = nodeData.name || nodeData.groupType;
         if (!clickedName) {
-            console.error('Clicked node has neither name nor groupNode:', nodeData);
             return;
         }
         if (clickedName === currentActiveNodeName) {
@@ -846,12 +840,13 @@ $(document).ready(function() {
             .html("Description");
         rightContainer
             .append("p")
+            .style("text-align", "justify")
             .html(description);
 
         rightContainer
             .append("h3")
             .attr("class", "dependencies-header")
-            .html("Relationships");
+            .html("Dependencies");
 
         rightContainer
             .append("p")

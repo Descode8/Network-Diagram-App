@@ -24,14 +24,15 @@ Right Pane: Displays details for the selected node.
         --depend-hdr-clr: #4267AC;
         --bdr-clr: #182853;
         --scrollbar-clr: #888A8D;
+        --err-msg-clr: #d98880;
         
         --org-nde-clr: #231F20;
         --app-nde-clr: #1961ae;
-        --ppl-nde-clr: #79c300;
-        --tech-nde-clr: #cd001a; 
-        --data-nde-clr: #61007d;
-        --procure-nde-clr: #ef6a00;
-        --fclty-nde-clr: #888a8d;
+        --ppl-nde-clr: #79C300;
+        --tech-nde-clr: #CD001a; 
+        --data-nde-clr: #61007D;
+        --procure-nde-clr: #Ef6A00;
+        --fclty-nde-clr: #888A8D;
         
         --nde-bdr-clr: #231F20;
         --link-clr: #231F20;
@@ -72,22 +73,23 @@ Right Pane: Displays details for the selected node.
             <div class="custom-slider" title="Change Depth">
                 <input type="range" id="depthSlider" min="1" max="4" value="2" step="1">
             </div>
-            <div class="switches-container">
+            <div class="group-asset-toggle-container">
                 <label class="switch">
                     <input type="checkbox" id="groupNodeSwitch" checked>
                     <span class="slider round" title="Toggle Group Nodes ON/OFF">
                         <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
-                    Group Nodes
+                    Display Group Nodes
                 </label>
                 <label class="switch">
                     <input type="checkbox" id="labelNodesSwitch">
                     <span class="slider round"  style="background-color: #bc945b;" title="Toggle Asset Nodes ON/OFF">
                         <img src="{{ url_for('static', filename='images/gold_check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
-                    Asset Nodes
+                    Display Asset Nodes
                 </label>                
             </div>
+            <div class="switches-container"></div>
         </div>
     </div>
     
@@ -99,6 +101,7 @@ Right Pane: Displays details for the selected node.
         <span class="expand-collapse-buttonRight" id="expandCollapseButton" title="Collapse Right Pane">
             <img src="{{ url_for('static', filename='images/collapse-right.svg') }}" class="arrow-icon" alt="Arrow Icon">
         </span>
+        
         <div class="right-pane"></div>
     </div>
 
