@@ -17,23 +17,25 @@ Right Pane: Displays details for the selected node.
 <style>
     :root {
         --page-bg-clr: #D7DBDD;
-        --pane-bg-clr: #dee2e6;
+        --pane-bg-clr: #DEE2E6;
         --svg-bg-clr: #FFFFFF;
-        --pane-ttle-bg-clr: #2E4053;
-        --descrip-clr: #4267ac;
-        --depend-hdr-clr: #4267ac;
-        --bdr-clr: #2E4053;
-
-        --org-nde-clr: #1C2833;
-        --app-nde-clr: #1982c4;
-        --ppl-nde-clr: #8ac926;
-        --tech-nde-clr:rgb(209, 87, 89);
-        --data-nde-clr: #6a4c93;
-        --procure-nde-clr: #f3722c;
-        --fclty-nde-clr:rgb(93, 112, 130);
-
-        --nde-bdr-clr: #17202A;
-        --link-clr: #17202A;
+        --pane-ttle-bg-clr: #182853;
+        --descrip-clr: #4267AC;
+        --depend-hdr-clr: #4267AC;
+        --bdr-clr: #182853;
+        --scrollbar-clr: #888A8D;
+        
+        --org-nde-clr: #231F20;
+        --app-nde-clr: #458BCA;
+        --ppl-nde-clr: #40916C;
+        --tech-nde-clr: #AA3537; 
+        --data-nde-clr: #6A4C93;
+        --procure-nde-clr: #F3722C;
+        --fclty-nde-clr: #888A8D;
+        
+        --nde-bdr-clr: #231F20;
+        --link-clr: #231F20;
+        
     }
 </style>
 <body>
@@ -80,8 +82,8 @@ Right Pane: Displays details for the selected node.
                 </label>
                 <label class="switch">
                     <input type="checkbox" id="labelNodesSwitch">
-                    <span class="slider round" title="Toggle Asset Nodes ON/OFF">
-                        <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
+                    <span class="slider round"  style="background-color: #bc945b;" title="Toggle Asset Nodes ON/OFF">
+                        <img src="{{ url_for('static', filename='images/gold_check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
                     Asset Nodes
                 </label>                

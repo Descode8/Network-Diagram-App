@@ -4,7 +4,7 @@ $(document).ready(function() {
     let rootNode = null;
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 7;
-    const groupNodeSize = 5;
+    const groupNodeSize = 4.5;
     const nodeSize = 4;
     const linkWidth = 0.3;
     const linkColor = 'var(--link-clr)' || 'gray';
