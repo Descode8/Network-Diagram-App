@@ -373,7 +373,7 @@ title {
 }
 
 .search-container:hover, .group-asset-toggle-container:hover, 
-.switches-container:hover, #depthSlider:hover, .hover-box:hover {
+.switches-container:hover, #depthSlider:hover, .hover-box {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 

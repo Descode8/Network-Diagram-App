@@ -411,57 +411,59 @@ $(document).ready(function() {
     }
 
     function renderGraph(data) {
+        // Clear old elements
         graphGroup.selectAll('g.links').remove();
         graphGroup.selectAll('g.nodes').remove();
         graphGroup.selectAll('g.labels').remove();
-
-        currentActiveNodeName = data.name;
-        var displayGroupNodes = groupNodeSwitch.checked;
-        var displayAssetNodes = labelNodesSwitch.checked;
     
+        currentActiveNodeName = data.name;
+        const displayGroupNodes = groupNodeSwitch.checked;
+        const displayAssetNodes = labelNodesSwitch.checked;
+    
+        // Hide or flatten group nodes, filter by toggles
         hideGroupNodes(data, displayGroupNodes);
         filterDataByVisibleGroups(data);
     
-        var root = d3.hierarchy(data);
-        var links = root.links();
-        var nodes = root.descendants();
+        // Convert data to d3.hierarchy and grab all nodes/links
+        const root = d3.hierarchy(data);
+        const links = root.links();
+        const nodes = root.descendants();
     
-        nodesDisplayed = nodes; 
-
+        nodesDisplayed = nodes;
+    
+        // Base forces on all nodes
         simulation
-        .nodes(nodes)
-        .force("charge", d3.forceManyBody().strength(-750))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collide", d3.forceCollide().radius(40))
-        .force("radial", d3.forceRadial(150, width / 2, height / 2))
-        .alphaDecay(0.01)
-        .alpha(1)
-        .restart();
-
+            .nodes(nodes)
+            .force("charge", d3.forceManyBody().strength(-950)) // Repels nodes from each other. Adjust the strength to control the spacing between nodes. Higher negative values = stronger repulsion.
+            .force("center", d3.forceCenter(width / 2, height / 2)) // Pulls all nodes toward the center of the graph area.
+            .force("collide", d3.forceCollide().radius(50)) // Prevents nodes from overlapping. Radius determines the minimum distance between nodes.
+            .alphaDecay(0.01) // Controls the rate at which the simulation cools down. Lower values keep the simulation running longer.
+            .alpha(1) // Sets the initial "heat" of the simulation. Higher values make the graph layout settle slower.
+            .restart();
+    
+        // Helper for distributing children radially around their parent
         function forceCircularChildren(radius) {
-            let nodesByParent = {};    
+            let nodesByParent = {};
             function force(alpha) {
                 Object.values(nodesByParent).forEach(childArr => {
                     if (!childArr.length) return;
-                    var parent = childArr[0].parentNode;
+                    const parent = childArr[0].parentNode;
                     if (!parent) return;
     
-                    var n = childArr.length;
+                    const n = childArr.length;
                     childArr.forEach((child, i) => {
-                        var angle = (2 * Math.PI / n) * i;
-                        var targetX = parent.x + radius * Math.cos(angle);
-                        var targetY = parent.y + radius * Math.sin(angle);
-    
-                        child.vx += (targetX - child.x) * 0.5 * alpha;
+                        const angle = (2 * Math.PI / n) * i; // Evenly spaces children around the parent
+                        const targetX = parent.x + radius * Math.cos(angle);
+                        const targetY = parent.y + radius * Math.sin(angle);
+                        child.vx += (targetX - child.x) * 0.5 * alpha; // Adjust the strength of the pull toward the target position.
                         child.vy += (targetY - child.y) * 0.5 * alpha;
                     });
                 });
             }
-    
             force.initialize = function(ns) {
                 nodesByParent = {};
                 ns.forEach(node => {
-                    var pName = node.data.parent;
+                    const pName = node.data.parent;
                     if (!pName) return;
                     if (!nodesByParent[pName]) {
                         nodesByParent[pName] = [];
@@ -472,45 +474,57 @@ $(document).ready(function() {
             };
             return force;
         }
-
+    
+        // Branch: if group nodes are on, use a radial layout
         if (displayGroupNodes) {
             simulation
-                .force("link", d3.forceLink(links)
-                    .id(d => d.data.name)
-                    .distance(link => {
-                        var source = link.source.data.name;
+                .force("radial", d3.forceRadial(150, width / 2, height / 2)) // Pulls nodes into a radial layout, with the specified radius (150 here). Adjust radius for tighter/looser grouping.
+                .force("link", d3.forceLink(links) // Connects nodes with links.
+                    .id(d => d.data.name) // Links are based on node names.
+                    .distance(link => { // Controls link distance.
+                        const source = link.source.data.name;
                         if (source === currentActiveNodeName) {
-                            return 120;
+                            return 120; // Longer distance for active node links to make them stand out.
+                        } else if (source !== currentActiveNodeName && depthSlider.value > 2) {
+                            simulation
+                                .force("collide", d3.forceCollide().radius(60)); 
+                            return 100; // Default link distance.
+                        } else {
+                            return 50;
                         }
-                        return 50;
                     })
                 )
-                .force("center", d3.forceCenter(width / 2, height / 2));
-        } else {
+                .force("center", d3.forceCenter(width / 2, height / 2)); // Ensures the graph stays centered.
+        } 
+        // Branch: if group nodes are off, use the “circular children” approach
+        else {
+            if (depthSlider.value === 2) {
+                simulation
+                    .force("collide", d3.forceCollide().radius(100));
+            }
             simulation
-                .force("link", d3.forceLink(links)
+                .force("link", d3.forceLink(links) // Connects nodes with links.
                     .id(d => d.data.name)
-                    .distance(link => {
-                        var source = link.source.data.name;
-                        if (source === currentActiveNodeName) {
-                            return 100;
-                        }
-                        return 0;
+                    .distance(link => { // Controls link distance.
+                        const source = link.source.data.name;
+                        return (source === currentActiveNodeName) ? 100 : 0; // Active node links are longer; others are zero (direct overlap).
                     })
                 )
-                .force("circularChildren", forceCircularChildren(200))
-                .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collide", d3.forceCollide().radius(25));
+                .force("circularChildren", forceCircularChildren(150)) // Distributes child nodes around their parent in a circle. Adjust the radius for tighter/looser child spacing.
+                .force("center", d3.forceCenter(width / 2, height / 2)) // Keeps the graph centered.
+                .force("collide", d3.forceCollide().radius(0)); // No collision prevention (nodes can overlap).
         }
         simulation.force("link").links(links);
-
-        var activeNodeName = data.name;
+    
+        const activeNodeName = data.name;
+        // Determine which nodes should have circles
         function shouldHaveCircle(d) {
             if (d.data.name === activeNodeName) return true;
             if (d.data.groupType) return true;
             return displayAssetNodes;
         }
-
+    
+        // Create <g> containers for links/nodes/labels if they don’t exist
         let linkGroup = graphGroup.select('g.links');
         if (linkGroup.empty()) {
             linkGroup = graphGroup.append('g').attr('class', 'links');
@@ -524,6 +538,7 @@ $(document).ready(function() {
             labelGroup = graphGroup.append('g').attr('class', 'labels');
         }
     
+        // LINK Selection + Enter
         let linkSelection = linkGroup
             .selectAll('line.link')
             .data(links, d => d.source.data.name + '->' + d.target.data.name);
@@ -533,12 +548,13 @@ $(document).ready(function() {
         let linkEnter = linkSelection.enter()
             .append('line')
             .attr('class', 'link')
-            .attr('stroke', linkColor)
-            .attr('stroke-width', linkWidth);
+            .attr('stroke', linkColor) // Link color
+            .attr('stroke-width', linkWidth); // Link width
     
         linkSelection = linkEnter.merge(linkSelection);
         linkSelectionGlobal = linkSelection;
-
+    
+        // NODE Selection + Enter
         let nodeSelection = nodeGroup
             .selectAll('circle.node')
             .data(nodes.filter(shouldHaveCircle), d => d.data.name);
@@ -548,23 +564,24 @@ $(document).ready(function() {
         let nodeEnter = nodeSelection.enter()
             .append('circle')
             .attr('class', 'node')
-            .attr('r', d => {
+            .attr('r', d => { // Node radius depends on its type or active status.
                 if (d.data.name === activeNodeName) {
-                    return activeNodeSize;
+                    return activeNodeSize; // Larger for the active node.
                 } else if (d.data.groupType) {
-                    return groupNodeSize;
+                    return groupNodeSize; // Group nodes.
                 } else {
-                    return nodeSize;
+                    return nodeSize; // Default size for all other nodes.
                 }
             })
-            .attr('fill', d => nodeColor(d))
-            .attr('stroke', nodeBorderColor)
-            .on('click', (event, d) => handleNodeClicked(d.data))
-            .call(drag(simulation));
+            .attr('fill', d => nodeColor(d)) // Node color
+            .attr('stroke', nodeBorderColor) // Node border color
+            .on('click', (event, d) => handleNodeClicked(d.data)) // Click event
+            .call(drag(simulation)); // Enables dragging of nodes.
     
         nodeSelection = nodeEnter.merge(nodeSelection);
         nodeSelectionGlobal = nodeSelection;
     
+        // LABEL Selection + Enter
         let labelSelection = labelGroup
             .selectAll('text.label')
             .data(nodes, d => d.data.name);
@@ -575,16 +592,16 @@ $(document).ready(function() {
             .append('text')
             .attr('class', 'label')
             .attr('text-anchor', 'middle')
-            .attr('fill', '#282828')
+            .attr('fill', '#282828') // Label color
             .style('cursor', 'pointer')
-            .text(d => d.data.name)
-            .on('click', (event, d) => handleNodeClicked(d.data))
-            .call(drag(simulation))
-            .style("cursor", "pointer");
+            .text(d => d.data.name) // Text content
+            .on('click', (event, d) => handleNodeClicked(d.data)) // Click event
+            .call(drag(simulation));
     
         labelSelection = labelEnter.merge(labelSelection);
         labelsSelectionGlobal = labelSelection;
-
+    
+        // Anchor the active node at center
         let foundActiveNode = nodes.find(d => d.data.name === data.name);
         if (foundActiveNode) {
             simulation.alpha(1).restart();
@@ -594,6 +611,7 @@ $(document).ready(function() {
             simulation.alpha(1).restart();
         }
     
+        // TICK updates
         simulation.on('tick', () => {
             linkSelection
                 .attr('x1', d => d.source.x)
@@ -605,27 +623,32 @@ $(document).ready(function() {
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
     
+            // Position labels just above the node
             labelSelection
                 .attr('x', d => d.x)
                 .attr('y', d => {
-                    var r = getCircleScreenRadius(d);
+                    const r = getCircleScreenRadius(d);
+                    // For the active node or if asset nodes are shown
                     if (d.data.name === currentActiveNodeName) {
-                        return d.y - (r + 3);
+                        return d.y - (r + 5);
                     }
-                    if(!displayAssetNodes) {
+                    if (!displayAssetNodes) {
                         return d.y;
                     }
-                    return d.y - (r + 3);
+                    return d.y - (r + 4);
                 });
     
+            // Once layout stabilizes, fit to container & stop
             if (simulation.alpha() < 0.05) {
                 simulation.stop();
                 fitGraphToContainer();
             }
         });
+    
         shuffleNodeForces();
         updateRightContainer(data);
     }
+    
 
     function getCircleScreenRadius(d) {
         if (d.data.name === currentActiveNodeName) {
@@ -857,7 +880,7 @@ $(document).ready(function() {
 
         if (displayGroupNodes) {
             var groupNodes = (data.children || []).filter(d => d.groupType);
-            var desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
+            var desiredOrder = ["Organization", "People", "Technology", "Data"];
             groupNodes.sort((a, b) => {
                 var indexA = desiredOrder.indexOf(a.groupType);
                 var indexB = desiredOrder.indexOf(b.groupType);
