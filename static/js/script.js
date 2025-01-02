@@ -500,7 +500,7 @@ $(document).ready(function() {
                 )
                 .force("circularChildren", forceCircularChildren(200))
                 .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collide", d3.forceCollide().radius(20));
+                .force("collide", d3.forceCollide().radius(25));
         }
         simulation.force("link").links(links);
 
@@ -962,7 +962,6 @@ $(document).ready(function() {
             nodeContainer
                 .append("div")
                 .attr("class", "hover-box")
-                .attr("z-index", "1000")
                 .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
         }
     }

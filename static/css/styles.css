@@ -60,6 +60,10 @@ text, circle text {
     cursor: pointer; 
 }
 
+.expand-collapse-buttonLeft, .expand-collapse-buttonRight {
+    z-index: 1;
+}
+
 .expand-collapse-buttonLeft {
     left: 90%; 
 }
@@ -357,16 +361,19 @@ title {
     -ms-overflow-style: none;
 }
 
-.search-container, .group-asset-toggle-container, .switches-container, #depthSlider, .switch span {
+.search-container, .group-asset-toggle-container, .switches-container, 
+#depthSlider, .switch span, .hover-box {
     transition: 0.5s ease-in-out; 
 }
 
-.group-asset-toggle-container:active, .search-container:active, .search-container:focus-within, .switches-container:active {
+.group-asset-toggle-container:active, .search-container:active, 
+.search-container:focus-within, .switches-container:active, .hover-box:active {
     border: 1px solid var(--pane-ttle-bg-clr); 
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
-.search-container:hover, .group-asset-toggle-container:hover, .switches-container:hover, #depthSlider:hover {
+.search-container:hover, .group-asset-toggle-container:hover, 
+.switches-container:hover, #depthSlider:hover, .hover-box:hover {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
@@ -511,18 +518,16 @@ span {
     visibility: hidden;
     position: absolute;
     bottom: 120%; /* Adjusted to make space for the arrow */
-    left: 50%;
+    left: -20%;
     transform: translateX(-50%);
-    background-color: var(--svg-bg-clr);
-    border: 0.75px solid var(--bdr-clr);
+    background-color: var(--pane-bg-clr);
     padding: 10px;
     border-radius: 5px;
-    box-shadow: var(--bdr-clr) 0px 2px 8px 0px;
     z-index: 9999;
     width: max-content;
     height: max-content;
     white-space: nowrap;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     pointer-events: none; /* Prevent interaction issues */
     transition: opacity 0.5s ease, visibility 0.5s ease; /* Smooth transition */
 }
@@ -536,7 +541,7 @@ span {
     transform: translateX(-50%);
     border-width: 12px; /* Size of the arrow */
     border-style: solid;
-    border-color: var(--svg-bg-clr) transparent transparent transparent; /* Arrow pointing down */
+    border-color: var(--pane-bg-clr) transparent transparent transparent; /* Arrow pointing down */
 }
 
 .dependency-node-container:hover .hover-box {
@@ -631,3 +636,4 @@ input + .slider {
 input:checked + .slider .checkmark {
     opacity: 1;
 }
+
