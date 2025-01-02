@@ -435,9 +435,9 @@ $(document).ready(function() {
 
         simulation
             .nodes(nodes)
-            .force("charge", d3.forceManyBody().strength(-450))
+            .force("charge", d3.forceManyBody().strength(-750))
             .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collide", d3.forceCollide().radius(25))
+            .force("collide", d3.forceCollide().radius(50))
             .force("radial", d3.forceRadial(150, width / 2, height / 2))
             .alphaDecay(0.01)
             .alpha(1)
@@ -504,7 +504,8 @@ $(document).ready(function() {
                     })
                 )
                 .force("circularChildren", forceCircularChildren(200))
-                .force("center", d3.forceCenter(width / 2, height / 2));
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collide", d3.forceCollide().radius(20));
         }
         simulation.force("link").links(links);
 
