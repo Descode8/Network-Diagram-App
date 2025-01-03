@@ -51,15 +51,16 @@ $(document).ready(function() {
             $('.expand-collapse-buttonLeft').attr('title', 'Expand Left Pane');
         } else {
             if(!rightPaneIsVisible) {
-                $('.left-pane').css({'display': 'flex', 'width': '15vw',});
+                $('.left-pane').css({'display': 'flex', 'width': '17vw',});
                 $('.expand-collapse-buttonLeft').css('transform', 'rotate(0deg)');
                 $('.graph-container').css('width', '85vw');
             } else {
-                $('.left-pane').css({'display': 'flex', 'width': '15vw',});
+                $('.left-pane').css({'display': 'flex', 'width': '17vw',});
                 $('.expand-collapse-buttonLeft').css('transform', 'rotate(0deg)');
-                $('.graph-container').css('width', '70vw');
+                $('.graph-container').css('width', '68vw');
                 leftPaneIsVisible = true;
             }
+            $('.expand-collapse-buttonLeft').attr('title', 'Collapse Left Pane');
         }
         checkBothPanesVisibility(); 
         fitGraphToContainer();
@@ -83,6 +84,7 @@ $(document).ready(function() {
                 $('.graph-container').css('width', '70vw');
                 rightPaneIsVisible = true;
             }
+            $('.expand-collapse-buttonRight').attr('title', 'Collapse Right Pane');
         }
         checkBothPanesVisibility(); 
         fitGraphToContainer();
@@ -417,8 +419,19 @@ $(document).ready(function() {
         graphGroup.selectAll('g.labels').remove();
     
         currentActiveNodeName = data.name;
-        const displayGroupNodes = groupNodeSwitch.checked;
         const displayAssetNodes = labelNodesSwitch.checked;
+
+        // <--- OVERRIDE LOGIC HERE --->
+        let displayGroupNodes = groupNodeSwitch.checked;
+        // If active node is literally a group node (like name="Applications", type="Applications"),
+        // forcibly pretend groupNodeSwitch is OFF:
+        const isActiveNodeAGroup = (
+            (data.groupType && data.groupType === data.name) ||
+            (data.type && data.type === data.name)
+        );
+        if (isActiveNodeAGroup) {
+            displayGroupNodes = false;
+        }
     
         // Hide or flatten group nodes, filter by toggles
         hideGroupNodes(data, displayGroupNodes);
@@ -427,18 +440,25 @@ $(document).ready(function() {
         // Convert data to d3.hierarchy and grab all nodes/links
         const root = d3.hierarchy(data);
         const links = root.links();
-        const nodes = root.descendants();
+        let nodes = root.descendants();
+    
+        // Filter nodes to exclude duplicates (e.g., group node appearing as a child)
+        nodes = nodes.filter(node => {
+            return node.data.name !== currentActiveNodeName || !node.data.groupType;
+        });
     
         nodesDisplayed = nodes;
     
         // Base forces on all nodes
         simulation
             .nodes(nodes)
-            .force("charge", d3.forceManyBody().strength(-950)) // Repels nodes from each other. Adjust the strength to control the spacing between nodes. Higher negative values = stronger repulsion.
+            .force("charge", d3.forceManyBody()
+                .strength(-1000) // Repels nodes from each other.
+                .distanceMin(50)) // Minimum distance between nodes.
             .force("center", d3.forceCenter(width / 2, height / 2)) // Pulls all nodes toward the center of the graph area.
-            .force("collide", d3.forceCollide().radius(50)) // Prevents nodes from overlapping. Radius determines the minimum distance between nodes.
-            .alphaDecay(0.01) // Controls the rate at which the simulation cools down. Lower values keep the simulation running longer.
-            .alpha(1) // Sets the initial "heat" of the simulation. Higher values make the graph layout settle slower.
+            .force("collide", d3.forceCollide().radius(50)) // Prevents nodes from overlapping.
+            .alphaDecay(0.012) // Controls the rate at which the simulation cools down.
+            .alpha(1) // Sets the initial "heat" of the simulation.
             .restart();
     
         // Helper for distributing children radially around their parent
@@ -478,53 +498,45 @@ $(document).ready(function() {
         // Branch: if group nodes are on, use a radial layout
         if (displayGroupNodes) {
             simulation
-                .force("radial", d3.forceRadial(150, width / 2, height / 2)) // Pulls nodes into a radial layout, with the specified radius (150 here). Adjust radius for tighter/looser grouping.
+                .force("radial", d3.forceRadial(250, width / 2, height / 2)) // Pulls nodes into a radial layout.
                 .force("link", d3.forceLink(links) // Connects nodes with links.
                     .id(d => d.data.name) // Links are based on node names.
-                    .distance(link => { // Controls link distance.
+                    .distance(link => {
                         const source = link.source.data.name;
                         if (source === currentActiveNodeName) {
-                            return 120; // Longer distance for active node links to make them stand out.
+                            return 120; // Longer distance for active node links.
                         } else if (source !== currentActiveNodeName && depthSlider.value > 2) {
-                            simulation
-                                .force("collide", d3.forceCollide().radius(60)); 
                             return 100; // Default link distance.
                         } else {
                             return 50;
                         }
                     })
-                )
-                .force("center", d3.forceCenter(width / 2, height / 2)); // Ensures the graph stays centered.
-        } 
-        // Branch: if group nodes are off, use the “circular children” approach
-        else {
+                );
+        } else {
+            // Branch: if group nodes are off, use the "circular children" approach
             if (depthSlider.value === 2) {
-                simulation
-                    .force("collide", d3.forceCollide().radius(100));
+                simulation.force("collide", d3.forceCollide().radius(100));
             }
             simulation
-                .force("link", d3.forceLink(links) // Connects nodes with links.
+                .force("link", d3.forceLink(links).strength(1) // Connects nodes with links.
                     .id(d => d.data.name)
-                    .distance(link => { // Controls link distance.
+                    .distance(link => {
                         const source = link.source.data.name;
-                        return (source === currentActiveNodeName) ? 100 : 0; // Active node links are longer; others are zero (direct overlap).
+                        return (source === currentActiveNodeName) ? 50 : 10; // Active node links are longer; others are zero (direct overlap).
                     })
                 )
-                .force("circularChildren", forceCircularChildren(150)) // Distributes child nodes around their parent in a circle. Adjust the radius for tighter/looser child spacing.
-                .force("center", d3.forceCenter(width / 2, height / 2)) // Keeps the graph centered.
-                .force("collide", d3.forceCollide().radius(0)); // No collision prevention (nodes can overlap).
+                .force("circularChildren", forceCircularChildren(150)) // Distributes child nodes around their parent in a circle.
+                .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
         }
         simulation.force("link").links(links);
     
         const activeNodeName = data.name;
-        // Determine which nodes should have circles
         function shouldHaveCircle(d) {
             if (d.data.name === activeNodeName) return true;
             if (d.data.groupType) return true;
             return displayAssetNodes;
         }
     
-        // Create <g> containers for links/nodes/labels if they don’t exist
         let linkGroup = graphGroup.select('g.links');
         if (linkGroup.empty()) {
             linkGroup = graphGroup.append('g').attr('class', 'links');
@@ -538,7 +550,6 @@ $(document).ready(function() {
             labelGroup = graphGroup.append('g').attr('class', 'labels');
         }
     
-        // LINK Selection + Enter
         let linkSelection = linkGroup
             .selectAll('line.link')
             .data(links, d => d.source.data.name + '->' + d.target.data.name);
@@ -548,13 +559,12 @@ $(document).ready(function() {
         let linkEnter = linkSelection.enter()
             .append('line')
             .attr('class', 'link')
-            .attr('stroke', linkColor) // Link color
-            .attr('stroke-width', linkWidth); // Link width
+            .attr('stroke', linkColor)
+            .attr('stroke-width', linkWidth);
     
         linkSelection = linkEnter.merge(linkSelection);
         linkSelectionGlobal = linkSelection;
     
-        // NODE Selection + Enter
         let nodeSelection = nodeGroup
             .selectAll('circle.node')
             .data(nodes.filter(shouldHaveCircle), d => d.data.name);
@@ -564,24 +574,23 @@ $(document).ready(function() {
         let nodeEnter = nodeSelection.enter()
             .append('circle')
             .attr('class', 'node')
-            .attr('r', d => { // Node radius depends on its type or active status.
+            .attr('r', d => {
                 if (d.data.name === activeNodeName) {
-                    return activeNodeSize; // Larger for the active node.
+                    return activeNodeSize;
                 } else if (d.data.groupType) {
-                    return groupNodeSize; // Group nodes.
+                    return groupNodeSize;
                 } else {
-                    return nodeSize; // Default size for all other nodes.
+                    return nodeSize;
                 }
             })
-            .attr('fill', d => nodeColor(d)) // Node color
-            .attr('stroke', nodeBorderColor) // Node border color
-            .on('click', (event, d) => handleNodeClicked(d.data)) // Click event
-            .call(drag(simulation)); // Enables dragging of nodes.
+            .attr('fill', d => nodeColor(d))
+            .attr('stroke', nodeBorderColor)
+            .on('click', (event, d) => handleNodeClicked(d.data))
+            .call(drag(simulation));
     
         nodeSelection = nodeEnter.merge(nodeSelection);
         nodeSelectionGlobal = nodeSelection;
     
-        // LABEL Selection + Enter
         let labelSelection = labelGroup
             .selectAll('text.label')
             .data(nodes, d => d.data.name);
@@ -592,16 +601,15 @@ $(document).ready(function() {
             .append('text')
             .attr('class', 'label')
             .attr('text-anchor', 'middle')
-            .attr('fill', '#282828') // Label color
+            .attr('fill', '#282828')
             .style('cursor', 'pointer')
-            .text(d => d.data.name) // Text content
-            .on('click', (event, d) => handleNodeClicked(d.data)) // Click event
+            .text(d => d.data.name)
+            .on('click', (event, d) => handleNodeClicked(d.data))
             .call(drag(simulation));
     
         labelSelection = labelEnter.merge(labelSelection);
         labelsSelectionGlobal = labelSelection;
     
-        // Anchor the active node at center
         let foundActiveNode = nodes.find(d => d.data.name === data.name);
         if (foundActiveNode) {
             simulation.alpha(1).restart();
@@ -611,7 +619,6 @@ $(document).ready(function() {
             simulation.alpha(1).restart();
         }
     
-        // TICK updates
         simulation.on('tick', () => {
             linkSelection
                 .attr('x1', d => d.source.x)
@@ -623,12 +630,10 @@ $(document).ready(function() {
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
     
-            // Position labels just above the node
             labelSelection
                 .attr('x', d => d.x)
                 .attr('y', d => {
                     const r = getCircleScreenRadius(d);
-                    // For the active node or if asset nodes are shown
                     if (d.data.name === currentActiveNodeName) {
                         return d.y - (r + 5);
                     }
@@ -638,7 +643,6 @@ $(document).ready(function() {
                     return d.y - (r + 4);
                 });
     
-            // Once layout stabilizes, fit to container & stop
             if (simulation.alpha() < 0.05) {
                 simulation.stop();
                 fitGraphToContainer();
@@ -648,6 +652,7 @@ $(document).ready(function() {
         shuffleNodeForces();
         updateRightContainer(data);
     }
+    
     
 
     function getCircleScreenRadius(d) {
@@ -661,6 +666,7 @@ $(document).ready(function() {
     }
 
     function hideGroupNodes(node, displayGroupNodes) {
+        console.log(node);
         if (!node.children || node.children.length === 0) {
             return node;
         }
@@ -784,7 +790,7 @@ $(document).ready(function() {
         } else if (nonGroupNodes.length > 20) {
             graphPadding = 100;
         } else if (nonGroupNodes.length > 5) {
-            graphPadding = 250;
+            graphPadding = 225;
         } else if (nonGroupNodes.length <= 5 && nonGroupNodes.length > 3) {
             graphPadding = 275;
         } else if (nonGroupNodes.length <= 3 ) {
@@ -870,11 +876,6 @@ $(document).ready(function() {
             .append("h3")
             .attr("class", "dependencies-header")
             .html("Dependencies");
-
-        rightContainer
-            .append("p")
-            .html(`<strong>Total:</strong> ${--data.totalNodesDisplayed}`)
-            .style("border-top", "1.5px solid var(--bdr-clr)");
         
         var displayGroupNodes = groupNodeSwitch.checked;
 
@@ -948,7 +949,8 @@ $(document).ready(function() {
             });
 
             function createTypeSection(type, nodes) {
-                var typeSection = rightContainer.append("div")
+                var typeSection = rightContainer.select(".scrollable-content")
+                    .append("div")
                     .attr("class", "type-section");
 
                 typeSection.append("p")
