@@ -6,9 +6,9 @@ $(document).ready(function() {
     const activeNodeSize = 5;
     const groupNodeSize = 4;
     const nodeSize = 4;
-    const linkWidth = 0.3;
-    const linkColor = 'var(--link-clr)' || 'gray';
-    const nodeBorderColor = 'var(--nde-bdr-clr)' || '#000';
+    const linkWidth = 0.25;
+    const linkColor = 'var(--link-clr)';
+    const nodeBorderColor = 'var(--nde-bdr-clr)';
 
     let currentActiveNodeName = null;
     let nodesDisplayed = [];

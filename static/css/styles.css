@@ -142,7 +142,7 @@ text, circle text {
     text-align: center;
     padding: 3px;
     margin: 0;
-    font-size: .8rem;
+    font-size: .75rem;
 }
 
 .right-pane {
@@ -367,8 +367,8 @@ title {
 }
 
 .group-asset-toggle-container:active, .search-container:active, 
-.search-container:focus-within, .switches-container:active, .hover-box:active {
-    border: 1px solid var(--pane-ttle-bg-clr); 
+.search-container:focus-within, .switches-container:active, .hover-box {
+    border: .75px solid var(--pane-ttle-bg-clr); 
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
@@ -413,21 +413,6 @@ title {
 #autocompleteSuggestions::-webkit-scrollbar {
     width: 5px;
     background-color: white;
-}
-
-.search-menu {
-    position: absolute; 
-    top: 115%; 
-    left: 0;
-    width: 100%;
-    z-index: 10; 
-    background-color: var(--page-bg-clr);
-    border: none;
-    border-top: none;
-    border-radius: 10px; 
-    max-height: 100px; 
-    overflow-y: auto; 
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
 }
 
 #searchInput {
@@ -520,10 +505,10 @@ span {
     bottom: 120%; /* Adjusted to make space for the arrow */
     left: -20%;
     transform: translateX(-50%);
-    background-color: var(--pane-bg-clr);
+    background-color: var(--hoverbx-bg-clr);
     padding: 10px;
     border-radius: 5px;
-    z-index: 9999;
+    z-index: 100;
     width: max-content;
     height: max-content;
     white-space: nowrap;
@@ -533,22 +518,35 @@ span {
 }
 
 .hover-box::after {
-    z-index: -1;
+    z-index: 1;
     content: "";
     position: absolute;
     top: 100%; /* Position the arrow at the bottom of the hover-box */
-    right: 10%;
+    left: 85%;
     transform: translateX(-50%);
-    border-width: 12px; /* Size of the arrow */
+    border-width: 8.75px; /* Outer triangle size */
     border-style: solid;
-    border-color: var(--pane-bg-clr) transparent transparent transparent; /* Arrow pointing down */
+    border-color: var(--bdr-clr) transparent transparent transparent; /* Outer border color (black) */
 }
+
+.hover-box::before {
+    z-index: 2;
+    content: "";
+    position: absolute;
+    top: 100%; /* Slightly lower than ::after for proper layering */
+    left: 85%;
+    transform: translateX(-50%);
+    border-width: 8px; /* Inner triangle size */
+    border-style: solid;
+    border-color: var(--hoverbx-bg-clr) transparent transparent transparent; /* Matches hover-box background */
+}
+
 
 .dependency-node-container:hover .hover-box {
     opacity: 1;
     visibility: visible;
     pointer-events: auto; /* Enable interaction when visible */
-    transition: 1s ease-in-out;
+    transition: .5s ease-in-out;
 }
 
 .dependency-node:hover + .hover-box {
