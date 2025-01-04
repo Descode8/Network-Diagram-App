@@ -26,7 +26,7 @@ $(document).ready(function() {
     const failedSearch = document.querySelector('.failed-search'); 
     const rightContainer = d3.select('.right-pane');
 
-    const labelNodesSwitch = document.getElementById('labelNodesSwitch');
+    const assetNodesSwitch = document.getElementById('assetNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
     const switchesContainer = document.querySelector('.switches-container');
 
@@ -230,7 +230,8 @@ $(document).ready(function() {
     let currentZoomScale = 1; 
     let nodeSelectionGlobal, linkSelectionGlobal, labelsSelectionGlobal;
 
-    labelNodesSwitch.addEventListener('change', () => {
+    assetNodesSwitch.addEventListener('change', () => {
+        resetSimulationForForces();
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
     });
 
@@ -325,6 +326,7 @@ $(document).ready(function() {
                 if(!rootNode) {
                     rootNode = data;
                 }
+                showGroupToggles();
                 mergeSameGroupNodes(data);
                 populateNodeList(data); 
                 initializeGroupToggles(data);
@@ -419,18 +421,18 @@ $(document).ready(function() {
         graphGroup.selectAll('g.labels').remove();
     
         currentActiveNodeName = data.name;
-        const displayAssetNodes = labelNodesSwitch.checked;
+        const displayAssetNodes = assetNodesSwitch.checked;
 
-        // <--- OVERRIDE LOGIC HERE --->
         let displayGroupNodes = groupNodeSwitch.checked;
-        // If active node is literally a group node (like name="Applications", type="Applications"),
-        // forcibly pretend groupNodeSwitch is OFF:
         const isActiveNodeAGroup = (
             (data.groupType && data.groupType === data.name) ||
             (data.type && data.type === data.name)
         );
-        if (isActiveNodeAGroup) {
-            displayGroupNodes = false;
+
+        if (isActiveNodeAGroup && depthSlider.value < 3) { 
+            displayGroupNodes = false; 
+        } else {
+            resetSimulationForForces();
         }
     
         // Hide or flatten group nodes, filter by toggles
@@ -454,10 +456,10 @@ $(document).ready(function() {
             .nodes(nodes)
             .force("charge", d3.forceManyBody()
                 .strength(-1000) // Repels nodes from each other.
-                .distanceMin(50)) // Minimum distance between nodes.
+                .distanceMin(150)) // Minimum distance between nodes.
             .force("center", d3.forceCenter(width / 2, height / 2)) // Pulls all nodes toward the center of the graph area.
             .force("collide", d3.forceCollide().radius(50)) // Prevents nodes from overlapping.
-            .alphaDecay(0.012) // Controls the rate at which the simulation cools down.
+            .alphaDecay(0.05)
             .alpha(1) // Sets the initial "heat" of the simulation.
             .restart();
     
@@ -526,7 +528,7 @@ $(document).ready(function() {
                     })
                 )
                 .force("circularChildren", forceCircularChildren(150)) // Distributes child nodes around their parent in a circle.
-                .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
+                .force("collide", d3.forceCollide().radius(20)); // Prevents collision (nodes can overlap slightly).
         }
         simulation.force("link").links(links);
     
@@ -666,7 +668,6 @@ $(document).ready(function() {
     }
 
     function hideGroupNodes(node, displayGroupNodes) {
-        console.log(node);
         if (!node.children || node.children.length === 0) {
             return node;
         }
@@ -847,9 +848,6 @@ $(document).ready(function() {
         fitGraphToContainer(/* noTransition = false */);
     });
 
-    fetchAndRenderGraph();
-    showGroupToggles();
-
     function updateRightContainer(data) {
         rightContainer.html("");
 
@@ -880,6 +878,7 @@ $(document).ready(function() {
         var displayGroupNodes = groupNodeSwitch.checked;
 
         if (displayGroupNodes) {
+            // Fetch and sort group nodes
             var groupNodes = (data.children || []).filter(d => d.groupType);
             var desiredOrder = ["Organization", "People", "Technology", "Data"];
             groupNodes.sort((a, b) => {
@@ -895,6 +894,8 @@ $(document).ready(function() {
                     return indexA - indexB;
                 }
             });
+
+            // Render group nodes in the right container
             groupNodes.forEach(typeNode => {
                 createGroupTypeSection(typeNode);
             });
@@ -905,7 +906,7 @@ $(document).ready(function() {
 
                 typeSection
                     .append("p")
-                    .style("background-color", nodeColor({data: {type: typeNode.groupType}}))
+                    .style("background-color", nodeColor({ data: { type: typeNode.groupType } }))
                     .attr("class", "dependency-type")
                     .html(`${typeNode.groupType}`)
                     .style("cursor", "pointer")
@@ -919,15 +920,18 @@ $(document).ready(function() {
                         handleNodeClicked(pseudoNodeData);
                     });
 
+                // Sort and render child nodes under the group
                 var sortedChildren = (typeNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
                 sortedChildren.forEach(childNode => {
                     createNodeElement(typeSection, childNode);
                 });
             }
         } else {
+            // Flatten nodes for non-group display
             var flatNodes = (data.children || []);
             var nodesByType = d3.group(flatNodes, d => d.type);
 
+            // Define desired order for flat node display
             var desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
             var orderedTypes = Array.from(nodesByType.keys()).sort((a, b) => {
                 var indexA = desiredOrder.indexOf(a);
@@ -943,18 +947,18 @@ $(document).ready(function() {
                 }
             });
 
+            // Render flat nodes in the right container
             orderedTypes.forEach(type => {
                 var nodes = nodesByType.get(type);
                 createTypeSection(type, nodes);
             });
 
             function createTypeSection(type, nodes) {
-                var typeSection = rightContainer.select(".scrollable-content")
-                    .append("div")
+                var typeSection = rightContainer.append("div")
                     .attr("class", "type-section");
 
                 typeSection.append("p")
-                    .style("background-color", nodeColor({data: {type: type}}))
+                    .style("background-color", nodeColor({ data: { type: type } }))
                     .attr("class", "dependency-type")
                     .html(`<strong>${type}</strong>`)
                     .style("cursor", "pointer")
@@ -968,6 +972,7 @@ $(document).ready(function() {
                         handleNodeClicked(pseudoNodeData);
                     });
 
+                // Sort and render individual nodes
                 var sortedChildren = nodes.slice().sort((a, b) => a.name.localeCompare(b.name));
                 sortedChildren.forEach(childNode => {
                     createNodeElement(typeSection, childNode);
@@ -997,4 +1002,6 @@ $(document).ready(function() {
             dynamicTogglesContainer.style.display = 'block';
         }
     }
+
+    fetchAndRenderGraph();
 });

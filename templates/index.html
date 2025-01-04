@@ -18,11 +18,13 @@ Right Pane: Displays details for the selected node.
     :root {
         --page-bg-clr: #D7DBDD;
         --pane-bg-clr: #DEE2E6;
+        --asst-nde-tggl-clr: #BC945B;
+        --grp-nde-tggl-clr: #000000;
         --svg-bg-clr: #FFFFFF;
-        --pane-ttle-bg-clr: #182853;
+        --pane-ttle-bg-clr: #002855;
+        --bdr-clr: #002855;
         --descrip-clr: #4267AC;
         --depend-hdr-clr: #4267AC;
-        --bdr-clr: #182853;
         --scrollbar-clr: #CACCCE;
         --err-msg-clr: #D98880;
         --hoverbx-bg-clr: #DEE2E6;
@@ -30,10 +32,10 @@ Right Pane: Displays details for the selected node.
         --org-nde-clr: #231F20;
         --app-nde-clr: #4361EE;
         --ppl-nde-clr: #79C300;
-        --tech-nde-clr: #dc2f02; 
-        --data-nde-clr: #9d4edd;
-        --procure-nde-clr: #f8961e;
-        --fclty-nde-clr: #7785ac;
+        --tech-nde-clr: #DC2F02; 
+        --data-nde-clr: #9D4EDD;
+        --procure-nde-clr: #F8961E;
+        --fclty-nde-clr: #7785AC;
         
         --nde-bdr-clr: #231F20;
         --link-clr: #231F20;
@@ -77,14 +79,14 @@ Right Pane: Displays details for the selected node.
             <div class="group-asset-toggle-container">
                 <label class="switch">
                     <input type="checkbox" id="groupNodeSwitch" checked>
-                    <span class="slider round" title="Toggle Group Nodes ON/OFF">
+                    <span class="slider round" style="background-color: var(--grp-nde-tggl-clr);" title="Toggle Group Nodes">
                         <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
                     Display Group Nodes
                 </label>
                 <label class="switch">
-                    <input type="checkbox" id="labelNodesSwitch">
-                    <span class="slider round"  style="background-color: #bc945b;" title="Toggle Asset Nodes ON/OFF">
+                    <input type="checkbox" id="assetNodesSwitch">
+                    <span class="slider round" style="background-color: var(--asst-nde-tggl-clr);" title="Toggle Asset Nodes">
                         <img src="{{ url_for('static', filename='images/gold_check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
                     Display Asset Nodes
