@@ -280,7 +280,7 @@ title {
 /* Change the appearance of the vertical thumb */
 .custom-slider input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    background-color: var(--scrollbar-clr) ;
+    background-color: var(--bdr-clr); ;
     width: 12px;
     height: 40px;
     margin-top: -14px;

@@ -517,18 +517,19 @@ $(document).ready(function() {
         } else {
             // Branch: if group nodes are off, use the "circular children" approach
             if (depthSlider.value === 2) {
-                simulation.force("collide", d3.forceCollide().radius(100));
+                simulation
+                    .force("collide", d3.forceCollide().radius(10));
             }
             simulation
                 .force("link", d3.forceLink(links).strength(1) // Connects nodes with links.
                     .id(d => d.data.name)
                     .distance(link => {
                         const source = link.source.data.name;
-                        return (source === currentActiveNodeName) ? 50 : 10; // Active node links are longer; others are zero (direct overlap).
+                        return (source === currentActiveNodeName) ? 100 : 0; // Active node links are longer; others are zero (direct overlap).
                     })
                 )
-                .force("circularChildren", forceCircularChildren(150)) // Distributes child nodes around their parent in a circle.
-                .force("collide", d3.forceCollide().radius(50)); // Prevents collision (nodes can overlap slightly).
+            .force("circularChildren", forceCircularChildren(100)) // Distributes child nodes around their parent in a circle.
+            .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
         }
         simulation.force("link").links(links);
     
