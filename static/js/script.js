@@ -459,7 +459,7 @@ $(document).ready(function() {
                 .distanceMin(150)) // Minimum distance between nodes.
             .force("center", d3.forceCenter(width / 2, height / 2)) // Pulls all nodes toward the center of the graph area.
             .force("collide", d3.forceCollide().radius(50)) // Prevents nodes from overlapping.
-            .alphaDecay(0.05)
+            .alphaDecay(0.01)
             .alpha(1) // Sets the initial "heat" of the simulation.
             .restart();
     
@@ -652,7 +652,7 @@ $(document).ready(function() {
             }
         });
     
-        shuffleNodeForces();
+        // shuffleNodeForces();
         updateRightContainer(data);
     }
     
