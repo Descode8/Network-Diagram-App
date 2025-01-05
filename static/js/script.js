@@ -604,7 +604,7 @@ $(document).ready(function() {
             .append('text')
             .attr('class', 'label')
             .attr('text-anchor', 'middle')
-            .attr('fill', '#282828')
+            .attr('fill', linkColor)
             .style('cursor', 'pointer')
             .text(d => d.data.name)
             .on('click', (event, d) => handleNodeClicked(d.data))

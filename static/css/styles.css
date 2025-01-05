@@ -113,8 +113,8 @@ body, html {
 }
 
 .graph-container {
-    border-left: 3px solid var(--bdr-clr);
-    border-right: 3px solid var(--bdr-clr);
+    border-left: 2px solid var(--bdr-clr);
+    border-right: 2px solid var(--bdr-clr);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -489,20 +489,18 @@ span {
     opacity: 0;
     visibility: hidden;
     position: absolute;
-    transform: translateX(-50%);
+    transform: translate(-73%, -135%); 
     background-color: var(--hoverbx-bg-clr);
-    padding: 10px;
+    padding: 7px;
     border-radius: 5px;
     z-index: 100;
-    min-width: 100px;
-    max-width: 200px;
+    min-width: 50px;
+    min-height: 50px;
+    word-wrap: break-word;
     white-space: nowrap;
     font-size: 0.75rem;
-    pointer-events: none; /* Prevent interaction issues */
     transition: opacity 0.5s ease, visibility 0.5s ease; /* Smooth transition */
-    position: absolute;
-    transform: translate(-75%, -130%); /* Start hidden below */
-    transition: transform 0.3s ease;
+    display: sticky;
 }
 
 .hover-box::after {
@@ -512,7 +510,7 @@ span {
     top: 100%; /* Position the arrow at the bottom of the hover-box */
     left: 85%;
     transform: translateX(-50%);
-    border-width: 8.75px; /* Outer triangle size */
+    border-width: 7.8px; /* Outer triangle size */
     border-style: solid;
     border-color: var(--bdr-clr) transparent transparent transparent; /* Outer border color (black) */
 }
@@ -521,7 +519,7 @@ span {
     z-index: 2;
     content: "";
     position: absolute;
-    top: 100%; /* Slightly lower than ::after for proper layering */
+    top: 99%; /* Slightly lower than ::after for proper layering */
     left: 85%;
     transform: translateX(-50%);
     border-width: 8px; /* Inner triangle size */
