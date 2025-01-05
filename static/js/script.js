@@ -500,7 +500,7 @@ $(document).ready(function() {
         // Branch: if group nodes are on, use a radial layout
         if (displayGroupNodes) {
             simulation
-                .force("radial", d3.forceRadial(250, width / 2, height / 2)) // Pulls nodes into a radial layout.
+                .force("radial", d3.forceRadial(50, width / 2, height / 2)) // Pulls nodes into a radial layout.
                 .force("link", d3.forceLink(links) // Connects nodes with links.
                     .id(d => d.data.name) // Links are based on node names.
                     .distance(link => {
@@ -525,10 +525,10 @@ $(document).ready(function() {
                     .id(d => d.data.name)
                     .distance(link => {
                         const source = link.source.data.name;
-                        return (source === currentActiveNodeName) ? 100 : 0; // Active node links are longer; others are zero (direct overlap).
+                        return (source === currentActiveNodeName) ? 50 : 0; // Active node links are longer; others are zero (direct overlap).
                     })
                 )
-            .force("circularChildren", forceCircularChildren(100)) // Distributes child nodes around their parent in a circle.
+            .force("circularChildren", forceCircularChildren(50)) // Distributes child nodes around their parent in a circle.
             .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
         }
         simulation.force("link").links(links);
@@ -656,8 +656,6 @@ $(document).ready(function() {
         updateRightContainer(data);
     }
     
-    
-
     function getCircleScreenRadius(d) {
         if (d.data.name === currentActiveNodeName) {
             return activeNodeSize / currentZoomScale;
@@ -674,14 +672,23 @@ $(document).ready(function() {
         }
         let flattenedChildren = [];
         node.children.forEach(child => {
+            // Check if the child is a group node and group nodes are toggled off
             if (child.groupType && !displayGroupNodes) {
-                if (child.children && child.children.length > 0) {
-                    child.children.forEach(grandChild => {
-                        hideGroupNodes(grandChild, displayGroupNodes);
-                    });
-                    flattenedChildren.push(...child.children);
+                // If the child is the active node, do not hide it
+                if (child.name === currentActiveNodeName) {
+                    hideGroupNodes(child, displayGroupNodes); // Process its children
+                    flattenedChildren.push(child);
+                } else {
+                    // Otherwise, flatten the group node by adding its children directly
+                    if (child.children && child.children.length > 0) {
+                        child.children.forEach(grandChild => {
+                            hideGroupNodes(grandChild, displayGroupNodes);
+                        });
+                        flattenedChildren.push(...child.children);
+                    }
                 }
             } else {
+                // Recursively process non-group nodes
                 hideGroupNodes(child, displayGroupNodes);
                 flattenedChildren.push(child);
             }
@@ -848,21 +855,23 @@ $(document).ready(function() {
     window.addEventListener('resize', () => {
         fitGraphToContainer(/* noTransition = false */);
     });
-
+    
     function updateRightContainer(data) {
         rightContainer.html("");
-
+    
+        // Add the active node's name and type to the right container
         rightContainer
             .append("h2")
-            .style("background-color", nodeColor({data: {type: data.type}}))
+            .style("background-color", nodeColor({ data: { type: data.type } }))
             .html(`${data.name}`);
-
+    
         rightContainer
             .append("p")
             .html(`<strong>Type: </strong>${data.type || 'Unknown'}`);
-
-        var description = (data.description || 'No description available').replace(/\n/g, '<br>');
-        rightContainer 
+    
+        // Add the active node's description
+        const description = (data.description || 'No description available').replace(/\n/g, '<br>');
+        rightContainer
             .append("h3")
             .attr("class", "description-header")
             .html("Description");
@@ -870,132 +879,143 @@ $(document).ready(function() {
             .append("p")
             .style("text-align", "justify")
             .html(description);
-
+    
+        // Add a header for the dependencies
         rightContainer
             .append("h3")
             .attr("class", "dependencies-header")
             .html("Dependencies");
-        
-        var displayGroupNodes = groupNodeSwitch.checked;
+    
+        const displayGroupNodes = groupNodeSwitch.checked;
+        const dependencies = data.children || [];
 
-        if (displayGroupNodes) {
-            // Fetch and sort group nodes
-            var groupNodes = (data.children || []).filter(d => d.groupType);
-            var desiredOrder = ["Organization", "People", "Technology", "Data"];
-            groupNodes.sort((a, b) => {
-                var indexA = desiredOrder.indexOf(a.groupType);
-                var indexB = desiredOrder.indexOf(b.groupType);
-                if (indexA === -1 && indexB === -1) {
-                    return a.groupType.localeCompare(b.groupType);
-                } else if (indexA === -1) {
-                    return 1;
-                } else if (indexB === -1) {
-                    return -1;
-                } else {
-                    return indexA - indexB;
-                }
-            });
-
-            // Render group nodes in the right container
-            groupNodes.forEach(typeNode => {
-                createGroupTypeSection(typeNode);
-            });
-
-            function createGroupTypeSection(typeNode) {
-                var typeSection = rightContainer.append("div")
-                    .attr("class", "type-section");
-
-                typeSection
-                    .append("p")
-                    .style("background-color", nodeColor({ data: { type: typeNode.groupType } }))
-                    .attr("class", "dependency-type")
-                    .html(`${typeNode.groupType}`)
-                    .style("cursor", "pointer")
-                    .on("click", (event) => {
-                        var pseudoNodeData = {
-                            name: typeNode.groupType,
-                            type: typeNode.groupType,
-                            description: typeNode.groupType + " Group Node",
-                            children: typeNode.children || []
-                        };
-                        handleNodeClicked(pseudoNodeData);
+        const desiredOrder = ["Organization", "People", "Technology", "Data"];
+    
+        if (dependencies.length > 0) {
+            if (displayGroupNodes) {
+                // Group nodes are ON, handle them hierarchically
+                const groupNodes = dependencies.filter(d => d.groupType);
+                const nonGroupNodes = dependencies.filter(d => !d.groupType);
+    
+                groupNodes.sort((a, b) => {
+                    const indexA = desiredOrder.indexOf(a.groupType);
+                    const indexB = desiredOrder.indexOf(b.groupType);
+                    if (indexA === -1 && indexB === -1) {
+                        return a.groupType.localeCompare(b.groupType);
+                    } else if (indexA === -1) {
+                        return 1;
+                    } else if (indexB === -1) {
+                        return -1;
+                    } else {
+                        return indexA - indexB;
+                    }
+                });
+    
+                // Render group nodes with clickable headers
+                groupNodes.forEach(groupNode => {
+                    createGroupTypeSection(groupNode);
+                });
+    
+                // Render non-group nodes as individual dependencies
+                nonGroupNodes.forEach(nonGroupNode => {
+                    createNodeElement(rightContainer, nonGroupNode);
+                });
+    
+            } else {
+                // Group nodes are OFF, render a flat list grouped by type
+                const dependenciesByType = d3.group(dependencies, d => d.type || "Unknown");
+    
+                // Sort types by desired order
+                const orderedTypes = Array.from(dependenciesByType.keys()).sort((a, b) => {
+                    const indexA = desiredOrder.indexOf(a);
+                    const indexB = desiredOrder.indexOf(b);
+                    if (indexA === -1 && indexB === -1) {
+                        return a.localeCompare(b);
+                    } else if (indexA === -1) {
+                        return 1;
+                    } else if (indexB === -1) {
+                        return -1;
+                    } else {
+                        return indexA - indexB;
+                    }
+                });
+    
+                // Render dependencies grouped by type with headers
+                orderedTypes.forEach(type => {
+                    const nodes = dependenciesByType.get(type);
+    
+                    rightContainer
+                        .append("p")
+                        .attr("class", "dependency-type-header")
+                        .style("background-color", nodeColor({ data: { type: type } }))
+                        .html(type)
+                        .style("cursor", "pointer")
+                        .on("click", () => {
+                            const pseudoNodeData = {
+                                name: type,
+                                type: type,
+                                description: `${type} Group Node`,
+                                children: nodes
+                            };
+                            handleNodeClicked(pseudoNodeData);
+                        });
+    
+                    nodes.forEach(node => {
+                        createNodeElement(rightContainer, node);
                     });
-
-                // Sort and render child nodes under the group
-                var sortedChildren = (typeNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
-                sortedChildren.forEach(childNode => {
-                    createNodeElement(typeSection, childNode);
                 });
             }
         } else {
-            // Flatten nodes for non-group display
-            var flatNodes = (data.children || []);
-            var nodesByType = d3.group(flatNodes, d => d.type);
-
-            // Define desired order for flat node display
-            var desiredOrder = ["Organization", "People", "Technology", "Data", "Applications", "Procurements", "Facilities"];
-            var orderedTypes = Array.from(nodesByType.keys()).sort((a, b) => {
-                var indexA = desiredOrder.indexOf(a);
-                var indexB = desiredOrder.indexOf(b);
-                if (indexA === -1 && indexB === -1) {
-                    return a.localeCompare(b);
-                } else if (indexA === -1) {
-                    return 1;
-                } else if (indexB === -1) {
-                    return -1;
-                } else {
-                    return indexA - indexB;
-                }
-            });
-
-            // Render flat nodes in the right container
-            orderedTypes.forEach(type => {
-                var nodes = nodesByType.get(type);
-                createTypeSection(type, nodes);
-            });
-
-            function createTypeSection(type, nodes) {
-                var typeSection = rightContainer.append("div")
-                    .attr("class", "type-section");
-
-                typeSection.append("p")
-                    .style("background-color", nodeColor({ data: { type: type } }))
-                    .attr("class", "dependency-type")
-                    .html(`<strong>${type}</strong>`)
-                    .style("cursor", "pointer")
-                    .on("click", (event) => {
-                        var pseudoNodeData = {
-                            name: type,
-                            type: type,
-                            description: type + " Group Node",
-                            children: nodes
-                        };
-                        handleNodeClicked(pseudoNodeData);
-                    });
-
-                // Sort and render individual nodes
-                var sortedChildren = nodes.slice().sort((a, b) => a.name.localeCompare(b.name));
-                sortedChildren.forEach(childNode => {
-                    createNodeElement(typeSection, childNode);
-                });
-            }
+            // Handle case where there are no dependencies
+            rightContainer.append("p")
+                .attr("class", "no-dependencies")
+                .html("No dependencies available.");
         }
-
+    
+        function createGroupTypeSection(groupNode) {
+            const groupContainer = rightContainer.append("div")
+                .attr("class", "type-section");
+    
+            groupContainer
+                .append("p")
+                .style("background-color", nodeColor({ data: { type: groupNode.groupType } }))
+                .attr("class", "dependency-type-header")
+                .html(groupNode.groupType)
+                .style("cursor", "pointer")
+                .on("click", () => {
+                    const pseudoNodeData = {
+                        name: groupNode.groupType,
+                        type: groupNode.groupType,
+                        description: `${groupNode.groupType} Group Node`,
+                        children: groupNode.children || []
+                    };
+                    handleNodeClicked(pseudoNodeData);
+                });
+    
+            // Render child nodes under the group type
+            const sortedChildren = (groupNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+            sortedChildren.forEach(childNode => {
+                createNodeElement(groupContainer, childNode);
+            });
+        }
+    
         function createNodeElement(parentContainer, node) {
-            var nodeContainer = parentContainer.append("div")
+            const nodeContainer = parentContainer.append("div")
                 .attr("class", "dependency-node-container");
-
+    
             nodeContainer.append("p")
                 .attr("class", "dependency-node")
                 .html(`${node.name}`)
-                .on("click", (event) => handleNodeClicked(node));
-
+                .style("cursor", "pointer")
+                .on("click", () => handleNodeClicked(node));
+    
             nodeContainer
                 .append("div")
                 .attr("class", "hover-box")
                 .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
         }
     }
+    
 
     function showGroupToggles() {
         var dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
