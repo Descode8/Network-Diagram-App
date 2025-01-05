@@ -528,7 +528,7 @@ $(document).ready(function() {
                     })
                 )
                 .force("circularChildren", forceCircularChildren(150)) // Distributes child nodes around their parent in a circle.
-                .force("collide", d3.forceCollide().radius(20)); // Prevents collision (nodes can overlap slightly).
+                .force("collide", d3.forceCollide().radius(50)); // Prevents collision (nodes can overlap slightly).
         }
         simulation.force("link").links(links);
     

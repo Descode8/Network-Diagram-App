@@ -19,21 +19,6 @@
     font-style: normal;
 }
 
-body, html {
-    font-family: 'JetBrains Mono', monospace;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    font-size: 16px;
-    display: flex;
-    flex-direction: row;
-    margin: 0;
-    padding: 0;
-    width: 100vw;
-    height: 100vh;
-    overflow: auto;
-    background-color: var(--page-bg-clr);
-}
-
 input, button, select, textarea, p, .search-container {
     font-family: 'JetBrains Mono', monospace;
 }
@@ -48,8 +33,40 @@ text, circle text {
     cursor: pointer;
 }
 
-.expand-collapse-left, .expand-collapse-right {
-    position: relative;
+body, html {
+    font-family: 'JetBrains Mono', monospace;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 16px;
+    display: flex;
+    flex-direction: row;
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--page-bg-clr);
+}
+
+.right-pane, .left-pane {
+    background-color: var(--pane-bg-clr);
+    box-sizing: border-box;
+    height: 100vh; /* Use viewport height */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 15px;
+    width: 15vw;
+    margin: 0;
+    overflow: auto;
+}
+
+.right-pane {
+    gap: 0px; 
+}
+
+.left-pane {
+    width: 17vw; 
 }
 
 .expand-collapse-buttonLeft, .expand-collapse-buttonRight {
@@ -77,20 +94,6 @@ text, circle text {
     height: 30px; 
 }
 
-.right-pane, .left-pane {
-    background-color: var(--pane-bg-clr);
-    overflow-y: auto;
-    overflow-x: hidden;
-    box-sizing: border-box;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 15px; 
-    width: 15vw;
-    margin: 0 auto;
-}
-
 .left-pane {
     width: 17vw;
 }
@@ -106,7 +109,6 @@ text, circle text {
     height: 100vh; 
     margin: 0 auto; 
     overflow: hidden; 
-    position: relative;
 }
 
 .graph-container svg {
@@ -142,13 +144,6 @@ text, circle text {
     padding: 3px;
     margin: 0;
     font-size: .75rem;
-}
-
-.right-pane {
-    gap: 0px;
-    position: relative; 
-    overflow: visible;   
-    z-index: 1;  
 }
 
 hr {
@@ -493,27 +488,24 @@ span {
     text-decoration: underline;
 }
 
-.dependency-node-container {
-    position: relative;
-}
-
 .hover-box {
     opacity: 0;
     visibility: hidden;
     position: absolute;
-    bottom: 120%; /* Adjusted to make space for the arrow */
-    left: -20%;
     transform: translateX(-50%);
     background-color: var(--hoverbx-bg-clr);
     padding: 10px;
     border-radius: 5px;
     z-index: 100;
-    width: max-content;
-    height: max-content;
+    min-width: 100px;
+    max-width: 200px;
     white-space: nowrap;
     font-size: 0.75rem;
     pointer-events: none; /* Prevent interaction issues */
     transition: opacity 0.5s ease, visibility 0.5s ease; /* Smooth transition */
+    position: absolute;
+    transform: translate(-75%, -130%); /* Start hidden below */
+    transition: transform 0.3s ease;
 }
 
 .hover-box::after {
@@ -539,7 +531,6 @@ span {
     border-style: solid;
     border-color: var(--hoverbx-bg-clr) transparent transparent transparent; /* Matches hover-box background */
 }
-
 
 .dependency-node-container:hover .hover-box {
     opacity: 1;
@@ -631,4 +622,3 @@ input + .slider {
 input:checked + .slider .checkmark {
     opacity: 1;
 }
-
