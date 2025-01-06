@@ -552,11 +552,13 @@ $(document).ready(function() {
             // console.log("Data", data);
             // console.log("Indirect Relationships", data.indirectRelationships);
             console.log("NODE NAME", data.name);
-        
+            
+            const indirectRelNodes = [];
             // Iterate through each indirect relationship
             data.indirectRelationships.forEach(rel => {
-                console.log("Indirect Relationship", rel);
+                indirectRelNodes.push(rel);
             });
+            console.log("Indirect Relationship Nodes", indirectRelNodes);
         }
 
         // simulation.force("link").links(links);
