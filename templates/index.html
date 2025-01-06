@@ -29,6 +29,7 @@ Right Pane: Displays details for the selected node.
 
         --asst-nde-tggl-clr: #BC945B;
         --grp-nde-tggl-clr: #182853;
+        --indrct-rel-tggl-clr: #888a8d;
 
         --org-nde-clr: #231f20;
         --app-nde-clr: #4361EE;
@@ -83,14 +84,21 @@ Right Pane: Displays details for the selected node.
                     <span class="slider round" style="background-color: var(--grp-nde-tggl-clr);" title="Toggle Group Nodes">
                         <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
-                    Display Group Nodes
+                    Group Nodes
                 </label>
                 <label class="switch">
                     <input type="checkbox" id="assetNodesSwitch">
                     <span class="slider round" style="background-color: var(--asst-nde-tggl-clr);" title="Toggle Asset Nodes">
                         <img src="{{ url_for('static', filename='images/gold_check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
-                    Display Asset Nodes
+                    Asset Nodes
+                </label> 
+                <label class="switch">
+                    <input type="checkbox" id="indirectRelationshipSwitch">
+                    <span class="slider round" style="background-color: var(--indrct-rel-tggl-clr);" title="Toggle Indirect Relationships">
+                        <img src="{{ url_for('static', filename='images/gray_check.svg') }}" class="checkmark" alt="Checkmark">
+                    </span>
+                    Indirect Relationships
                 </label>                
             </div>
             <div class="switches-container"></div>

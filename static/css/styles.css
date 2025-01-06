@@ -100,7 +100,7 @@ body, html {
 }
 
 .expand-collapse-buttonLeft {
-    left: 90%; 
+    left: 100%; 
 }
 
 .expand-collapse-buttonRight {
@@ -213,11 +213,6 @@ hr {
     text-decoration: underline;
 }
 
-/* .right-pane h2, .left-pane h2, .description-header, 
-.dependencies-header, .dependency-type-header {
-    box-shadow: var(--pane-ttle-bg-clr) 0px 4px 8px -3px;
-} */
-
 .right-pane h4 {
     margin-top: 10px;
 }
@@ -266,10 +261,6 @@ title {
     border-radius: 5px;
     background: linear-gradient(to right, var(--pane-ttle-bg-clr) 0%, var(--scrollbar-clr) var(--value), var(--svg-bg-clr) var(--value), var(--svg-bg-clr) 100%);
 }
-
-/* .custom-slider input[type="range"]::-webkit-slider-runnable-track:active {
-    border: 1px solid var(--bdr-clr);
-} */
 
 .custom-slider input[type="range"]::-moz-range-track {
     width: 100%;
@@ -367,9 +358,6 @@ title {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
-/* #depthSlider:active {
-    border: .5px solid var(--pane-ttle-bg-clr);
-} */
 
 #depthSlider:hover {
     border-radius: 10px;
@@ -442,7 +430,7 @@ title {
     opacity: 1;
 }
 
-label, span {
+label, .depthSlider {
     text-align: left;
     padding: 0;
     margin: 0;
@@ -467,9 +455,9 @@ label, span {
     margin: 0px auto;
 }
 
-span {
+/* span {
     text-align: center;
-}
+} */
 
 .dependency-type-header {
     font-size: 16px;
@@ -557,7 +545,7 @@ span {
     display: inline-block;
     width: 25px; /* Toggle width */
     height: 15px; /* Toggle height */
-    margin-right: 5px;
+    margin-left: 10px;
 }
 
 .slider.round {

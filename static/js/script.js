@@ -2,6 +2,8 @@ $(document).ready(function() {
     let width = $('.graph-container')[0].clientWidth;
     let height = $('.graph-container')[0].clientHeight;
     let rootNode = null;
+    let graphData = null;
+
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 5;
     const groupNodeSize = 4;
@@ -26,10 +28,11 @@ $(document).ready(function() {
     const failedSearch = document.querySelector('.failed-search'); 
     const rightContainer = d3.select('.right-pane');
 
+    const switchesContainer = document.querySelector('.switches-container');
     const assetNodesSwitch = document.getElementById('assetNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
-    const switchesContainer = document.querySelector('.switches-container');
-
+    const indirectRelationshipSwitch = document.getElementById('indirectRelationshipSwitch');
+    
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
 
@@ -230,13 +233,19 @@ $(document).ready(function() {
     let currentZoomScale = 1; 
     let nodeSelectionGlobal, linkSelectionGlobal, labelsSelectionGlobal;
 
+    groupNodeSwitch.addEventListener('change', () => {
+        resetSimulationForForces();    
+        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
+    });
+
     assetNodesSwitch.addEventListener('change', () => {
         resetSimulationForForces();
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
     });
 
-    groupNodeSwitch.addEventListener('change', () => {
-        resetSimulationForForces();    
+    indirectRelationshipSwitch.addEventListener('change', () => {
+        indirectRelationshipSwitch.checked;
+        resetSimulationForForces();
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
     });
 
@@ -323,9 +332,12 @@ $(document).ready(function() {
                 return response.json();
             })
             .then(data => {
+                // console.log('Graph data fetched:', data);
                 if(!rootNode) {
                     rootNode = data;
                 }
+                graphData = data;
+
                 showGroupToggles();
                 mergeSameGroupNodes(data);
                 populateNodeList(data); 
@@ -421,7 +433,10 @@ $(document).ready(function() {
         graphGroup.selectAll('g.labels').remove();
     
         currentActiveNodeName = data.name;
+
         const displayAssetNodes = assetNodesSwitch.checked;
+        const displayIndirectRelationship = indirectRelationshipSwitch.checked;
+        // console.log('Indirect Relationship Switch:', displayIndirectRelationship);
 
         let displayGroupNodes = groupNodeSwitch.checked;
         const isActiveNodeAGroup = (
@@ -531,7 +546,20 @@ $(document).ready(function() {
             .force("circularChildren", forceCircularChildren(50)) // Distributes child nodes around their parent in a circle.
             .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
         }
-        simulation.force("link").links(links);
+
+        if (data.indirectRelationships && displayIndirectRelationship) {
+            // console.log("Has Indirect Relationships");
+            // console.log("Data", data);
+            // console.log("Indirect Relationships", data.indirectRelationships);
+            console.log("NODE NAME", data.name);
+        
+            // Iterate through each indirect relationship
+            data.indirectRelationships.forEach(rel => {
+                console.log("Indirect Relationship", rel);
+            });
+        }
+
+        // simulation.force("link").links(links);
     
         const activeNodeName = data.name;
         function shouldHaveCircle(d) {
