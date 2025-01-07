@@ -344,8 +344,12 @@ title {
 }
 
 .search-container, .group-asset-toggle-container, .switches-container, 
-#depthSlider, .switch span, .hover-box {
+#depthSlider, .groupSwitch span, .assetSwitch span, .indirectRelationshipSwitch span .hover-box {
     transition: 0.5s ease-in-out; 
+}
+
+.hover-box {
+    transition: 3s ease-in-out;
 }
 
 .search-container:active, .search-container:focus-within, .hover-box {
@@ -530,13 +534,13 @@ label, .depthSlider {
     margin: 10px auto;
 }
 
-.switch {
+.groupSwitch, .assetSwitch, .indirectRelationshipSwitch, .switch {
     display: flex;
     align-items: center;
     margin: 15px auto;
 }
 
-.switch input {
+.groupSwitch input, .assetSwitch input, .indirectRelationshipSwitch input, .switch input {
     display: none;
 }
 
@@ -600,3 +604,4 @@ input + .slider {
 input:checked + .slider .checkmark {
     opacity: 1;
 }
+

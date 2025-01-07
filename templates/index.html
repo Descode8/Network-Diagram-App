@@ -79,21 +79,21 @@ Right Pane: Displays details for the selected node.
                 <input type="range" id="depthSlider" min="1" max="4" value="2" step="1">
             </div>
             <div class="group-asset-toggle-container">
-                <label class="switch">
+                <label class="groupSwitch">
                     <input type="checkbox" id="groupNodeSwitch" checked>
                     <span class="slider round" style="background-color: var(--grp-nde-tggl-clr);" title="Toggle Group Nodes">
                         <img src="{{ url_for('static', filename='images/check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
                     Group Nodes
                 </label>
-                <label class="switch">
+                <label class="assetSwitch">
                     <input type="checkbox" id="assetNodesSwitch">
                     <span class="slider round" style="background-color: var(--asst-nde-tggl-clr);" title="Toggle Asset Nodes">
                         <img src="{{ url_for('static', filename='images/gold_check.svg') }}" class="checkmark" alt="Checkmark">
                     </span>
                     Asset Nodes
                 </label> 
-                <label class="switch">
+                <label class="indirectRelationshipSwitch" style="display: none;">
                     <input type="checkbox" id="indirectRelationshipSwitch">
                     <span class="slider round" style="background-color: var(--indrct-rel-tggl-clr);" title="Toggle Indirect Relationships">
                         <img src="{{ url_for('static', filename='images/gray_check.svg') }}" class="checkmark" alt="Checkmark">

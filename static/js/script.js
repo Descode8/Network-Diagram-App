@@ -31,7 +31,8 @@ $(document).ready(function() {
     const switchesContainer = document.querySelector('.switches-container');
     const assetNodesSwitch = document.getElementById('assetNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
-    const indirectRelationshipSwitch = document.getElementById('indirectRelationshipSwitch');
+    const groupNodeSwitchContainer = document.querySelector('.groupSwitch');
+    const indirectRelationshipSwitch = document.querySelector('.indirectRelationshipSwitch');
     
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
@@ -378,6 +379,19 @@ $(document).ready(function() {
         }
 
         allGroups.forEach(group => {
+            // console.log("data", data);
+            if (group === data.type) {
+                if(data.name === data.type) {
+                    console.log("Group and type is the same as data type");
+                    dynamicTogglesContainer.style.display = 'none';
+                    groupNodeSwitchContainer.style.display = 'none';
+                } else {
+                    dynamicTogglesContainer.style.display = 'block';
+                    groupNodeSwitchContainer.style.display = 'flex';
+                }
+                return;
+            }
+
             var label = document.createElement('label');
             label.className = 'switch span';
         
@@ -436,7 +450,13 @@ $(document).ready(function() {
 
         const displayAssetNodes = assetNodesSwitch.checked;
         const displayIndirectRelationship = indirectRelationshipSwitch.checked;
-        // console.log('Indirect Relationship Switch:', displayIndirectRelationship);
+
+        if (data.indirectRelationships) {
+            console.log("Has Indirect Relationships");
+            indirectRelationshipSwitch.style.display = 'flex';
+        } else {
+            indirectRelationshipSwitch.style.display = 'none';
+        }
 
         let displayGroupNodes = groupNodeSwitch.checked;
         const isActiveNodeAGroup = (
