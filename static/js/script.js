@@ -595,10 +595,30 @@ $(document).ready(function() {
             .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
         }
 
-        
+        // When group node is selected or when the active node is not the root node
         if (currentActiveNodeName !== rootNode.name && depthSlider.value == 2) {
-            simulation.force("radial", null);
+            simulation
+                .force("radial", null)
+                .force("charge", d3.forceManyBody()
+                    .strength(-1000));
         }
+
+        // Active Node and 1 child
+        if (data.totalNodesDisplayed == 2) {
+            console.log("Only 2 nodes displayed");
+            resetSimulationForForces();
+            simulation
+                .force("link", d3.forceLink(links) // Connects nodes with links.
+                    .id(d => d.data.name) // Links are based on node names.
+                    .distance(50) // Set the link distance to 10
+                );
+        }
+        
+
+
+
+
+
 
 
         /* INDIRECT RELATIONSHIPS */
