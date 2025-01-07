@@ -10,6 +10,7 @@ $(document).ready(function() {
     const groupNodeSize = 4;
     const nodeSize = 4;
     const linkWidth = 0.25;
+    const indirectLinkWidth = linkWidth * 10;
     const linkColor = 'var(--link-clr)';
     const nodeBorderColor = 'var(--nde-bdr-clr)';
 
@@ -482,20 +483,20 @@ $(document).ready(function() {
         graphGroup.selectAll('g.links').remove();
         graphGroup.selectAll('g.nodes').remove();
         graphGroup.selectAll('g.labels').remove();
+        graphGroup.selectAll('g.indirectLinks').remove();
     
         currentActiveNodeName = data.name;
-
+    
         var displayGroupNodes = groupNodeSwitch.checked;
         var displayAssetNodes = assetNodesSwitch.checked;
         var displayIndirectRelationship = indirectRelationshipSwitch.checked;
         var hasIndirectRelationships = containsIndirectRelationships(data);
-
-
+    
         const isActiveNodeAGroup = (
             (data.groupType && data.groupType === data.name) ||
             (data.type && data.type === data.name)
         );
-
+    
         if (isActiveNodeAGroup && depthSlider.value < 3) { 
             displayGroupNodes = false; 
         } else {
@@ -511,7 +512,7 @@ $(document).ready(function() {
         const links = root.links();
         let nodes = root.descendants();
     
-        // Filter nodes to exclude duplicates (e.g., group node appearing as a child)
+        // Filter nodes to exclude duplicates
         nodes = nodes.filter(node => {
             return node.data.name !== currentActiveNodeName || !node.data.groupType;
         });
@@ -522,12 +523,12 @@ $(document).ready(function() {
         simulation
             .nodes(nodes)
             .force("charge", d3.forceManyBody()
-                .strength(-1000) // Repels nodes from each other.
-                .distanceMin(150)) // Minimum distance between nodes.
-            .force("center", d3.forceCenter(width / 2, height / 2)) // Pulls all nodes toward the center of the graph area.
-            .force("collide", d3.forceCollide().radius(50)) // Prevents nodes from overlapping.
+                .strength(-1000)
+                .distanceMin(150))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collide", d3.forceCollide().radius(50))
             .alphaDecay(0.01)
-            .alpha(1) // Sets the initial "heat" of the simulation.
+            .alpha(1)
             .restart();
     
         // Helper for distributing children radially around their parent
@@ -541,10 +542,10 @@ $(document).ready(function() {
     
                     const n = childArr.length;
                     childArr.forEach((child, i) => {
-                        const angle = (2 * Math.PI / n) * i; // Evenly spaces children around the parent
+                        const angle = (2 * Math.PI / n) * i;
                         const targetX = parent.x + radius * Math.cos(angle);
                         const targetY = parent.y + radius * Math.sin(angle);
-                        child.vx += (targetX - child.x) * 0.5 * alpha; // Adjust the strength of the pull toward the target position.
+                        child.vx += (targetX - child.x) * 0.5 * alpha;
                         child.vy += (targetY - child.y) * 0.5 * alpha;
                     });
                 });
@@ -563,19 +564,19 @@ $(document).ready(function() {
             };
             return force;
         }
-
+    
         // Group Nodes are ON
         if (displayGroupNodes) {
             simulation
-                .force("radial", d3.forceRadial(50, width / 2, height / 2)) // Pulls nodes into a radial layout.
-                .force("link", d3.forceLink(links) // Connects nodes with links.
-                    .id(d => d.data.name) // Links are based on node names.
+                .force("radial", d3.forceRadial(50, width / 2, height / 2))
+                .force("link", d3.forceLink(links)
+                    .id(d => d.data.name)
                     .distance(link => {
                         const source = link.source.data.name;
                         if (source === currentActiveNodeName) {
-                            return 120; // Longer distance for active node links.
+                            return 120;
                         } else if (source !== currentActiveNodeName && depthSlider.value > 2) {
-                            return 100; // Default link distance.
+                            return 100;
                         } else {
                             return 50;
                         }
@@ -584,17 +585,17 @@ $(document).ready(function() {
         // Group Nodes are OFF
         } else {
             simulation
-                .force("link", d3.forceLink(links).strength(1) // Connects nodes with links.
+                .force("link", d3.forceLink(links).strength(1)
                     .id(d => d.data.name)
                     .distance(link => {
                         const source = link.source.data.name;
-                        return (source === currentActiveNodeName) ? 50 : 0; // Active node links are longer; others are zero (direct overlap).
+                        return (source === currentActiveNodeName) ? 50 : 0;
                     })
                 )
-            .force("circularChildren", forceCircularChildren(50)) // Distributes child nodes around their parent in a circle.
-            .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
+                .force("circularChildren", forceCircularChildren(50))
+                .force("collide", d3.forceCollide().radius(25));
         }
-
+    
         // When group node is selected or when the active node is not the root node
         if (currentActiveNodeName !== rootNode.name && depthSlider.value == 2) {
             simulation
@@ -602,32 +603,49 @@ $(document).ready(function() {
                 .force("charge", d3.forceManyBody()
                     .strength(-1000));
         }
-
+    
         // Active Node and 1 child
         if (data.totalNodesDisplayed == 2) {
-            console.log("Only 2 nodes displayed");
             resetSimulationForForces();
             simulation
-                .force("link", d3.forceLink(links) // Connects nodes with links.
-                    .id(d => d.data.name) // Links are based on node names.
-                    .distance(50) // Set the link distance to 10
+                .force("link", d3.forceLink(links)
+                    .id(d => d.data.name)
+                    .distance(50)
                 );
         }
         
-
-
-
-
-
-
-
-        /* INDIRECT RELATIONSHIPS */
-        if (hasIndirectRelationships && displayIndirectRelationship) {
-            var indirectNodes = getIndirectRelationshipNodes(data);
-            console.log('All Indirect Relationship Nodes:', indirectNodes);
-
+        // Active Node and 2 children
+        if (data.totalNodesDisplayed == 3) {
+            resetSimulationForForces();
+            simulation
+                .force("charge", d3.forceManyBody().strength(-1000))
+                .force("link", d3.forceLink(links)
+                    .id(d => d.data.name)
+                    .distance(75)
+                );
         }
-
+    
+        /* INDIRECT RELATIONSHIPS */
+        let indirectLinks = [];
+        if (hasIndirectRelationships && displayIndirectRelationship) {
+            const indirectNodes = getIndirectRelationshipNodes(data);
+            console.log('Indirect Nodes:', indirectNodes);
+            indirectNodes.forEach(sourceNode => {
+                const source = nodes.find(n => n.data.name === sourceNode.name);
+                if (source) {
+                    sourceNode.indirectRelationships.forEach(targetName => {
+                        const target = nodes.find(n => n.data.name === targetName);
+                        if (target) {
+                            indirectLinks.push({
+                                source: source,
+                                target: target
+                            });
+                        }
+                    });
+                }
+            });
+        }
+    
         simulation.force("link").links(links);
     
         const activeNodeName = data.name;
@@ -637,6 +655,7 @@ $(document).ready(function() {
             return displayAssetNodes;
         }
     
+        // Create or select groups
         let linkGroup = graphGroup.select('g.links');
         if (linkGroup.empty()) {
             linkGroup = graphGroup.append('g').attr('class', 'links');
@@ -649,7 +668,12 @@ $(document).ready(function() {
         if (labelGroup.empty()) {
             labelGroup = graphGroup.append('g').attr('class', 'labels');
         }
+        let indirectLinkGroup = graphGroup.select('g.indirectLinks');
+        if (indirectLinkGroup.empty()) {
+            indirectLinkGroup = graphGroup.append('g').attr('class', 'indirectLinks');
+        }
     
+        // Regular links
         let linkSelection = linkGroup
             .selectAll('line.link')
             .data(links, d => d.source.data.name + '->' + d.target.data.name);
@@ -665,6 +689,23 @@ $(document).ready(function() {
         linkSelection = linkEnter.merge(linkSelection);
         linkSelectionGlobal = linkSelection;
     
+        // Indirect links
+        let indirectLinkSelection = indirectLinkGroup
+            .selectAll('line.indirect-link')
+            .data(indirectLinks, d => d.source.data.name + '->' + d.target.data.name);
+    
+        indirectLinkSelection.exit().remove();
+    
+        let indirectLinkEnter = indirectLinkSelection.enter()
+            .append('line')
+            .attr('class', 'indirect-link')
+            .attr('stroke', 'var(--indirect-link-clr)')
+            .attr('stroke-width', indirectLinkWidth )
+            .attr('stroke-dasharray', `${indirectLinkWidth }, ${indirectLinkWidth * 2}`);
+    
+        indirectLinkSelection = indirectLinkEnter.merge(indirectLinkSelection);
+    
+        // Nodes
         let nodeSelection = nodeGroup
             .selectAll('circle.node')
             .data(nodes.filter(shouldHaveCircle), d => d.data.name);
@@ -691,6 +732,7 @@ $(document).ready(function() {
         nodeSelection = nodeEnter.merge(nodeSelection);
         nodeSelectionGlobal = nodeSelection;
     
+        // Labels
         let labelSelection = labelGroup
             .selectAll('text.label')
             .data(nodes, d => d.data.name);
@@ -726,6 +768,12 @@ $(document).ready(function() {
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
     
+            indirectLinkSelection
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+    
             nodeSelection
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
@@ -749,7 +797,6 @@ $(document).ready(function() {
             }
         });
     
-        // shuffleNodeForces();
         updateRightContainer(data);
     }
     
