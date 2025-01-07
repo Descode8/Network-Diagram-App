@@ -3,6 +3,7 @@ $(document).ready(function() {
     let height = $('.graph-container')[0].clientHeight;
     let rootNode = null;
     let graphData = null;
+    let allGroups = [];
 
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 5;
@@ -362,7 +363,7 @@ $(document).ready(function() {
     }
 
     function initializeGroupToggles(data) {
-        let allGroups = Array.from(getUniqueGroups(data));
+        allGroups = Array.from(getUniqueGroups(data));
         allGroups.sort((a, b) => a.localeCompare(b));
         if (Object.keys(visibleGroups).length === 0) {
             allGroups.forEach(group => {
@@ -562,8 +563,8 @@ $(document).ready(function() {
             };
             return force;
         }
-    
-        // Branch: if group nodes are on, use a radial layout
+
+        // Group Nodes are ON
         if (displayGroupNodes) {
             simulation
                 .force("radial", d3.forceRadial(50, width / 2, height / 2)) // Pulls nodes into a radial layout.
@@ -580,12 +581,8 @@ $(document).ready(function() {
                         }
                     })
                 );
+        // Group Nodes are OFF
         } else {
-            // Branch: if group nodes are off, use the "circular children" approach
-            if (depthSlider.value === 2) {
-                simulation
-                    .force("collide", d3.forceCollide().radius(10));
-            }
             simulation
                 .force("link", d3.forceLink(links).strength(1) // Connects nodes with links.
                     .id(d => d.data.name)
@@ -598,6 +595,13 @@ $(document).ready(function() {
             .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
         }
 
+        
+        if (currentActiveNodeName !== rootNode.name && depthSlider.value == 2) {
+            simulation.force("radial", null);
+        }
+
+
+        /* INDIRECT RELATIONSHIPS */
         if (hasIndirectRelationships && displayIndirectRelationship) {
             var indirectNodes = getIndirectRelationshipNodes(data);
             console.log('All Indirect Relationship Nodes:', indirectNodes);
