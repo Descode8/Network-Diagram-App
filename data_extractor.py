@@ -39,9 +39,9 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     
     # ---------------------- DEBUGGING ----------------------
     # Print the dependency_to_cis mapping to verify 'PO 1' is included
-    print("Dependency to CIs Mapping:")
-    for dep, cis in dependency_to_cis.items():
-        print(f"  '{dep}': {cis}")
+    # print("Dependency to CIs Mapping:")
+    # for dep, cis in dependency_to_cis.items():
+    #     print(f"  '{dep}': {cis}")
     # -----------------------------------------------------
     
     # Gather all known type names by combining CI_Type and Dependency_Type
@@ -103,7 +103,7 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     if active_node in dependency_to_cis and len(dependency_to_cis[active_node]) > 1:
         active_node_relationships["indirectRelationships"] = dependency_to_cis[active_node]
         # ---------------------- DEBUGGING ----------------------
-        print(f"Assigned indirectRelationships to '{active_node}': {dependency_to_cis[active_node]}")
+        # print(f"Assigned indirectRelationships to '{active_node}': {dependency_to_cis[active_node]}")
         # -----------------------------------------------------
     
     # If only depth=1, just display the node itself
@@ -201,9 +201,9 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                     # Remove 'indirectRelationships' key if it's None
                                     if c_node["indirectRelationships"] is None:
                                         del c_node["indirectRelationships"]
-                                    else:
+                                    # else:
                                         # Debugging: Print assignment
-                                        print(f"Assigned indirectRelationships to '{c_name}': {c_node['indirectRelationships']}")
+                                        # print(f"Assigned indirectRelationships to '{c_name}': {c_node['indirectRelationships']}")
 
                                     new_group["children"].append(c_node)
                                     total_count += 1
@@ -255,9 +255,9 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                     # Remove 'indirectRelationships' key if it's None
                                     if p_node["indirectRelationships"] is None:
                                         del p_node["indirectRelationships"]
-                                    else:
+                                    # else:
                                         # Debugging: Print assignment
-                                        print(f"Assigned indirectRelationships to '{p_name}': {p_node['indirectRelationships']}")
+                                        # print(f"Assigned indirectRelationships to '{p_name}': {p_node['indirectRelationships']}")
 
                                     parent_group["children"].append(p_node)
                                     total_count += 1
@@ -332,9 +332,9 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                     # Remove 'indirectRelationships' key if it's None
                                     if c_node["indirectRelationships"] is None:
                                         del c_node["indirectRelationships"]
-                                    else:
+                                    # else:
                                         # Debugging: Print assignment
-                                        print(f"Assigned indirectRelationships to '{c_name}': {c_node['indirectRelationships']}")
+                                        # print(f"Assigned indirectRelationships to '{c_name}': {c_node['indirectRelationships']}")
 
                                     new_group["children"].append(c_node)
                                     total_count += 1
@@ -387,9 +387,9 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                             # Remove 'indirectRelationships' key if it's None
                             if p_node["indirectRelationships"] is None:
                                 del p_node["indirectRelationships"]
-                            else:
+                            # else:
                                 # Debugging: Print assignment
-                                print(f"Assigned indirectRelationships to '{p_name}': {p_node['indirectRelationships']}")
+                                # print(f"Assigned indirectRelationships to '{p_name}': {p_node['indirectRelationships']}")
 
                             parent_group["children"].append(p_node)
                             total_count += 1
@@ -433,9 +433,9 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                             # Remove 'indirectRelationships' key if it's None
                             if c_node["indirectRelationships"] is None:
                                 del c_node["indirectRelationships"]
-                            else:
+                            # else:
                                 # Debugging: Print assignment
-                                print(f"Assigned indirectRelationships to '{c_name}': {c_node['indirectRelationships']}")
+                                # print(f"Assigned indirectRelationships to '{c_name}': {c_node['indirectRelationships']}")
 
                             child_group["children"].append(c_node)
                             total_count += 1

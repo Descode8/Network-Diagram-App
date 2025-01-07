@@ -10,7 +10,7 @@ $(document).ready(function() {
     const groupNodeSize = 4;
     const nodeSize = 4;
     const linkWidth = 0.25;
-    const indirectLinkWidth = linkWidth * 10;
+    const indirectLinkWidth = linkWidth * 7;
     const linkColor = 'var(--link-clr)';
     const nodeBorderColor = 'var(--nde-bdr-clr)';
 
@@ -616,8 +616,22 @@ $(document).ready(function() {
         
         // Active Node and 2 children
         if (data.totalNodesDisplayed == 3) {
+            console.log('Active Node and 2 children');
             resetSimulationForForces();
             simulation
+                .force("charge", d3.forceManyBody().strength(-1000))
+                .force("link", d3.forceLink(links)
+                    .id(d => d.data.name)
+                    .distance(75)
+                );
+        }
+
+        // Active Node and 3 children
+        if (data.totalNodesDisplayed == 4) {
+            console.log('Active Node and 3 children');
+            resetSimulationForForces();
+            simulation
+                .force("radial", null)
                 .force("charge", d3.forceManyBody().strength(-1000))
                 .force("link", d3.forceLink(links)
                     .id(d => d.data.name)
@@ -685,7 +699,7 @@ $(document).ready(function() {
             .attr('class', 'indirect-link')
             .attr('stroke', 'var(--indirect-link-clr)')
             .attr('stroke-width', indirectLinkWidth)
-            .attr('stroke-dasharray', `${indirectLinkWidth}, ${indirectLinkWidth * 2}`);
+            .attr('stroke-dasharray', `${indirectLinkWidth}, ${indirectLinkWidth * 5}`);
     
         indirectLinkSelection = indirectLinkEnter.merge(indirectLinkSelection);
     
@@ -796,7 +810,7 @@ $(document).ready(function() {
                 fitGraphToContainer();
             }
         });
-    
+        // shuffleNodeForces();
         updateRightContainer(data);
     }
     
