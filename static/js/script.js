@@ -380,17 +380,17 @@ $(document).ready(function() {
         }
 
         allGroups.forEach(group => {
-            if (group === data.type) {
-                if(data.name === data.type) {
-                    dynamicTogglesContainer.style.display = 'none';
-                    groupNodeSwitchContainer.style.display = 'none';
-                    return;
-                } else {
-                    dynamicTogglesContainer.style.display = 'block';
-                    groupNodeSwitchContainer.style.display = 'flex';
-                }
-                return;
-            }
+            // if (group === data.type) {
+            //     if(data.name === data.type) {
+            //         dynamicTogglesContainer.style.display = 'none';
+            //         groupNodeSwitchContainer.style.display = 'none';
+            //         return;
+            //     } else {
+            //         dynamicTogglesContainer.style.display = 'block';
+            //         groupNodeSwitchContainer.style.display = 'flex';
+            //     }
+            //     return;
+            // }
 
             var label = document.createElement('label');
             label.className = 'switch span';
@@ -604,7 +604,7 @@ $(document).ready(function() {
 
         }
 
-        // simulation.force("link").links(links);
+        simulation.force("link").links(links);
     
         const activeNodeName = data.name;
         function shouldHaveCircle(d) {
