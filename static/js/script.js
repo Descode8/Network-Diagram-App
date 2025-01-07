@@ -245,6 +245,11 @@ $(document).ready(function() {
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
     });
 
+    indirectRelationshipSwitch.addEventListener('change', () => {
+        resetSimulationForForces();
+        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
+    });
+
     // -----------------------------------------------------
     // Zoom Behavior
     // -----------------------------------------------------
@@ -435,25 +440,41 @@ $(document).ready(function() {
         simulation.force('circularChildren', null);
     }
 
-    // Add a 'change' event listener to the checkbox
-    indirectRelationshipSwitch.addEventListener('change', () => {
-        if (indirectRelationshipSwitch.checked) {
-            // The toggle is checked
-            console.log('Indirect Relationships Enabled');
-            // Perform actions when checked
-            // For example, apply styles or fetch additional data
-        } else {
-            // The toggle is unchecked
-            console.log('Indirect Relationships Disabled');
-            // Perform actions when unchecked
-            // For example, remove styles or clear certain data
+    function containsIndirectRelationships(obj) {
+        if (obj && typeof obj === 'object') {
+            if (obj.hasOwnProperty('indirectRelationships')) {
+                return true;
         }
+            for (let key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    if (containsIndirectRelationships(obj[key])) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
 
-        // Common actions regardless of the toggle state
-        resetSimulationForForces();
-        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
-    });
-
+    function getIndirectRelationshipNodes(obj, result = []) {
+        if (Array.isArray(obj)) {
+            obj.forEach(element => getIndirectRelationshipNodes(element, result));
+        } else if (obj && typeof obj === 'object') {
+            if (obj.hasOwnProperty('indirectRelationships') && Array.isArray(obj.indirectRelationships)) {
+                result.push({
+                    name: obj.name,
+                    indirectRelationships: obj.indirectRelationships
+                });
+            }
+            for (let key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    getIndirectRelationshipNodes(obj[key], result);
+                }
+            }
+        }
+        return result;
+    }
+    
 
     function renderGraph(data) {
         // Clear old elements
@@ -463,11 +484,12 @@ $(document).ready(function() {
     
         currentActiveNodeName = data.name;
 
-        const displayAssetNodes = assetNodesSwitch.checked;
-        const displayIndirectRelationship = indirectRelationshipSwitch.checked;
-        var hasIndirectRelationships = data.indirectRelationships;
+        var displayGroupNodes = groupNodeSwitch.checked;
+        var displayAssetNodes = assetNodesSwitch.checked;
+        var displayIndirectRelationship = indirectRelationshipSwitch.checked;
+        var hasIndirectRelationships = containsIndirectRelationships(data);
 
-        let displayGroupNodes = groupNodeSwitch.checked;
+
         const isActiveNodeAGroup = (
             (data.groupType && data.groupType === data.name) ||
             (data.type && data.type === data.name)
@@ -574,6 +596,12 @@ $(document).ready(function() {
                 )
             .force("circularChildren", forceCircularChildren(50)) // Distributes child nodes around their parent in a circle.
             .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
+        }
+
+        if (hasIndirectRelationships && displayIndirectRelationship) {
+            var indirectNodes = getIndirectRelationshipNodes(data);
+            console.log('All Indirect Relationship Nodes:', indirectNodes);
+
         }
 
         // simulation.force("link").links(links);
