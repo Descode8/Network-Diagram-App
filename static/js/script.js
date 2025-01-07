@@ -32,7 +32,8 @@ $(document).ready(function() {
     const assetNodesSwitch = document.getElementById('assetNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
     const groupNodeSwitchContainer = document.querySelector('.groupSwitch');
-    const indirectRelationshipSwitch = document.querySelector('.indirectRelationshipSwitch');
+    const indirectRelationshipSwitch = document.getElementById('indirectRelationshipSwitch');
+
     
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
@@ -244,12 +245,6 @@ $(document).ready(function() {
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
     });
 
-    indirectRelationshipSwitch.addEventListener('change', () => {
-        indirectRelationshipSwitch.checked;
-        resetSimulationForForces();
-        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
-    });
-
     // -----------------------------------------------------
     // Zoom Behavior
     // -----------------------------------------------------
@@ -363,6 +358,7 @@ $(document).ready(function() {
 
     function initializeGroupToggles(data) {
         let allGroups = Array.from(getUniqueGroups(data));
+        allGroups.sort((a, b) => a.localeCompare(b));
         if (Object.keys(visibleGroups).length === 0) {
             allGroups.forEach(group => {
                 visibleGroups[group] = true;
@@ -379,12 +375,11 @@ $(document).ready(function() {
         }
 
         allGroups.forEach(group => {
-            // console.log("data", data);
             if (group === data.type) {
                 if(data.name === data.type) {
-                    console.log("Group and type is the same as data type");
                     dynamicTogglesContainer.style.display = 'none';
                     groupNodeSwitchContainer.style.display = 'none';
+                    return;
                 } else {
                     dynamicTogglesContainer.style.display = 'block';
                     groupNodeSwitchContainer.style.display = 'flex';
@@ -440,6 +435,26 @@ $(document).ready(function() {
         simulation.force('circularChildren', null);
     }
 
+    // Add a 'change' event listener to the checkbox
+    indirectRelationshipSwitch.addEventListener('change', () => {
+        if (indirectRelationshipSwitch.checked) {
+            // The toggle is checked
+            console.log('Indirect Relationships Enabled');
+            // Perform actions when checked
+            // For example, apply styles or fetch additional data
+        } else {
+            // The toggle is unchecked
+            console.log('Indirect Relationships Disabled');
+            // Perform actions when unchecked
+            // For example, remove styles or clear certain data
+        }
+
+        // Common actions regardless of the toggle state
+        resetSimulationForForces();
+        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
+    });
+
+
     function renderGraph(data) {
         // Clear old elements
         graphGroup.selectAll('g.links').remove();
@@ -450,13 +465,7 @@ $(document).ready(function() {
 
         const displayAssetNodes = assetNodesSwitch.checked;
         const displayIndirectRelationship = indirectRelationshipSwitch.checked;
-
-        if (data.indirectRelationships) {
-            console.log("Has Indirect Relationships");
-            indirectRelationshipSwitch.style.display = 'flex';
-        } else {
-            indirectRelationshipSwitch.style.display = 'none';
-        }
+        var hasIndirectRelationships = data.indirectRelationships;
 
         let displayGroupNodes = groupNodeSwitch.checked;
         const isActiveNodeAGroup = (
@@ -565,20 +574,6 @@ $(document).ready(function() {
                 )
             .force("circularChildren", forceCircularChildren(50)) // Distributes child nodes around their parent in a circle.
             .force("collide", d3.forceCollide().radius(25)); // Prevents collision (nodes can overlap slightly).
-        }
-
-        if (data.indirectRelationships && displayIndirectRelationship) {
-            // console.log("Has Indirect Relationships");
-            // console.log("Data", data);
-            // console.log("Indirect Relationships", data.indirectRelationships);
-            console.log("NODE NAME", data.name);
-            
-            const indirectRelNodes = [];
-            // Iterate through each indirect relationship
-            data.indirectRelationships.forEach(rel => {
-                indirectRelNodes.push(rel);
-            });
-            console.log("Indirect Relationship Nodes", indirectRelNodes);
         }
 
         // simulation.force("link").links(links);

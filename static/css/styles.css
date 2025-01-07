@@ -531,7 +531,7 @@ label, .depthSlider {
 
 .dynamic-group-toggles {
     width: 100%;
-    margin: 10px auto;
+    margin: 0px auto;
 }
 
 .groupSwitch, .assetSwitch, .indirectRelationshipSwitch, .switch {
