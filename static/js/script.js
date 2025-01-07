@@ -625,7 +625,34 @@ $(document).ready(function() {
                 );
         }
     
-        /* INDIRECT RELATIONSHIPS */
+        simulation.force("link").links(links);
+    
+        const activeNodeName = data.name;
+        function shouldHaveCircle(d) {
+            if (d.data.name === activeNodeName) return true;
+            if (d.data.groupType) return true;
+            return displayAssetNodes;
+        }
+    
+        // Create or select groups - Changed order to put indirectLinks first
+        let indirectLinkGroup = graphGroup.select('g.indirectLinks');
+        if (indirectLinkGroup.empty()) {
+            indirectLinkGroup = graphGroup.append('g').attr('class', 'indirectLinks');
+        }
+        let linkGroup = graphGroup.select('g.links');
+        if (linkGroup.empty()) {
+            linkGroup = graphGroup.append('g').attr('class', 'links');
+        }
+        let nodeGroup = graphGroup.select('g.nodes');
+        if (nodeGroup.empty()) {
+            nodeGroup = graphGroup.append('g').attr('class', 'nodes');
+        }
+        let labelGroup = graphGroup.select('g.labels');
+        if (labelGroup.empty()) {
+            labelGroup = graphGroup.append('g').attr('class', 'labels');
+        }
+    
+        /* INDIRECT RELATIONSHIPS - Moved before regular links */
         let indirectLinks = [];
         if (hasIndirectRelationships && displayIndirectRelationship) {
             const indirectNodes = getIndirectRelationshipNodes(data);
@@ -646,32 +673,21 @@ $(document).ready(function() {
             });
         }
     
-        simulation.force("link").links(links);
+        // Indirect links - Render before regular links
+        let indirectLinkSelection = indirectLinkGroup
+            .selectAll('line.indirect-link')
+            .data(indirectLinks, d => d.source.data.name + '->' + d.target.data.name);
     
-        const activeNodeName = data.name;
-        function shouldHaveCircle(d) {
-            if (d.data.name === activeNodeName) return true;
-            if (d.data.groupType) return true;
-            return displayAssetNodes;
-        }
+        indirectLinkSelection.exit().remove();
     
-        // Create or select groups
-        let linkGroup = graphGroup.select('g.links');
-        if (linkGroup.empty()) {
-            linkGroup = graphGroup.append('g').attr('class', 'links');
-        }
-        let nodeGroup = graphGroup.select('g.nodes');
-        if (nodeGroup.empty()) {
-            nodeGroup = graphGroup.append('g').attr('class', 'nodes');
-        }
-        let labelGroup = graphGroup.select('g.labels');
-        if (labelGroup.empty()) {
-            labelGroup = graphGroup.append('g').attr('class', 'labels');
-        }
-        let indirectLinkGroup = graphGroup.select('g.indirectLinks');
-        if (indirectLinkGroup.empty()) {
-            indirectLinkGroup = graphGroup.append('g').attr('class', 'indirectLinks');
-        }
+        let indirectLinkEnter = indirectLinkSelection.enter()
+            .append('line')
+            .attr('class', 'indirect-link')
+            .attr('stroke', 'var(--indirect-link-clr)')
+            .attr('stroke-width', indirectLinkWidth)
+            .attr('stroke-dasharray', `${indirectLinkWidth}, ${indirectLinkWidth * 2}`);
+    
+        indirectLinkSelection = indirectLinkEnter.merge(indirectLinkSelection);
     
         // Regular links
         let linkSelection = linkGroup
@@ -688,22 +704,6 @@ $(document).ready(function() {
     
         linkSelection = linkEnter.merge(linkSelection);
         linkSelectionGlobal = linkSelection;
-    
-        // Indirect links
-        let indirectLinkSelection = indirectLinkGroup
-            .selectAll('line.indirect-link')
-            .data(indirectLinks, d => d.source.data.name + '->' + d.target.data.name);
-    
-        indirectLinkSelection.exit().remove();
-    
-        let indirectLinkEnter = indirectLinkSelection.enter()
-            .append('line')
-            .attr('class', 'indirect-link')
-            .attr('stroke', 'var(--indirect-link-clr)')
-            .attr('stroke-width', indirectLinkWidth )
-            .attr('stroke-dasharray', `${indirectLinkWidth }, ${indirectLinkWidth * 2}`);
-    
-        indirectLinkSelection = indirectLinkEnter.merge(indirectLinkSelection);
     
         // Nodes
         let nodeSelection = nodeGroup
@@ -762,13 +762,13 @@ $(document).ready(function() {
         }
     
         simulation.on('tick', () => {
-            linkSelection
+            indirectLinkSelection
                 .attr('x1', d => d.source.x)
                 .attr('y1', d => d.source.y)
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
     
-            indirectLinkSelection
+            linkSelection
                 .attr('x1', d => d.source.x)
                 .attr('y1', d => d.source.y)
                 .attr('x2', d => d.target.x)
