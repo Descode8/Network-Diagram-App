@@ -344,21 +344,21 @@ title {
 }
 
 .search-container, .group-asset-toggle-container, .switches-container, 
-#depthSlider, .groupSwitch span, .assetSwitch span, .indirectRelationshipSwitch span .hover-box {
+#depthSlider, .groupSwitch span, .assetSwitch span, .indirectRelationshipSwitch span .tool-tip {
     transition: 0.5s ease-in-out; 
 }
 
-.hover-box {
+.tool-tip {
     transition: 3s ease-in-out;
 }
 
-.search-container:active, .search-container:focus-within, .hover-box {
+.search-container:active, .search-container:focus-within, .tool-tip {
     border: .75px solid var(--pane-ttle-bg-clr); 
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
 .search-container:hover, .group-asset-toggle-container:hover, 
-.switches-container:hover, #depthSlider:hover, .hover-box {
+.switches-container:hover, #depthSlider:hover, .tool-tip {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
@@ -481,11 +481,12 @@ label, .depthSlider {
     text-decoration: underline;
 }
 
-.hover-box {
+.tool-tip {
     opacity: 0;
     visibility: hidden;
     position: absolute;
-    transform: translate(-73%, -135%); 
+    /* transform: translate(-73%, -135%);  */
+    transform: translate(-73%, calc(-135% + var(--scroll-offset)));
     background-color: var(--hoverbx-bg-clr);
     padding: 7px;
     border-radius: 5px;
@@ -499,11 +500,11 @@ label, .depthSlider {
     display: sticky;
 }
 
-.hover-box::after {
+.tool-tip::after {
     z-index: 1;
     content: "";
     position: absolute;
-    top: 100%; /* Position the arrow at the bottom of the hover-box */
+    top: 100%; /* Position the arrow at the bottom of the tool-tip */
     left: 85%;
     transform: translateX(-50%);
     border-width: 7.8px; /* Outer triangle size */
@@ -511,7 +512,7 @@ label, .depthSlider {
     border-color: var(--bdr-clr) transparent transparent transparent; /* Outer border color (black) */
 }
 
-.hover-box::before {
+.tool-tip::before {
     z-index: 2;
     content: "";
     position: absolute;
@@ -520,17 +521,17 @@ label, .depthSlider {
     transform: translateX(-50%);
     border-width: 8px; /* Inner triangle size */
     border-style: solid;
-    border-color: var(--hoverbx-bg-clr) transparent transparent transparent; /* Matches hover-box background */
+    border-color: var(--hoverbx-bg-clr) transparent transparent transparent; /* Matches tool-tip background */
 }
 
-.dependency-node-container:hover .hover-box {
+.dependency-node-container:hover .tool-tip {
     opacity: 1;
     visibility: visible;
     pointer-events: auto; /* Enable interaction when visible */
     transition: .5s ease-in-out;
 }
 
-.dependency-node:hover + .hover-box {
+.dependency-node:hover + .tool-tip {
     display: block; 
 }
 

@@ -73,6 +73,19 @@ $(document).ready(function() {
         checkBothPanesVisibility(); 
         fitGraphToContainer();
     });
+
+    const rightPane = document.querySelector('.right-pane');
+    rightPane.addEventListener('scroll', () => {
+    // How far have we scrolled down?
+    const scrollY = rightPane.scrollTop;
+    
+    // Negative sign means “move the tooltip upward” as we scroll down
+    // Adjust if you need the opposite effect
+    const offsetValue = -scrollY + 'px';
+
+    // Update the global (or :root) CSS variable
+    document.documentElement.style.setProperty('--scroll-offset', offsetValue);
+    });
     
     collapseRightPane.click(function() {
         if ($('.right-pane').is(':visible')) {
@@ -811,12 +824,12 @@ $(document).ready(function() {
                 .attr('y', d => {
                     const r = getCircleScreenRadius(d);
                     if (d.data.name === currentActiveNodeName) {
-                        return d.y - (r + 5);
+                        return d.y - (r + 3);
                     }
                     if (!displayAssetNodes) {
                         return d.y;
                     }
-                    return d.y - (r + 4);
+                    return d.y - (r + 3);
                 });
     
             if (simulation.alpha() < 0.05) {
@@ -824,7 +837,7 @@ $(document).ready(function() {
                 fitGraphToContainer();
             }
         });
-        shuffleNodeForces();
+
         updateRightContainer(data);
     }
     
@@ -1183,11 +1196,10 @@ $(document).ready(function() {
     
             nodeContainer
                 .append("div")
-                .attr("class", "hover-box")
+                .attr("class", "tool-tip")
                 .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
         }
     }
-    
 
     function showGroupToggles() {
         var dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
