@@ -1,9 +1,15 @@
 $(document).ready(function() {
     let width = $('.graph-container')[0].clientWidth;
     let height = $('.graph-container')[0].clientHeight;
+
     let rootNode = null;
+    let activeNode = null;
     let graphData = null;
+    let currentActiveNodeName = null;
     let allGroups = [];
+    let allChildren = [];
+    let nodesDisplayed = [];
+    let visibleGroups = {};
 
     const svg = d3.select('.graph-container svg');
     const activeNodeSize = 5;
@@ -13,10 +19,6 @@ $(document).ready(function() {
     const indirectLinkWidth = linkWidth * 7;
     const linkColor = 'var(--link-clr)';
     const nodeBorderColor = 'var(--nde-bdr-clr)';
-
-    let currentActiveNodeName = null;
-    let nodesDisplayed = [];
-    let visibleGroups = {};
 
     const collapseLeftPane = $('.expand-collapse-buttonLeft');
     let leftPaneIsVisible = true;
@@ -33,9 +35,8 @@ $(document).ready(function() {
     const switchesContainer = document.querySelector('.switches-container');
     const assetNodesSwitch = document.getElementById('assetNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
-    const groupNodeSwitchContainer = document.querySelector('.groupSwitch');
-    const indirectRelationshipSwitch = document.getElementById('indirectRelationshipSwitch');
-
+    const indirectRelationshipNodeSwitch = document.getElementById('indirectRelationshipNodeSwitch');
+    const indirectRelationshipSwitch = document.querySelector('.indirectRelationshipSwitch');
     
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
@@ -247,7 +248,7 @@ $(document).ready(function() {
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
     });
 
-    indirectRelationshipSwitch.addEventListener('change', () => {
+    indirectRelationshipNodeSwitch.addEventListener('change', () => {
         resetSimulationForForces();
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
     });
@@ -341,6 +342,8 @@ $(document).ready(function() {
                 }
                 graphData = data;
 
+                getAllChildren(data); 
+
                 showGroupToggles();
                 mergeSameGroupNodes(data);
                 populateNodeList(data); 
@@ -350,6 +353,17 @@ $(document).ready(function() {
             .catch(error => {
                 console.error('Error fetching graph data:', error);
             });
+    }
+
+    function getAllChildren(data) {
+        if (data.children) {
+            data.children.forEach(child => {
+                allChildren.push(child);
+            })
+        } else {
+            return allChildren.push('No Children');
+        }
+
     }
 
     function getUniqueGroups(node, groups = new Set()) {
@@ -381,18 +395,12 @@ $(document).ready(function() {
             dynamicTogglesContainer.innerHTML = '';
         }
 
+        // console.log("Comparing Groups and children");
         allGroups.forEach(group => {
-            // if (group === data.type) {
-            //     if(data.name === data.type) {
-            //         dynamicTogglesContainer.style.display = 'none';
-            //         groupNodeSwitchContainer.style.display = 'none';
-            //         return;
-            //     } else {
-            //         dynamicTogglesContainer.style.display = 'block';
-            //         groupNodeSwitchContainer.style.display = 'flex';
-            //     }
-            //     return;
-            // }
+            // Remove toggle if group is the same as the active node
+            if (group === data.type) {
+                return;
+            }
 
             var label = document.createElement('label');
             label.className = 'switch span';
@@ -489,9 +497,15 @@ $(document).ready(function() {
     
         var displayGroupNodes = groupNodeSwitch.checked;
         var displayAssetNodes = assetNodesSwitch.checked;
-        var displayIndirectRelationship = indirectRelationshipSwitch.checked;
+        var displayIndirectRelationship = indirectRelationshipNodeSwitch.checked;
         var hasIndirectRelationships = containsIndirectRelationships(data);
-    
+
+        if (hasIndirectRelationships) {
+            indirectRelationshipSwitch.style.display = 'flex';
+        } else {
+            indirectRelationshipSwitch.style.display = 'none';
+        }
+
         const isActiveNodeAGroup = (
             (data.groupType && data.groupType === data.name) ||
             (data.type && data.type === data.name)
@@ -616,7 +630,7 @@ $(document).ready(function() {
         
         // Active Node and 2 children
         if (data.totalNodesDisplayed == 3) {
-            console.log('Active Node and 2 children');
+            // console.log('Active Node and 2 children');
             resetSimulationForForces();
             simulation
                 .force("charge", d3.forceManyBody().strength(-1000))
@@ -628,7 +642,7 @@ $(document).ready(function() {
 
         // Active Node and 3 children
         if (data.totalNodesDisplayed == 4) {
-            console.log('Active Node and 3 children');
+            // console.log('Active Node and 3 children');
             resetSimulationForForces();
             simulation
                 .force("radial", null)
@@ -670,7 +684,7 @@ $(document).ready(function() {
         let indirectLinks = [];
         if (hasIndirectRelationships && displayIndirectRelationship) {
             const indirectNodes = getIndirectRelationshipNodes(data);
-            console.log('Indirect Nodes:', indirectNodes);
+            // console.log('Indirect Nodes:', indirectNodes);
             indirectNodes.forEach(sourceNode => {
                 const source = nodes.find(n => n.data.name === sourceNode.name);
                 if (source) {
@@ -810,7 +824,7 @@ $(document).ready(function() {
                 fitGraphToContainer();
             }
         });
-        // shuffleNodeForces();
+        shuffleNodeForces();
         updateRightContainer(data);
     }
     
