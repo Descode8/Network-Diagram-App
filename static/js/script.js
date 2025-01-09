@@ -15,8 +15,10 @@ $(document).ready(function() {
     const activeNodeSize = 5;
     const groupNodeSize = 4;
     const nodeSize = 4;
-    const linkWidth = 0.25;
-    const indirectLinkWidth = linkWidth * 7;
+    const linkWidth = 1;
+    let indirectLinkWidth = 1;
+
+    const labelColor = 'var(--label-clr)';
     const linkColor = 'var(--link-clr)';
     const nodeBorderColor = 'var(--nde-bdr-clr)';
 
@@ -36,8 +38,8 @@ $(document).ready(function() {
     const assetNodesSwitch = document.getElementById('assetNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
     const indirectRelationshipNodeSwitch = document.getElementById('indirectRelationshipNodeSwitch');
-    const indirectRelationshipSwitch = document.querySelector('.indirectRelationshipSwitch');
-    
+    // We remove the extra "Indirect" toggle—no longer needed.
+
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
 
@@ -76,15 +78,14 @@ $(document).ready(function() {
 
     const rightPane = document.querySelector('.right-pane');
     rightPane.addEventListener('scroll', () => {
-    // How far have we scrolled down?
-    const scrollY = rightPane.scrollTop;
-    
-    // Negative sign means “move the tooltip upward” as we scroll down
-    // Adjust if you need the opposite effect
-    const offsetValue = -scrollY + 'px';
+        // How far have we scrolled down?
+        const scrollY = rightPane.scrollTop;
+        
+        // Negative sign means “move the tooltip upward” as we scroll down
+        const offsetValue = -scrollY + 'px';
 
-    // Update the global (or :root) CSS variable
-    document.documentElement.style.setProperty('--scroll-offset', offsetValue);
+        // Update the global (or :root) CSS variable
+        document.documentElement.style.setProperty('--scroll-offset', offsetValue);
     });
     
     collapseRightPane.click(function() {
@@ -157,7 +158,7 @@ $(document).ready(function() {
     }
 
     // -----------------------------------------------------
-    // IMPORTANT FIX: Only push strings into allNodes
+    // Only push strings into allNodes
     // -----------------------------------------------------
     function populateNodeList(data) {
         function traverse(node) {
@@ -178,22 +179,21 @@ $(document).ready(function() {
     }
 
     function searchNode() {
-        var input = searchInput.value.trim();
+        var input = searchInput.value.trim().toLowerCase();
         if (input) {
             var matchingNode = allNodes.find(node => {
-              // We also ensure node is a string here
-                return (typeof node === 'string') && (node.toLowerCase() === input.toLowerCase());
+                return typeof node === 'string' && node.toLowerCase() === input;
             });
             if (matchingNode) {
-                fetchAndRenderGraph(depthSlider.value, input);
+                fetchAndRenderGraph(depthSlider.value, matchingNode);
             } else {
-                showInvalidSearchMessage(input);
+                showInvalidSearchMessage(searchInput.value);  
             }
         } else {
-            showInvalidSearchMessage(input);
+            showInvalidSearchMessage(searchInput.value);
         }
     }
-
+    
     searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -208,7 +208,7 @@ $(document).ready(function() {
     });
 
     // -----------------------------------------------------
-    // AUTOCOMPLETE SUGGESTIONS with the FIX
+    // Autocomplete
     // -----------------------------------------------------
     searchInput.addEventListener('input', () => {
         var input = searchInput.value.toLowerCase();
@@ -220,7 +220,6 @@ $(document).ready(function() {
             return;
         }
 
-        // Filter only strings & check matches
         var matches = allNodes.filter(item => 
             typeof item === 'string' && item.toLowerCase().includes(input)
         );
@@ -304,23 +303,36 @@ $(document).ready(function() {
 
     svg.call(zoom);
 
+    // -----------------------------------------------------
+    // Color function (updated to match your color map)
+    // -----------------------------------------------------
     function nodeColor(node) {
-        var nodes = node.data.groupType || node.data.type;
+        // We'll look at either groupType or type
+        let nodes = node.data.groupType || node.data.type;
         switch (nodes) {
-            case 'Organization': return 'var(--org-nde-clr)' || 'blue';
-            case 'Applications': return 'var(--app-nde-clr)' || 'purple';
-            case 'People': return 'var(--ppl-nde-clr)' || 'orange';
-            case 'Technology': return 'var(--tech-nde-clr)' || 'green';
-            case 'Data': return 'var(--data-nde-clr)' || 'teal';
-            case 'Procurements': return 'var(--procure-nde-clr)' || 'pink';
-            case 'Facilities': return 'var(--fclty-nde-clr)' || 'brown';
-            default: return 'yellow';
+            case 'Organization':
+                return 'var(--org-nde-clr)' || 'blue';
+            case 'Applications':
+                return 'var(--app-nde-clr)' || 'purple';
+            case 'People':
+                return 'var(--ppl-nde-clr)' || 'orange';
+            case 'Technology':
+                return 'var(--tech-nde-clr)' || 'green';
+            case 'Data':
+                return 'var(--data-nde-clr)' || 'teal';
+            case 'Procurements':
+                return 'var(--procure-nde-clr)' || 'pink';
+            case 'Facilities':
+                return 'var(--fclty-nde-clr)' || 'brown';
+            default:
+                // If no matching known type, use fallback
+                return 'yellow';
         }
     }
 
     svg.attr('width', width).attr('height', height);
     const graphGroup = svg.append('g');
-    const simulation = d3.forceSimulation()
+    const simulation = d3.forceSimulation();
 
     onHomeButton.addEventListener('click', () => {
         location.reload();
@@ -339,6 +351,58 @@ $(document).ready(function() {
         simulation.alphaDecay(0.01).alpha(1).restart();
     }
 
+    // -----------------------------------------------------
+    // Adjust ensureIndirectNodesVisible() to handle { name, type }
+    // -----------------------------------------------------
+    function findNodeByName(obj, name) {
+        if (!obj) return null;
+        if (obj.name === name) {
+            return obj;
+        }
+        if (Array.isArray(obj.children)) {
+            for (const child of obj.children) {
+                const found = findNodeByName(child, name);
+                if (found) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    function ensureIndirectNodesVisible(data) {
+        if (!indirectRelationshipNodeSwitch.checked) return;
+
+        const indirectNodes = getIndirectRelationshipNodes(data);
+        indirectNodes.forEach(sourceItem => {
+            const sourceNode = findNodeByName(data, sourceItem.name);
+            if (!sourceNode) return;
+
+            // Now each item in sourceItem.indirectRelationships is an object like { name, type }
+            sourceItem.indirectRelationships.forEach(targetObj => {
+                const { name: targetName, type: targetType } = targetObj;
+                const targetExists = findNodeByName(data, targetName);
+                if (!targetExists) {
+                    // Create a minimal node object
+                    const newIndirectNode = {
+                        name: targetName,
+                        // Instead of "Indirect", use the actual type if we have one, or fallback
+                        type: targetType || 'Unknown',
+                        description: "Automatically added via indirect relationship",
+                        children: []
+                    };
+                    if (!sourceNode.children) {
+                        sourceNode.children = [];
+                    }
+                    sourceNode.children.push(newIndirectNode);
+                }
+            });
+        });
+    }
+
+    // -----------------------------------------------------
+    // Fetch JSON & render
+    // -----------------------------------------------------
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
         var url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
         fetch(url, { headers: { 'Accept': 'application/json' } })
@@ -349,15 +413,17 @@ $(document).ready(function() {
                 return response.json();
             })
             .then(data => {
-                // console.log('Graph data fetched:', data);
-                if(!rootNode) {
+                if (!rootNode) {
                     rootNode = data;
                 }
                 graphData = data;
 
                 getAllChildren(data); 
-
                 showGroupToggles();
+
+                // Ensure that missing indirect nodes become visible
+                ensureIndirectNodesVisible(data);
+
                 mergeSameGroupNodes(data);
                 populateNodeList(data); 
                 initializeGroupToggles(data);
@@ -372,11 +438,10 @@ $(document).ready(function() {
         if (data.children) {
             data.children.forEach(child => {
                 allChildren.push(child);
-            })
+            });
         } else {
             return allChildren.push('No Children');
         }
-
     }
 
     function getUniqueGroups(node, groups = new Set()) {
@@ -408,7 +473,6 @@ $(document).ready(function() {
             dynamicTogglesContainer.innerHTML = '';
         }
 
-        // console.log("Comparing Groups and children");
         allGroups.forEach(group => {
             // Remove toggle if group is the same as the active node
             if (group === data.type) {
@@ -467,7 +531,7 @@ $(document).ready(function() {
         if (obj && typeof obj === 'object') {
             if (obj.hasOwnProperty('indirectRelationships')) {
                 return true;
-        }
+            }
             for (let key in obj) {
                 if (obj.hasOwnProperty(key)) {
                     if (containsIndirectRelationships(obj[key])) {
@@ -484,6 +548,7 @@ $(document).ready(function() {
             obj.forEach(element => getIndirectRelationshipNodes(element, result));
         } else if (obj && typeof obj === 'object') {
             if (obj.hasOwnProperty('indirectRelationships') && Array.isArray(obj.indirectRelationships)) {
+                // Now these are arrays of { name, type } objects
                 result.push({
                     name: obj.name,
                     indirectRelationships: obj.indirectRelationships
@@ -497,10 +562,11 @@ $(document).ready(function() {
         }
         return result;
     }
-    
 
+    // -----------------------------------------------------
+    // Main render function
+    // -----------------------------------------------------
     function renderGraph(data) {
-        // Clear old elements
         graphGroup.selectAll('g.links').remove();
         graphGroup.selectAll('g.nodes').remove();
         graphGroup.selectAll('g.labels').remove();
@@ -513,11 +579,8 @@ $(document).ready(function() {
         var displayIndirectRelationship = indirectRelationshipNodeSwitch.checked;
         var hasIndirectRelationships = containsIndirectRelationships(data);
 
-        if (hasIndirectRelationships) {
-            indirectRelationshipSwitch.style.display = 'flex';
-        } else {
-            indirectRelationshipSwitch.style.display = 'none';
-        }
+        // We remove the lines that displayed a separate “Indirect” toggle 
+        // or try to hide/show that. No extra toggles now.
 
         const isActiveNodeAGroup = (
             (data.groupType && data.groupType === data.name) ||
@@ -530,35 +593,46 @@ $(document).ready(function() {
             resetSimulationForForces();
         }
     
-        // Hide or flatten group nodes, filter by toggles
         hideGroupNodes(data, displayGroupNodes);
         filterDataByVisibleGroups(data);
     
-        // Convert data to d3.hierarchy and grab all nodes/links
         const root = d3.hierarchy(data);
         const links = root.links();
         let nodes = root.descendants();
     
-        // Filter nodes to exclude duplicates
         nodes = nodes.filter(node => {
             return node.data.name !== currentActiveNodeName || !node.data.groupType;
         });
     
         nodesDisplayed = nodes;
     
-        // Base forces on all nodes
+        const centerX = width / 2;
+        const centerY = height / 2;
+        nodes.forEach((node, i) => {
+            const angle = (2 * Math.PI * i) / nodes.length;
+            const radius = 100;
+            node.x = centerX + radius * Math.cos(angle);
+            node.y = centerY + radius * Math.sin(angle);
+            
+            if (node.data.name === data.name) {
+                node.x = centerX;
+                node.y = centerY;
+                node.fx = centerX;
+                node.fy = centerY;
+            }
+        });
+    
         simulation
             .nodes(nodes)
+            .alpha(0)
+            .alphaDecay(0.005)
+            .velocityDecay(.5)
             .force("charge", d3.forceManyBody()
                 .strength(-1000)
                 .distanceMin(150))
             .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collide", d3.forceCollide().radius(50))
-            .alphaDecay(0.01)
-            .alpha(1)
-            .restart();
-    
-        // Helper for distributing children radially around their parent
+            .force("collide", d3.forceCollide().radius(50));
+
         function forceCircularChildren(radius) {
             let nodesByParent = {};
             function force(alpha) {
@@ -572,8 +646,8 @@ $(document).ready(function() {
                         const angle = (2 * Math.PI / n) * i;
                         const targetX = parent.x + radius * Math.cos(angle);
                         const targetY = parent.y + radius * Math.sin(angle);
-                        child.vx += (targetX - child.x) * 0.5 * alpha;
-                        child.vy += (targetY - child.y) * 0.5 * alpha;
+                        child.vx += (targetX - child.x) * 0.9 * alpha;
+                        child.vy += (targetY - child.y) * 0.9 * alpha;
                     });
                 });
             }
@@ -592,7 +666,6 @@ $(document).ready(function() {
             return force;
         }
     
-        // Group Nodes are ON
         if (displayGroupNodes) {
             simulation
                 .force("radial", d3.forceRadial(50, width / 2, height / 2))
@@ -609,53 +682,30 @@ $(document).ready(function() {
                         }
                     })
                 );
-        // Group Nodes are OFF
         } else {
             simulation
+                .alpha(0)
+                .alphaDecay(0.01)
+                .velocityDecay(.5)
                 .force("link", d3.forceLink(links).strength(1)
                     .id(d => d.data.name)
                     .distance(link => {
                         const source = link.source.data.name;
-                        return (source === currentActiveNodeName) ? 50 : 0;
+                        return (source === currentActiveNodeName) ? 10 : 0;
                     })
                 )
                 .force("circularChildren", forceCircularChildren(50))
-                .force("collide", d3.forceCollide().radius(25));
+                .force("collide", d3.forceCollide().radius(15));
         }
     
-        // When group node is selected or when the active node is not the root node
         if (currentActiveNodeName !== rootNode.name && depthSlider.value == 2) {
             simulation
                 .force("radial", null)
-                .force("charge", d3.forceManyBody()
-                    .strength(-1000));
+                .force("charge", d3.forceManyBody().strength(-1000));
         }
     
-        // Active Node and 1 child
-        if (data.totalNodesDisplayed == 2) {
-            resetSimulationForForces();
-            simulation
-                .force("link", d3.forceLink(links)
-                    .id(d => d.data.name)
-                    .distance(50)
-                );
-        }
-        
-        // Active Node and 2 children
-        if (data.totalNodesDisplayed == 3) {
-            // console.log('Active Node and 2 children');
-            resetSimulationForForces();
-            simulation
-                .force("charge", d3.forceManyBody().strength(-1000))
-                .force("link", d3.forceLink(links)
-                    .id(d => d.data.name)
-                    .distance(75)
-                );
-        }
-
-        // Active Node and 3 children
-        if (data.totalNodesDisplayed == 4) {
-            // console.log('Active Node and 3 children');
+        const totalNodes = data.totalNodesDisplayed;
+        if (totalNodes >= 2 && totalNodes <= 6) {
             resetSimulationForForces();
             simulation
                 .force("radial", null)
@@ -675,7 +725,6 @@ $(document).ready(function() {
             return displayAssetNodes;
         }
     
-        // Create or select groups - Changed order to put indirectLinks first
         let indirectLinkGroup = graphGroup.select('g.indirectLinks');
         if (indirectLinkGroup.empty()) {
             indirectLinkGroup = graphGroup.append('g').attr('class', 'indirectLinks');
@@ -693,20 +742,20 @@ $(document).ready(function() {
             labelGroup = graphGroup.append('g').attr('class', 'labels');
         }
     
-        /* INDIRECT RELATIONSHIPS - Moved before regular links */
         let indirectLinks = [];
         if (hasIndirectRelationships && displayIndirectRelationship) {
             const indirectNodes = getIndirectRelationshipNodes(data);
-            // console.log('Indirect Nodes:', indirectNodes);
+            console.log(indirectNodes);
             indirectNodes.forEach(sourceNode => {
                 const source = nodes.find(n => n.data.name === sourceNode.name);
                 if (source) {
-                    sourceNode.indirectRelationships.forEach(targetName => {
-                        const target = nodes.find(n => n.data.name === targetName);
-                        if (target) {
+                    // Now each item is {name, type} 
+                    sourceNode.indirectRelationships.forEach(targetObj => {
+                        const found = nodes.find(n => n.data.name === targetObj.name);
+                        if (found) {
                             indirectLinks.push({
                                 source: source,
-                                target: target
+                                target: found
                             });
                         }
                     });
@@ -714,23 +763,32 @@ $(document).ready(function() {
             });
         }
     
-        // Indirect links - Render before regular links
         let indirectLinkSelection = indirectLinkGroup
             .selectAll('line.indirect-link')
             .data(indirectLinks, d => d.source.data.name + '->' + d.target.data.name);
     
         indirectLinkSelection.exit().remove();
-    
-        let indirectLinkEnter = indirectLinkSelection.enter()
-            .append('line')
-            .attr('class', 'indirect-link')
-            .attr('stroke', 'var(--indirect-link-clr)')
-            .attr('stroke-width', indirectLinkWidth)
-            .attr('stroke-dasharray', `${indirectLinkWidth}, ${indirectLinkWidth * 5}`);
+        let indirectLinkEnter = null;
+        
+        if (groupNodeSwitch.checked) {
+            indirectLinkEnter = indirectLinkSelection.enter()
+                .append('line')
+                .attr('class', 'indirect-link')
+                .attr('stroke', 'var(--indirect-link-clr)')
+                .attr('stroke-width', indirectLinkWidth)
+                .attr('stroke-dasharray', `${indirectLinkWidth}, ${indirectLinkWidth * 5}`);
+        } else {
+            var linkWidthThin = indirectLinkWidth / 3;
+            indirectLinkEnter = indirectLinkSelection.enter()
+                .append('line')
+                .attr('class', 'indirect-link')
+                .attr('stroke', 'var(--indirect-link-clr)')
+                .attr('stroke-width', linkWidthThin)
+                .attr('stroke-dasharray', `${linkWidthThin}, ${linkWidthThin * 5}`);
+        }
     
         indirectLinkSelection = indirectLinkEnter.merge(indirectLinkSelection);
     
-        // Regular links
         let linkSelection = linkGroup
             .selectAll('line.link')
             .data(links, d => d.source.data.name + '->' + d.target.data.name);
@@ -746,7 +804,6 @@ $(document).ready(function() {
         linkSelection = linkEnter.merge(linkSelection);
         linkSelectionGlobal = linkSelection;
     
-        // Nodes
         let nodeSelection = nodeGroup
             .selectAll('circle.node')
             .data(nodes.filter(shouldHaveCircle), d => d.data.name);
@@ -773,7 +830,6 @@ $(document).ready(function() {
         nodeSelection = nodeEnter.merge(nodeSelection);
         nodeSelectionGlobal = nodeSelection;
     
-        // Labels
         let labelSelection = labelGroup
             .selectAll('text.label')
             .data(nodes, d => d.data.name);
@@ -784,23 +840,14 @@ $(document).ready(function() {
             .append('text')
             .attr('class', 'label')
             .attr('text-anchor', 'middle')
-            .attr('fill', linkColor)
+            .attr('fill', labelColor)
             .style('cursor', 'pointer')
-            .text(d => d.data.name)
+            .text(d => d.data.name) // ensure name is displayed
             .on('click', (event, d) => handleNodeClicked(d.data))
             .call(drag(simulation));
-    
+
         labelSelection = labelEnter.merge(labelSelection);
         labelsSelectionGlobal = labelSelection;
-    
-        let foundActiveNode = nodes.find(d => d.data.name === data.name);
-        if (foundActiveNode) {
-            simulation.alpha(1).restart();
-            foundActiveNode.fx = width / 2;
-            foundActiveNode.fy = height / 2;
-        } else {
-            simulation.alpha(1).restart();
-        }
     
         simulation.on('tick', () => {
             indirectLinkSelection
@@ -832,12 +879,22 @@ $(document).ready(function() {
                     return d.y - (r + 3);
                 });
     
+            if (simulation.alpha() < 0.3) {
+                fitGraphToContainer(true);
+            }
+    
             if (simulation.alpha() < 0.05) {
                 simulation.stop();
                 fitGraphToContainer();
             }
         });
 
+        // if (displayGroupNodes) {
+        //     shuffleNodeForces();
+        // }
+    
+        fitGraphToContainer(true);
+        simulation.alpha(0.3).restart();
         updateRightContainer(data);
     }
     
@@ -857,14 +914,11 @@ $(document).ready(function() {
         }
         let flattenedChildren = [];
         node.children.forEach(child => {
-            // Check if the child is a group node and group nodes are toggled off
             if (child.groupType && !displayGroupNodes) {
-                // If the child is the active node, do not hide it
                 if (child.name === currentActiveNodeName) {
-                    hideGroupNodes(child, displayGroupNodes); // Process its children
+                    hideGroupNodes(child, displayGroupNodes);
                     flattenedChildren.push(child);
                 } else {
-                    // Otherwise, flatten the group node by adding its children directly
                     if (child.children && child.children.length > 0) {
                         child.children.forEach(grandChild => {
                             hideGroupNodes(grandChild, displayGroupNodes);
@@ -873,7 +927,6 @@ $(document).ready(function() {
                     }
                 }
             } else {
-                // Recursively process non-group nodes
                 hideGroupNodes(child, displayGroupNodes);
                 flattenedChildren.push(child);
             }
@@ -979,20 +1032,38 @@ $(document).ready(function() {
         let scale, translateX, translateY;
         let graphPadding;
 
-        if (nonGroupNodes.length > 50) {
-            graphPadding = 75;
-        } else if (nonGroupNodes.length > 20) {
-            graphPadding = 100;
-        } else if (nonGroupNodes.length > 5) {
-            graphPadding = 225;
-        } else if (nonGroupNodes.length <= 5 && nonGroupNodes.length > 3) {
-            graphPadding = 275;
-        } else if (nonGroupNodes.length <= 3 ) {
-            graphPadding = 300;
-        } else if (nonGroupNodes.length === 2 ) {
-            graphPadding = 400;
+        if(groupNodeSwitch.checked) {
+            if (nonGroupNodes.length > 50) {
+                graphPadding = 75;
+            } else if (nonGroupNodes.length > 20) {
+                graphPadding = 100;
+            } else if (nonGroupNodes.length > 5) {
+                graphPadding = 225;
+            } else if (nonGroupNodes.length <= 5 && nonGroupNodes.length > 3) {
+                graphPadding = 275;
+            } else if (nonGroupNodes.length <= 3 ) {
+                graphPadding = 300;
+            } else if (nonGroupNodes.length === 2 ) {
+                graphPadding = 400;
+            } else {
+                graphPadding = 50;
+            }
         } else {
-            graphPadding = 50;
+            if (nonGroupNodes.length > 50) {
+                graphPadding = 75;
+            } else if (nonGroupNodes.length > 20) {
+                graphPadding = 120;
+            } else if (nonGroupNodes.length > 5) {
+                graphPadding = 225;
+            } else if (nonGroupNodes.length <= 5 && nonGroupNodes.length > 3) {
+                graphPadding = 275;
+            } else if (nonGroupNodes.length <= 3 ) {
+                graphPadding = 300;
+            } else if (nonGroupNodes.length === 2 ) {
+                graphPadding = 400;
+            } else {
+                graphPadding = 50;
+            }
         }
 
         if (nodesWidth === 0 && nodesHeight === 0) {
@@ -1044,7 +1115,7 @@ $(document).ready(function() {
     function updateRightContainer(data) {
         rightContainer.html("");
     
-        // Add the active node's name and type to the right container
+        // Show the active node's name and type
         rightContainer
             .append("h2")
             .style("background-color", nodeColor({ data: { type: data.type } }))
@@ -1054,7 +1125,7 @@ $(document).ready(function() {
             .append("p")
             .html(`<strong>Type: </strong>${data.type || 'Unknown'}`);
     
-        // Add the active node's description
+        // Description
         const description = (data.description || 'No description available').replace(/\n/g, '<br>');
         rightContainer
             .append("h3")
@@ -1065,7 +1136,7 @@ $(document).ready(function() {
             .style("text-align", "justify")
             .html(description);
     
-        // Add a header for the dependencies
+        // Dependencies
         rightContainer
             .append("h3")
             .attr("class", "dependencies-header")
@@ -1073,12 +1144,11 @@ $(document).ready(function() {
     
         const displayGroupNodes = groupNodeSwitch.checked;
         const dependencies = data.children || [];
-
         const desiredOrder = ["Organization", "People", "Technology", "Data"];
     
         if (dependencies.length > 0) {
             if (displayGroupNodes) {
-                // Group nodes are ON, handle them hierarchically
+                // Show group nodes hierarchically
                 const groupNodes = dependencies.filter(d => d.groupType);
                 const nonGroupNodes = dependencies.filter(d => !d.groupType);
     
@@ -1096,21 +1166,18 @@ $(document).ready(function() {
                     }
                 });
     
-                // Render group nodes with clickable headers
                 groupNodes.forEach(groupNode => {
                     createGroupTypeSection(groupNode);
                 });
     
-                // Render non-group nodes as individual dependencies
                 nonGroupNodes.forEach(nonGroupNode => {
                     createNodeElement(rightContainer, nonGroupNode);
                 });
     
             } else {
-                // Group nodes are OFF, render a flat list grouped by type
+                // Group nodes are OFF, so flatten by type
                 const dependenciesByType = d3.group(dependencies, d => d.type || "Unknown");
     
-                // Sort types by desired order
                 const orderedTypes = Array.from(dependenciesByType.keys()).sort((a, b) => {
                     const indexA = desiredOrder.indexOf(a);
                     const indexB = desiredOrder.indexOf(b);
@@ -1125,10 +1192,8 @@ $(document).ready(function() {
                     }
                 });
     
-                // Render dependencies grouped by type with headers
                 orderedTypes.forEach(type => {
                     const nodes = dependenciesByType.get(type);
-    
                     rightContainer
                         .append("p")
                         .attr("class", "dependency-type-header")
@@ -1151,7 +1216,6 @@ $(document).ready(function() {
                 });
             }
         } else {
-            // Handle case where there are no dependencies
             rightContainer.append("p")
                 .attr("class", "no-dependencies")
                 .html("No dependencies available.");
@@ -1177,7 +1241,6 @@ $(document).ready(function() {
                     handleNodeClicked(pseudoNodeData);
                 });
     
-            // Render child nodes under the group type
             const sortedChildren = (groupNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
             sortedChildren.forEach(childNode => {
                 createNodeElement(groupContainer, childNode);

@@ -19,38 +19,82 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx') -> tuple:
         print(f"An error occurred: {e}")
         return None, None
 
+
 def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     """
-    [Your existing docstring]
+    Build the hierarchy (as a nested dict) for the given active_node, up to 'depth' levels.
+    This version also attaches { "name": ..., "type": ... } objects for indirectRelationships,
+    ensuring that indirectly related nodes can be colored properly.
     """
-    
-    # ---------------------- NEW PART ----------------------
-    # Normalize 'CI_Name' and 'Dependency_Name' by stripping spaces
+
+    # ---------------------------------------
+    # 1) Preprocessing & normalizing
+    # ---------------------------------------
     data['CI_Name'] = data['CI_Name'].astype(str).str.strip()
     data['Dependency_Name'] = data['Dependency_Name'].astype(str).str.strip()
     
-    # Optionally, standardize case (e.g., all lowercase)
-    # data['CI_Name'] = data['CI_Name'].str.lower()
-    # data['Dependency_Name'] = data['Dependency_Name'].str.lower()
-    # -----------------------------------------------------
-    
-    # Precompute the mapping of Dependency_Name to list of CI_Names that depend on it
+    # Precompute the mapping of Dependency_Name -> [list of CI_Names that depend on it]
     dependency_to_cis = data.groupby('Dependency_Name')['CI_Name'].apply(list).to_dict()
-    
-    # ---------------------- DEBUGGING ----------------------
-    # Print the dependency_to_cis mapping to verify 'PO 1' is included
-    # print("Dependency to CIs Mapping:")
-    # for dep, cis in dependency_to_cis.items():
-    #     print(f"  '{dep}': {cis}")
-    # -----------------------------------------------------
     
     # Gather all known type names by combining CI_Type and Dependency_Type
     all_types = set(
         data['CI_Type'].dropna().unique().tolist() +
         data['Dependency_Type'].dropna().unique().tolist()
     )
-    
-    # Determine if active_node is Type, CI_Name, or Dependency_Name
+
+    # ---------------------------------------
+    # 2) Helper: get node type from name
+    # ---------------------------------------
+    def get_node_type(node_name: str) -> str:
+        """Given node_name, return the best guess for its 'type' from the DataFrame, else 'Unknown'."""
+        # 1) Check if it’s in CI_Name
+        row_ci = data[data['CI_Name'] == node_name]
+        if not row_ci.empty:
+            if pd.notna(row_ci.iloc[0]['CI_Type']):
+                return str(row_ci.iloc[0]['CI_Type'])
+        
+        # 2) Check if it’s in Dependency_Name
+        row_dep = data[data['Dependency_Name'] == node_name]
+        if not row_dep.empty:
+            if pd.notna(row_dep.iloc[0]['Dependency_Type']):
+                return str(row_dep.iloc[0]['Dependency_Type'])
+        
+        # 3) If node_name is literally a known “type” in the dataset
+        if node_name in all_types:
+            return node_name
+        
+        return "Unknown"
+
+    # ---------------------------------------
+    # 3) Helper: build list of { name, type } for indirectRelationships
+    # ---------------------------------------
+    def gather_indirect_relationships(node_name: str) -> list | None:
+        """
+        For a given node_name, if it has multiple parents in dependency_to_cis,
+        return a list of { 'name': X, 'type': Y } for each, or None if none found.
+        """
+        if node_name not in dependency_to_cis:
+            return None
+        
+        related_list = dependency_to_cis[node_name]
+        # If fewer than 2 references, we’re not marking it as “indirectRelationships”
+        if len(related_list) <= 1:
+            return None
+
+        # Build the array of { 'name', 'type' } for each indirectly related node
+        results = []
+        for related_name in related_list:
+            # Avoid listing ourselves
+            if related_name == node_name:
+                continue
+            i_type = get_node_type(related_name)
+            results.append({"name": related_name, "type": i_type})
+
+        return results if results else None
+
+    # ---------------------------------------
+    # 4) Identify if active_node is a type node or normal node
+    # ---------------------------------------
     if active_node in data['CI_Name'].values:
         row = data[data['CI_Name'] == active_node].iloc[0]
         node_type = row['CI_Type'] if pd.notna(row['CI_Type']) else active_node
@@ -75,38 +119,32 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     else:
         return {"error": f"No data found for active node: {active_node}"}
 
-    # ------------------------- NEW PART -------------------------
-    # Collect parents for the active node if it's not a type node
+    # ---------------------------------------
+    # 5) Top-level node
+    # ---------------------------------------
     if not is_type_node:
+        # If it’s not a type node, find who depends on it
         parent_rows = data[data['Dependency_Name'] == active_node]
         parent_names = parent_rows['CI_Name'].unique().tolist()
     else:
-        parent_names = []  # Type nodes might not have parents in this context
-    # -------------------------------------------------------------
+        parent_names = []
 
-    # Initialize the top-level (root) of our hierarchy
     active_node_relationships = {
         "name": active_node,
         "type": node_type,
         "relationship": node_rel,
         "directRelationship": True,
         "description": node_desc,
-        # ------------------------- MODIFIED PART -------------------------
-        # Set 'parent' to the list of parent names or None
         "parent": parent_names if parent_names else None,
-        # --------------------------------------------------------------
         "children": []
     }
 
-    # ---------------------- NEW PART ----------------------
-    # Add 'indirectRelationships' if applicable
-    if active_node in dependency_to_cis and len(dependency_to_cis[active_node]) > 1:
-        active_node_relationships["indirectRelationships"] = dependency_to_cis[active_node]
-        # ---------------------- DEBUGGING ----------------------
-        # print(f"Assigned indirectRelationships to '{active_node}': {dependency_to_cis[active_node]}")
-        # -----------------------------------------------------
-    
-    # If only depth=1, just display the node itself
+    # Attach indirectRelationships (now as array of { name, type })
+    indirects = gather_indirect_relationships(active_node)
+    if indirects is not None:
+        active_node_relationships["indirectRelationships"] = indirects
+
+    # If user asked for depth=1, return just the single node
     if depth == 1:
         active_node_relationships["totalNodesDisplayed"] = 1
         return active_node_relationships
@@ -114,36 +152,32 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     visited = set([active_node])
     total_count = 1
 
-    # Each queue item => (current_dict, current_name, current_depth, current_is_type_node)
+    # Each queue item => (dict_for_node, node_name, current_depth, is_type_node_bool)
     queue = deque([(active_node_relationships, active_node, depth, is_type_node)])
 
+    # ---------------------------------------
+    # 6) BFS through the relationships
+    # ---------------------------------------
     while queue:
         current_dict, current_name, current_depth, current_is_type_node = queue.popleft()
-
-        # If we're at the last layer (e.g. current_depth=2), we do not enqueue further expansions
-        # If current_depth=3, we can still enqueue children, etc.
         expand_further = (current_depth > 2)
 
         if current_is_type_node:
-            # Gather children typed the same as current_name
+            # 6a) Handling “group” (type) nodes
+            #     This logic is your existing approach, just updated for gather_indirect_relationships
             child_rows_ci = data[(data['CI_Type'] == current_name) & (data['CI_Name'] != current_name)]
             child_rows_dep = data[(data['Dependency_Type'] == current_name) & (data['Dependency_Name'] != current_name)]
 
-            # --------------- GROUP NODE LOGIC ---------------
-            # If the current node is a "Type", e.g. "Procurements".
-            # 1. If depth <= 2 => skip parents; only gather children typed the same as current_name.
-            # 2. If depth > 2  => gather both parents and children typed the same as current_name.
-
+            # If depth <= 2 => skip parents, gather children only
             if current_depth <= 2:
-                # Skip parents. Only gather children where (CI_Type == current_name) or (Dependency_Type == current_name).
                 child_rows_ci  = data[(data['CI_Type'] == current_name)]
                 child_rows_dep = data[(data['Dependency_Type'] == current_name)]
                 combined_children_rows = pd.concat([child_rows_ci, child_rows_dep], ignore_index=True)
 
                 if not combined_children_rows.empty:
                     child_info = []
-
                     for _, c_row in combined_children_rows.iterrows():
+                        # figure out which side the type is on
                         if pd.notna(c_row['CI_Type']) and c_row['CI_Type'] == current_name:
                             c_name = str(c_row['CI_Name'])
                             c_type = str(c_row['CI_Type'])
@@ -156,7 +190,6 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                             c_rel  = c_row['Rel_Type'] or None
                         else:
                             continue
-
                         child_info.append({
                             "groupType": c_type, 
                             "name": c_name,
@@ -165,12 +198,11 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                         })
 
                     if child_info:
-                        # Group them by groupType
                         child_info.sort(key=lambda x: x["groupType"])
                         for group_type, items_in_group in itertools.groupby(child_info, key=lambda x: x["groupType"]):
                             group_type = group_type if group_type else "Unknown"
                             items_in_group = list(items_in_group)
-                            relationship_val = items_in_group[0]["relationship"]  # or None
+                            relationship_val = items_in_group[0]["relationship"]
 
                             new_group = {
                                 "groupType": group_type,
@@ -185,29 +217,22 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                     c_rel  = obj["relationship"]
                                     c_node_is_type = (c_name in all_types)
 
+                                    # Build the child node
                                     c_node = {
                                         "name": c_name,
                                         "parent": current_dict["name"],
                                         "type": group_type,
                                         "relationship": c_rel,
                                         "description": c_desc,
-                                        # ------------------------- MODIFIED PART -------------------------
-                                        # Add 'indirectRelationships' if applicable
-                                        "indirectRelationships": dependency_to_cis[c_name] if c_name in dependency_to_cis and len(dependency_to_cis[c_name]) > 1 else None,
-                                        # --------------------------------------------------------------
                                         "children": []
                                     }
-
-                                    # Remove 'indirectRelationships' key if it's None
-                                    if c_node["indirectRelationships"] is None:
-                                        del c_node["indirectRelationships"]
-                                    # else:
-                                        # Debugging: Print assignment
-                                        # print(f"Assigned indirectRelationships to '{c_name}': {c_node['indirectRelationships']}")
+                                    # Attach indirect info
+                                    c_indirects = gather_indirect_relationships(c_name)
+                                    if c_indirects is not None:
+                                        c_node["indirectRelationships"] = c_indirects
 
                                     new_group["children"].append(c_node)
                                     total_count += 1
-
                                     if expand_further:
                                         queue.append((c_node, c_name, current_depth - 1, c_node_is_type))
                             
@@ -215,11 +240,9 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                 current_dict["children"].append(new_group)
 
             else:
-                # If current_depth > 2, do normal BFS logic: gather both parents and children typed as current_name
-
-                # PARENTS => rows where Dependency_Type == current_name
+                # If current_depth > 2 => gather both parents & children
+                # (existing logic)
                 parent_rows = data[data['Dependency_Type'] == current_name]
-
                 if not parent_rows.empty:
                     parents_by_type = parent_rows.groupby(parent_rows['CI_Type'].fillna("Unknown"))
                     for p_type, p_group in parents_by_type:
@@ -245,19 +268,12 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                         "type": p_node_type,
                                         "relationship": p_rel,
                                         "description": p_desc,
-                                        # ------------------------- MODIFIED PART -------------------------
-                                        # Add 'indirectRelationships' if applicable
-                                        "indirectRelationships": dependency_to_cis[p_name] if p_name in dependency_to_cis and len(dependency_to_cis[p_name]) > 1 else None,
-                                        # --------------------------------------------------------------
                                         "children": []
                                     }
-
-                                    # Remove 'indirectRelationships' key if it's None
-                                    if p_node["indirectRelationships"] is None:
-                                        del p_node["indirectRelationships"]
-                                    # else:
-                                        # Debugging: Print assignment
-                                        # print(f"Assigned indirectRelationships to '{p_name}': {p_node['indirectRelationships']}")
+                                    # Attach indirect info
+                                    p_indirects = gather_indirect_relationships(p_name)
+                                    if p_indirects is not None:
+                                        p_node["indirectRelationships"] = p_indirects
 
                                     parent_group["children"].append(p_node)
                                     total_count += 1
@@ -268,7 +284,6 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                         if parent_group["children"]:
                             current_dict["children"].append(parent_group)
 
-                # CHILDREN => where (CI_Type == current_name) or (Dependency_Type == current_name)
                 child_rows_ci  = data[(data['CI_Type'] == current_name)]
                 child_rows_dep = data[(data['Dependency_Type'] == current_name)]
                 combined_children_rows = pd.concat([child_rows_ci, child_rows_dep], ignore_index=True)
@@ -288,7 +303,6 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                             c_rel  = c_row['Rel_Type'] or None
                         else:
                             continue
-
                         child_info.append({
                             "groupType": c_type, 
                             "name": c_name,
@@ -322,19 +336,12 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                         "type": group_type,
                                         "relationship": c_rel,
                                         "description": c_desc,
-                                        # ------------------------- MODIFIED PART -------------------------
-                                        # Add 'indirectRelationships' if applicable
-                                        "indirectRelationships": dependency_to_cis[c_name] if c_name in dependency_to_cis and len(dependency_to_cis[c_name]) > 1 else None,
-                                        # --------------------------------------------------------------
                                         "children": []
                                     }
-
-                                    # Remove 'indirectRelationships' key if it's None
-                                    if c_node["indirectRelationships"] is None:
-                                        del c_node["indirectRelationships"]
-                                    # else:
-                                        # Debugging: Print assignment
-                                        # print(f"Assigned indirectRelationships to '{c_name}': {c_node['indirectRelationships']}")
+                                    # Attach indirect info
+                                    c_indirects = gather_indirect_relationships(c_name)
+                                    if c_indirects is not None:
+                                        c_node["indirectRelationships"] = c_indirects
 
                                     new_group["children"].append(c_node)
                                     total_count += 1
@@ -346,11 +353,7 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                 current_dict["children"].append(new_group)
 
         else:
-            # --------------- NORMAL NODE LOGIC ---------------
-            # If current node is NOT a group node => BFS as usual:
-            #   Parents  = rows where `Dependency_Name == current_name`
-            #   Children = rows where `CI_Name == current_name`
-
+            # 6b) Normal node BFS (non-type)
             parent_data = data[data['Dependency_Name'] == current_name]
             child_data  = data[data['CI_Name'] == current_name]
 
@@ -377,19 +380,12 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                 "type": p_type,
                                 "relationship": p_rel,
                                 "description": p_desc,
-                                # ------------------------- MODIFIED PART -------------------------
-                                # Add 'indirectRelationships' if applicable
-                                "indirectRelationships": dependency_to_cis[p_name] if p_name in dependency_to_cis and len(dependency_to_cis[p_name]) > 1 else None,
-                                # --------------------------------------------------------------
                                 "children": []
                             }
-
-                            # Remove 'indirectRelationships' key if it's None
-                            if p_node["indirectRelationships"] is None:
-                                del p_node["indirectRelationships"]
-                            # else:
-                                # Debugging: Print assignment
-                                # print(f"Assigned indirectRelationships to '{p_name}': {p_node['indirectRelationships']}")
+                            # Attach indirect info
+                            p_indirects = gather_indirect_relationships(p_name)
+                            if p_indirects is not None:
+                                p_node["indirectRelationships"] = p_indirects
 
                             parent_group["children"].append(p_node)
                             total_count += 1
@@ -423,19 +419,12 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                                 "type": c_type,
                                 "relationship": c_rel,
                                 "description": c_desc,
-                                # ------------------------- MODIFIED PART -------------------------
-                                # Add 'indirectRelationships' if applicable
-                                "indirectRelationships": dependency_to_cis[c_name] if c_name in dependency_to_cis and len(dependency_to_cis[c_name]) > 1 else None,
-                                # --------------------------------------------------------------
                                 "children": []
                             }
-
-                            # Remove 'indirectRelationships' key if it's None
-                            if c_node["indirectRelationships"] is None:
-                                del c_node["indirectRelationships"]
-                            # else:
-                                # Debugging: Print assignment
-                                # print(f"Assigned indirectRelationships to '{c_name}': {c_node['indirectRelationships']}")
+                            # Attach indirect info
+                            c_indirects = gather_indirect_relationships(c_name)
+                            if c_indirects is not None:
+                                c_node["indirectRelationships"] = c_indirects
 
                             child_group["children"].append(c_node)
                             total_count += 1
@@ -446,8 +435,5 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
                     if child_group["children"]:
                         current_dict["children"].append(child_group)
 
-    # Once BFS completes, store how many nodes we displayed
     active_node_relationships["totalNodesDisplayed"] = total_count
-
     return active_node_relationships
-
