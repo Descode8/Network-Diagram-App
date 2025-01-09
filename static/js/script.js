@@ -26,8 +26,10 @@ $(document).ready(function() {
     let leftPaneIsVisible = true;
     let rightPaneIsVisible = true;
     const collapseRightPane = $('.expand-collapse-buttonRight');
+
     const depthSlider = $('#depthSlider')[0]; 
     const depthValueLabel = $('#depthValue');
+
     const searchInput = document.getElementById('searchInput');
     const clearButton = document.getElementById('clearButton');
     const searchButton = document.getElementById('searchButton');
@@ -38,7 +40,7 @@ $(document).ready(function() {
     const assetNodesSwitch = document.getElementById('assetNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
     const indirectRelationshipNodeSwitch = document.getElementById('indirectRelationshipNodeSwitch');
-    // We remove the extra "Indirect" toggle—no longer needed.
+    // Removed the extra "Indirect" toggle—already have indirectRelationshipNodeSwitch.
 
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
@@ -61,11 +63,11 @@ $(document).ready(function() {
             $('.expand-collapse-buttonLeft').attr('title', 'Expand Left Pane');
         } else {
             if(!rightPaneIsVisible) {
-                $('.left-pane').css({'display': 'flex', 'width': '17vw',});
+                $('.left-pane').css({'display': 'flex', 'width': '17vw'});
                 $('.expand-collapse-buttonLeft').css('transform', 'rotate(0deg)');
                 $('.graph-container').css('width', '85vw');
             } else {
-                $('.left-pane').css({'display': 'flex', 'width': '17vw',});
+                $('.left-pane').css({'display': 'flex', 'width': '17vw'});
                 $('.expand-collapse-buttonLeft').css('transform', 'rotate(0deg)');
                 $('.graph-container').css('width', '68vw');
                 leftPaneIsVisible = true;
@@ -78,13 +80,8 @@ $(document).ready(function() {
 
     const rightPane = document.querySelector('.right-pane');
     rightPane.addEventListener('scroll', () => {
-        // How far have we scrolled down?
         const scrollY = rightPane.scrollTop;
-        
-        // Negative sign means “move the tooltip upward” as we scroll down
         const offsetValue = -scrollY + 'px';
-
-        // Update the global (or :root) CSS variable
         document.documentElement.style.setProperty('--scroll-offset', offsetValue);
     });
     
@@ -162,11 +159,9 @@ $(document).ready(function() {
     // -----------------------------------------------------
     function populateNodeList(data) {
         function traverse(node) {
-            // Only add node.name if it's a string
             if (typeof node.name === 'string') {
                 allNodes.push(node.name);
             }
-            // Only add node.groupType if it's a string
             if (typeof node.groupType === 'string') {
                 allNodes.push(node.groupType);
             }
@@ -181,9 +176,9 @@ $(document).ready(function() {
     function searchNode() {
         var input = searchInput.value.trim().toLowerCase();
         if (input) {
-            var matchingNode = allNodes.find(node => {
-                return typeof node === 'string' && node.toLowerCase() === input;
-            });
+            var matchingNode = allNodes.find(node => 
+                typeof node === 'string' && node.toLowerCase() === input
+            );
             if (matchingNode) {
                 fetchAndRenderGraph(depthSlider.value, matchingNode);
             } else {
@@ -304,10 +299,9 @@ $(document).ready(function() {
     svg.call(zoom);
 
     // -----------------------------------------------------
-    // Color function (updated to match your color map)
+    // Color function
     // -----------------------------------------------------
     function nodeColor(node) {
-        // We'll look at either groupType or type
         let nodes = node.data.groupType || node.data.type;
         switch (nodes) {
             case 'Organization':
@@ -325,7 +319,6 @@ $(document).ready(function() {
             case 'Facilities':
                 return 'var(--fclty-nde-clr)' || 'brown';
             default:
-                // If no matching known type, use fallback
                 return 'yellow';
         }
     }
@@ -340,7 +333,6 @@ $(document).ready(function() {
 
     onRefreshButton.addEventListener('click', () => {
         shuffleNodeForces();
-        showGroupToggles();
     });
 
     function shuffleNodeForces() {
@@ -348,11 +340,12 @@ $(document).ready(function() {
             d.fx = null;
             d.fy = null;
         });
+        // Slightly higher alphaDecay => see them re-run the forces
         simulation.alphaDecay(0.01).alpha(1).restart();
     }
 
     // -----------------------------------------------------
-    // Adjust ensureIndirectNodesVisible() to handle { name, type }
+    // Indirect Relationship Handling
     // -----------------------------------------------------
     function findNodeByName(obj, name) {
         if (!obj) return null;
@@ -370,6 +363,8 @@ $(document).ready(function() {
         return null;
     }
 
+    // Whenever we see an indirect relationship referencing a node that isn't present,
+    // we create & attach it to the data so the BFS won't skip it.
     function ensureIndirectNodesVisible(data) {
         if (!indirectRelationshipNodeSwitch.checked) return;
 
@@ -378,15 +373,14 @@ $(document).ready(function() {
             const sourceNode = findNodeByName(data, sourceItem.name);
             if (!sourceNode) return;
 
-            // Now each item in sourceItem.indirectRelationships is an object like { name, type }
             sourceItem.indirectRelationships.forEach(targetObj => {
                 const { name: targetName, type: targetType } = targetObj;
                 const targetExists = findNodeByName(data, targetName);
+
                 if (!targetExists) {
-                    // Create a minimal node object
+                    // Add this new node directly under 'sourceNode'
                     const newIndirectNode = {
                         name: targetName,
-                        // Instead of "Indirect", use the actual type if we have one, or fallback
                         type: targetType || 'Unknown',
                         description: "Automatically added via indirect relationship",
                         children: []
@@ -401,7 +395,7 @@ $(document).ready(function() {
     }
 
     // -----------------------------------------------------
-    // Fetch JSON & render
+    // Fetch & Render
     // -----------------------------------------------------
     function fetchAndRenderGraph(depth = depthSlider.value, activeNodeParam = searchInput.value.trim()) {
         var url = `/?depth=${depth}&activeNode=${encodeURIComponent(activeNodeParam)}`;
@@ -421,7 +415,7 @@ $(document).ready(function() {
                 getAllChildren(data); 
                 showGroupToggles();
 
-                // Ensure that missing indirect nodes become visible
+                // Key part: add missing indirect nodes
                 ensureIndirectNodesVisible(data);
 
                 mergeSameGroupNodes(data);
@@ -440,7 +434,7 @@ $(document).ready(function() {
                 allChildren.push(child);
             });
         } else {
-            return allChildren.push('No Children');
+            allChildren.push('No Children');
         }
     }
 
@@ -474,7 +468,7 @@ $(document).ready(function() {
         }
 
         allGroups.forEach(group => {
-            // Remove toggle if group is the same as the active node
+            // Skip if group is the same as the active node
             if (group === data.type) {
                 return;
             }
@@ -529,7 +523,7 @@ $(document).ready(function() {
 
     function containsIndirectRelationships(obj) {
         if (obj && typeof obj === 'object') {
-            if (obj.hasOwnProperty('indirectRelationships')) {
+            if ('indirectRelationships' in obj) {
                 return true;
             }
             for (let key in obj) {
@@ -548,7 +542,6 @@ $(document).ready(function() {
             obj.forEach(element => getIndirectRelationshipNodes(element, result));
         } else if (obj && typeof obj === 'object') {
             if (obj.hasOwnProperty('indirectRelationships') && Array.isArray(obj.indirectRelationships)) {
-                // Now these are arrays of { name, type } objects
                 result.push({
                     name: obj.name,
                     indirectRelationships: obj.indirectRelationships
@@ -564,7 +557,7 @@ $(document).ready(function() {
     }
 
     // -----------------------------------------------------
-    // Main render function
+    // renderGraph
     // -----------------------------------------------------
     function renderGraph(data) {
         graphGroup.selectAll('g.links').remove();
@@ -578,9 +571,6 @@ $(document).ready(function() {
         var displayAssetNodes = assetNodesSwitch.checked;
         var displayIndirectRelationship = indirectRelationshipNodeSwitch.checked;
         var hasIndirectRelationships = containsIndirectRelationships(data);
-
-        // We remove the lines that displayed a separate “Indirect” toggle 
-        // or try to hide/show that. No extra toggles now.
 
         const isActiveNodeAGroup = (
             (data.groupType && data.groupType === data.name) ||
@@ -600,6 +590,7 @@ $(document).ready(function() {
         const links = root.links();
         let nodes = root.descendants();
     
+        // Filter out the root "group" node if it's literally named the same as the current node
         nodes = nodes.filter(node => {
             return node.data.name !== currentActiveNodeName || !node.data.groupType;
         });
@@ -626,7 +617,7 @@ $(document).ready(function() {
             .nodes(nodes)
             .alpha(0)
             .alphaDecay(0.005)
-            .velocityDecay(.5)
+            .velocityDecay(0.5)
             .force("charge", d3.forceManyBody()
                 .strength(-1000)
                 .distanceMin(150))
@@ -686,7 +677,7 @@ $(document).ready(function() {
             simulation
                 .alpha(0)
                 .alphaDecay(0.01)
-                .velocityDecay(.5)
+                .velocityDecay(0.5)
                 .force("link", d3.forceLink(links).strength(1)
                     .id(d => d.data.name)
                     .distance(link => {
@@ -749,8 +740,8 @@ $(document).ready(function() {
             indirectNodes.forEach(sourceNode => {
                 const source = nodes.find(n => n.data.name === sourceNode.name);
                 if (source) {
-                    // Now each item is {name, type} 
                     sourceNode.indirectRelationships.forEach(targetObj => {
+                        // targetObj has shape { name: 'PO 1', type: 'Procurements' }, for example
                         const found = nodes.find(n => n.data.name === targetObj.name);
                         if (found) {
                             indirectLinks.push({
@@ -842,7 +833,7 @@ $(document).ready(function() {
             .attr('text-anchor', 'middle')
             .attr('fill', labelColor)
             .style('cursor', 'pointer')
-            .text(d => d.data.name) // ensure name is displayed
+            .text(d => d.data.name)
             .on('click', (event, d) => handleNodeClicked(d.data))
             .call(drag(simulation));
 
@@ -889,6 +880,8 @@ $(document).ready(function() {
             }
         });
 
+        // If you want them to spread out again once newly added nodes appear,
+        // re‐enable this shuffle if you like:
         // if (displayGroupNodes) {
         //     shuffleNodeForces();
         // }
@@ -1032,7 +1025,7 @@ $(document).ready(function() {
         let scale, translateX, translateY;
         let graphPadding;
 
-        if(groupNodeSwitch.checked) {
+        if (groupNodeSwitch.checked) {
             if (nonGroupNodes.length > 50) {
                 graphPadding = 75;
             } else if (nonGroupNodes.length > 20) {
@@ -1115,7 +1108,6 @@ $(document).ready(function() {
     function updateRightContainer(data) {
         rightContainer.html("");
     
-        // Show the active node's name and type
         rightContainer
             .append("h2")
             .style("background-color", nodeColor({ data: { type: data.type } }))
@@ -1125,7 +1117,6 @@ $(document).ready(function() {
             .append("p")
             .html(`<strong>Type: </strong>${data.type || 'Unknown'}`);
     
-        // Description
         const description = (data.description || 'No description available').replace(/\n/g, '<br>');
         rightContainer
             .append("h3")
@@ -1136,7 +1127,6 @@ $(document).ready(function() {
             .style("text-align", "justify")
             .html(description);
     
-        // Dependencies
         rightContainer
             .append("h3")
             .attr("class", "dependencies-header")
@@ -1148,7 +1138,6 @@ $(document).ready(function() {
     
         if (dependencies.length > 0) {
             if (displayGroupNodes) {
-                // Show group nodes hierarchically
                 const groupNodes = dependencies.filter(d => d.groupType);
                 const nonGroupNodes = dependencies.filter(d => !d.groupType);
     
@@ -1175,7 +1164,6 @@ $(document).ready(function() {
                 });
     
             } else {
-                // Group nodes are OFF, so flatten by type
                 const dependenciesByType = d3.group(dependencies, d => d.type || "Unknown");
     
                 const orderedTypes = Array.from(dependenciesByType.keys()).sort((a, b) => {
@@ -1271,5 +1259,6 @@ $(document).ready(function() {
         }
     }
 
+    // Kick it off
     fetchAndRenderGraph();
 });

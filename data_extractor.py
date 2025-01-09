@@ -169,7 +169,7 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
             child_rows_dep = data[(data['Dependency_Type'] == current_name) & (data['Dependency_Name'] != current_name)]
 
             # If depth <= 2 => skip parents, gather children only
-            if current_depth <= 2:
+            if current_depth >= 1:
                 child_rows_ci  = data[(data['CI_Type'] == current_name)]
                 child_rows_dep = data[(data['Dependency_Type'] == current_name)]
                 combined_children_rows = pd.concat([child_rows_ci, child_rows_dep], ignore_index=True)
