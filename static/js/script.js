@@ -90,17 +90,17 @@ $(document).ready(function() {
             $('.right-pane').css('display', 'none');
             rightPaneIsVisible = false;
             $('.expand-collapse-buttonRight').css('transform', 'rotate(180deg)');
-            $('.graph-container').css('width', '85vw');
+            $('.graph-container').css('width', '83vw');
             $('.expand-collapse-buttonRight').attr('title', 'Expand Right Pane');
         } else {
             if (!leftPaneIsVisible) {
-                $('.right-pane').css({'display': 'flex','width': '15vw'});
+                $('.right-pane').css({'display': 'flex','width': '17vw'});
                 $('.expand-collapse-buttonRight').css('transform', 'rotate(0deg)');
-                $('.graph-container').css('width', '85vw');
+                $('.graph-container').css('width', '83vw');
             } else {
-                $('.right-pane').css({'display': 'flex','width': '15vw'});
+                $('.right-pane').css({'display': 'flex','width': '17vw'});
                 $('.expand-collapse-buttonRight').css('transform', 'rotate(0deg)');
-                $('.graph-container').css('width', '70vw');
+                $('.graph-container').css('width', '66vw');
                 rightPaneIsVisible = true;
             }
             $('.expand-collapse-buttonRight').attr('title', 'Collapse Right Pane');
@@ -147,11 +147,11 @@ $(document).ready(function() {
             failedSearch.textContent = 'Please enter a search term';
             return;
         }
-        failedSearch.textContent = `${input} does not exist`;
+        failedSearch.textContent = `${input} does not exist.\nPlease search again.`;
         setTimeout(() => {
             failedSearch.style.display = 'none'; 
             failedSearch.textContent = '';
-        }, 3000);
+        }, 300000);
     }
 
     // -----------------------------------------------------
