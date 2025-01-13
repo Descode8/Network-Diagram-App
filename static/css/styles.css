@@ -495,9 +495,9 @@ label, .depthSlider {
     border-radius: 5px;
     z-index: 100;
     min-width: 50px;
-    min-height: 50px;
+    max-width: 250px;
     word-wrap: break-word;
-    white-space: nowrap;
+    white-space: normal;
     font-size: 0.75rem;
     transition: opacity 0.5s ease, visibility 0.5s ease; /* Smooth transition */
     display: sticky;

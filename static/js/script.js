@@ -40,7 +40,6 @@ $(document).ready(function() {
     const assetNodesSwitch = document.getElementById('assetNodesSwitch');
     const groupNodeSwitch = document.getElementById('groupNodeSwitch');
     const indirectRelationshipNodeSwitch = document.getElementById('indirectRelationshipNodeSwitch');
-    // Removed the extra "Indirect" toggle—already have indirectRelationshipNodeSwitch.
 
     const onHomeButton = document.getElementById('homeButton');
     const onRefreshButton = document.getElementById('refreshButton');
@@ -151,7 +150,7 @@ $(document).ready(function() {
         setTimeout(() => {
             failedSearch.style.display = 'none'; 
             failedSearch.textContent = '';
-        }, 300000);
+        }, 3000);
     }
 
     // -----------------------------------------------------
@@ -411,22 +410,35 @@ $(document).ready(function() {
                     rootNode = data;
                 }
                 graphData = data;
-
-                getAllChildren(data); 
+    
+                // Check if indirect relationships exist
+                const hasIndirectRelationships = containsIndirectRelationships(data);
+    
+                // Show or hide the toggle for indirect relationships
+                const indirectSwitch = document.querySelector('.indirectRelationshipSwitch');
+                if (hasIndirectRelationships) {
+                    indirectSwitch.style.display = 'block';
+                } else {
+                    indirectSwitch.style.display = 'none';
+                }
+    
+                getAllChildren(data);
                 showGroupToggles();
-
-                // Key part: add missing indirect nodes
-                ensureIndirectNodesVisible(data);
-
+    
+                // Process indirect nodes if needed
+                if (hasIndirectRelationships) {
+                    ensureIndirectNodesVisible(data);
+                }
+    
                 mergeSameGroupNodes(data);
-                populateNodeList(data); 
+                populateNodeList(data);
                 initializeGroupToggles(data);
                 renderGraph(data);
             })
             .catch(error => {
                 console.error('Error fetching graph data:', error);
             });
-    }
+    }    
 
     function getAllChildren(data) {
         if (data.children) {
