@@ -1114,7 +1114,7 @@ $(document).ready(function() {
     });
 
     window.addEventListener('resize', () => {
-        fitGraphToContainer(/* noTransition = false */);
+        fitGraphToContainer();
     });
     
     function updateRightContainer(data) {
