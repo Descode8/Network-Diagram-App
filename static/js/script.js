@@ -1136,7 +1136,7 @@ $(document).ready(function() {
             .html("Description");
         rightContainer
             .append("p")
-            .style("text-align", "justify")
+            .style("text-align", "left")
             .html(description);
     
         rightContainer
@@ -1204,7 +1204,7 @@ $(document).ready(function() {
                             const pseudoNodeData = {
                                 name: type,
                                 type: type,
-                                description: `${type} Group Node`,
+                                description: `${type}`,
                                 children: nodes
                             };
                             handleNodeClicked(pseudoNodeData);
@@ -1235,7 +1235,7 @@ $(document).ready(function() {
                     const pseudoNodeData = {
                         name: groupNode.groupType,
                         type: groupNode.groupType,
-                        description: `${groupNode.groupType} Group Node`,
+                        description: `${groupNode.groupType}`,
                         children: groupNode.children || []
                     };
                     handleNodeClicked(pseudoNodeData);

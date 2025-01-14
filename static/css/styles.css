@@ -490,12 +490,12 @@ label, .depthSlider {
     position: absolute;
     /* transform: translate(-73%, -135%);  */
     transform: translate(-73%, calc(-135% + var(--scroll-offset)));
-    background-color: var(--hoverbx-bg-clr);
-    padding: 7px;
+    background-color: var(--tooltip-bg-clr);
+    padding: 5px;
     border-radius: 5px;
     z-index: 100;
     min-width: 50px;
-    max-width: 250px;
+    max-width: 550px;
     word-wrap: break-word;
     white-space: normal;
     font-size: 0.75rem;
@@ -524,7 +524,7 @@ label, .depthSlider {
     transform: translateX(-50%);
     border-width: 8px; /* Inner triangle size */
     border-style: solid;
-    border-color: var(--hoverbx-bg-clr) transparent transparent transparent; /* Matches tool-tip background */
+    border-color: var(--tooltip-bg-clr) transparent transparent transparent; /* Matches tool-tip background */
 }
 
 .dependency-node-container:hover .tool-tip {

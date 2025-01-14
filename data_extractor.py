@@ -112,7 +112,7 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     elif active_node in all_types:
         # If active_node is literally a known Type (like "Procurements", "People", etc.)
         node_type = active_node
-        node_desc = f"{active_node} Group Node"
+        node_desc = f"{active_node}"
         node_rel  = None
         is_type_node = True
 
