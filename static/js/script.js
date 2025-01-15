@@ -16,7 +16,7 @@ $(document).ready(function() {
     const groupNodeSize = 4;
     const nodeSize = 4;
     const linkWidth = 1;
-    let indirectLinkWidth = 1;
+    let indirectLinkWidth = 1.5;
 
     const labelColor = 'var(--label-clr)';
     const linkColor = 'var(--link-clr)';
@@ -27,13 +27,13 @@ $(document).ready(function() {
     let rightPaneIsVisible = true;
     const collapseRightPane = $('.expand-collapse-buttonRight');
 
-    const depthSlider = $('#depthSlider')[0]; 
+    const depthSlider = $('#depthSlider')[0];
     const depthValueLabel = $('#depthValue');
 
     const searchInput = document.getElementById('searchInput');
     const clearButton = document.getElementById('clearButton');
     const searchButton = document.getElementById('searchButton');
-    const failedSearch = document.querySelector('.failed-search'); 
+    const failedSearch = document.querySelector('.failed-search');
     const rightContainer = d3.select('.right-pane');
 
     const switchesContainer = document.querySelector('.switches-container');
@@ -49,6 +49,11 @@ $(document).ready(function() {
     searchInput.parentNode.appendChild(dropdown);
 
     let allNodes = []; // Holds all node names and group types
+
+    // Global references (for toggling visibility without re-render):
+    let currentZoomScale = 1;
+    let nodeSelectionGlobal, linkSelectionGlobal, labelsSelectionGlobal;
+    let indirectLinkSelectionGlobal = null;
 
     // -----------------------------------------------------
     // Left/Right Pane Toggle
@@ -73,7 +78,7 @@ $(document).ready(function() {
             }
             $('.expand-collapse-buttonLeft').attr('title', 'Collapse Left Pane');
         }
-        checkBothPanesVisibility(); 
+        checkBothPanesVisibility();
         fitGraphToContainer();
     });
 
@@ -83,7 +88,7 @@ $(document).ready(function() {
         const offsetValue = -scrollY + 'px';
         document.documentElement.style.setProperty('--scroll-offset', offsetValue);
     });
-    
+
     collapseRightPane.click(function() {
         if ($('.right-pane').is(':visible')) {
             $('.right-pane').css('display', 'none');
@@ -104,28 +109,28 @@ $(document).ready(function() {
             }
             $('.expand-collapse-buttonRight').attr('title', 'Collapse Right Pane');
         }
-        checkBothPanesVisibility(); 
+        checkBothPanesVisibility();
         fitGraphToContainer();
     });
-    
+
     function checkBothPanesVisibility() {
         if (!leftPaneIsVisible && !rightPaneIsVisible) {
             $('.graph-container').css('width', '100vw');
         }
     }
-    
+
     // -----------------------------------------------------
     // Search and Clear Buttons
     // -----------------------------------------------------
     searchInput.addEventListener('input', () => {
         var input = searchInput.value.trim();
         var dropdown = document.getElementById('autocompleteSuggestions');
-        
+
         if (input) {
-            clearButton.style.display = 'flex'; 
+            clearButton.style.display = 'flex';
             dropdown.style.display = 'block';
         } else {
-            clearButton.style.display = 'none'; 
+            clearButton.style.display = 'none';
             dropdown.style.display = 'none';
             dropdown.innerHTML = '';
         }
@@ -133,22 +138,22 @@ $(document).ready(function() {
 
     clearButton.addEventListener('click', (event) => {
         event.preventDefault();
-        searchInput.value = ''; 
-        clearButton.style.display = 'none'; 
+        searchInput.value = '';
+        clearButton.style.display = 'none';
         var dropdown = document.getElementById('autocompleteSuggestions');
-        dropdown.style.display = 'none'; 
-        dropdown.innerHTML = ''; 
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
     });
 
     function showInvalidSearchMessage(input) {
-        failedSearch.style.display = 'block'; 
+        failedSearch.style.display = 'block';
         if(!input) {
             failedSearch.textContent = 'Please enter a search term';
             return;
         }
         failedSearch.textContent = `${input} does not exist.\nPlease search again.`;
         setTimeout(() => {
-            failedSearch.style.display = 'none'; 
+            failedSearch.style.display = 'none';
             failedSearch.textContent = '';
         }, 3000);
     }
@@ -175,19 +180,19 @@ $(document).ready(function() {
     function searchNode() {
         var input = searchInput.value.trim().toLowerCase();
         if (input) {
-            var matchingNode = allNodes.find(node => 
+            var matchingNode = allNodes.find(node =>
                 typeof node === 'string' && node.toLowerCase() === input
             );
             if (matchingNode) {
                 fetchAndRenderGraph(depthSlider.value, matchingNode);
             } else {
-                showInvalidSearchMessage(searchInput.value);  
+                showInvalidSearchMessage(searchInput.value);
             }
         } else {
             showInvalidSearchMessage(searchInput.value);
         }
     }
-    
+
     searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -214,7 +219,7 @@ $(document).ready(function() {
             return;
         }
 
-        var matches = allNodes.filter(item => 
+        var matches = allNodes.filter(item =>
             typeof item === 'string' && item.toLowerCase().includes(input)
         );
 
@@ -238,25 +243,6 @@ $(document).ready(function() {
             });
         }
         dropdown.style.display = 'block';
-    });
-
-    // Global references
-    let currentZoomScale = 1; 
-    let nodeSelectionGlobal, linkSelectionGlobal, labelsSelectionGlobal;
-
-    groupNodeSwitch.addEventListener('change', () => {
-        resetSimulationForForces();    
-        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
-    });
-
-    assetNodesSwitch.addEventListener('change', () => {
-        resetSimulationForForces();
-        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
-    });
-
-    indirectRelationshipNodeSwitch.addEventListener('change', () => {
-        resetSimulationForForces();
-        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
     });
 
     // -----------------------------------------------------
@@ -293,6 +279,12 @@ $(document).ready(function() {
                 labelsSelectionGlobal
                     .attr('font-size', `${12 / currentZoomScale}px`);
             }
+
+            if (indirectLinkSelectionGlobal) {
+                indirectLinkSelectionGlobal
+                    .attr('stroke-width', (indirectLinkWidth / currentZoomScale))
+                    .attr('stroke-dasharray', `${(indirectLinkWidth / currentZoomScale)}, ${(indirectLinkWidth / currentZoomScale) * 5}`);
+            }
         });
 
     svg.call(zoom);
@@ -317,11 +309,16 @@ $(document).ready(function() {
                 return 'var(--procure-nde-clr)' || 'pink';
             case 'Facilities':
                 return 'var(--fclty-nde-clr)' || 'brown';
+            case 'Server':
+                return 'var(--server-nde-clr)' || 'red';
+            case 'Network':
+                return 'var(--netwrk-nde-clr)' || 'yellow';
             default:
                 return 'yellow';
         }
     }
 
+    // We create a single main group. We'll reorder sub-groups each render:
     svg.attr('width', width).attr('height', height);
     const graphGroup = svg.append('g');
     const simulation = d3.forceSimulation();
@@ -339,7 +336,6 @@ $(document).ready(function() {
             d.fx = null;
             d.fy = null;
         });
-        // Slightly higher alphaDecay => see them re-run the forces
         simulation.alphaDecay(0.01).alpha(1).restart();
     }
 
@@ -362,8 +358,6 @@ $(document).ready(function() {
         return null;
     }
 
-    // Whenever we see an indirect relationship referencing a node that isn't present,
-    // we create & attach it to the data so the BFS won't skip it.
     function ensureIndirectNodesVisible(data) {
         if (!indirectRelationshipNodeSwitch.checked) return;
 
@@ -410,10 +404,10 @@ $(document).ready(function() {
                     rootNode = data;
                 }
                 graphData = data;
-    
+
                 // Check if indirect relationships exist
                 const hasIndirectRelationships = containsIndirectRelationships(data);
-    
+
                 // Show or hide the toggle for indirect relationships
                 const indirectSwitch = document.querySelector('.indirectRelationshipSwitch');
                 if (hasIndirectRelationships) {
@@ -421,15 +415,15 @@ $(document).ready(function() {
                 } else {
                     indirectSwitch.style.display = 'none';
                 }
-    
+
                 getAllChildren(data);
                 showGroupToggles();
-    
+
                 // Process indirect nodes if needed
                 if (hasIndirectRelationships) {
                     ensureIndirectNodesVisible(data);
                 }
-    
+
                 mergeSameGroupNodes(data);
                 populateNodeList(data);
                 initializeGroupToggles(data);
@@ -438,7 +432,7 @@ $(document).ready(function() {
             .catch(error => {
                 console.error('Error fetching graph data:', error);
             });
-    }    
+    }
 
     function getAllChildren(data) {
         if (data.children) {
@@ -487,16 +481,16 @@ $(document).ready(function() {
 
             var label = document.createElement('label');
             label.className = 'switch span';
-        
+
             var input = document.createElement('input');
             input.type = 'checkbox';
             input.checked = visibleGroups[group] ?? true;
-        
+
             var span = document.createElement('span');
             span.className = 'slider round';
             span.style.backgroundColor = nodeColor({ data: { groupType: group } });
             span.title = `Toggle ${group} Nodes`;
-        
+
             var checkSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             checkSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
             checkSvg.setAttribute("height", "10px");
@@ -510,11 +504,11 @@ $(document).ready(function() {
 
             checkSvg.appendChild(path);
             span.appendChild(checkSvg);
-    
+
             label.appendChild(input);
             label.appendChild(span);
             label.append(`${group}`);
-    
+
             dynamicTogglesContainer.appendChild(label);
 
             input.addEventListener('change', () => {
@@ -569,46 +563,115 @@ $(document).ready(function() {
     }
 
     // -----------------------------------------------------
+    // Event listener for Indirect Relationship toggle
+    // Instead of re-fetching, we just show/hide lines.
+    // -----------------------------------------------------
+    indirectRelationshipNodeSwitch.addEventListener('change', () => {
+        updateIndirectLinks();
+    });
+
+    function updateIndirectLinks() {
+        // If switch isn't checked, just remove any existing indirect lines
+        if (!indirectRelationshipNodeSwitch.checked) {
+            if (indirectLinkSelectionGlobal) {
+                indirectLinkSelectionGlobal.remove();
+                indirectLinkSelectionGlobal = null;
+            }
+            return;
+        }
+
+        // If switch IS checked, figure out which indirect lines to draw
+        const hasIndirectRelationships = containsIndirectRelationships(graphData);
+        if (!hasIndirectRelationships) return;
+
+        // Build the array of indirect links, but only for nodes that already exist in our graph
+        let indirectNodes = getIndirectRelationshipNodes(graphData);
+        let indirectLinks = [];
+
+        indirectNodes.forEach(sourceObj => {
+            let src = nodesDisplayed.find(n => n.data.name === sourceObj.name);
+            if (!src) return;
+
+            (sourceObj.indirectRelationships || []).forEach(targetObj => {
+                let tgt = nodesDisplayed.find(n => n.data.name === targetObj.name);
+                if (tgt) {
+                    indirectLinks.push({ source: src, target: tgt });
+                }
+            });
+        });
+
+        // Remove any old lines
+        if (indirectLinkSelectionGlobal) {
+            indirectLinkSelectionGlobal.remove();
+        }
+
+        // Select the group (created in renderGraph) 
+        let indirectLinkGroup = graphGroup.select('g.indirectLinks');
+        indirectLinkSelectionGlobal = indirectLinkGroup
+            .selectAll('line.indirect-link')
+            .data(indirectLinks, d => d.source.data.name + '->' + d.target.data.name)
+            .enter()
+            .append('line')
+            .attr('class', 'indirect-link')
+            .attr('stroke', 'var(--indirect-link-clr)')
+            .attr('stroke-width', indirectLinkWidth / currentZoomScale)
+            .attr('stroke-dasharray', `${(indirectLinkWidth / currentZoomScale)}, ${(indirectLinkWidth / currentZoomScale) * 5}`);
+
+        // Position them based on nodes' x,y 
+        indirectLinkSelectionGlobal
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+    }
+
+    // -----------------------------------------------------
     // renderGraph
     // -----------------------------------------------------
     function renderGraph(data) {
+        // Remove old groups so we can re-append them in correct z-order
+        graphGroup.selectAll('g.indirectLinks').remove();
         graphGroup.selectAll('g.links').remove();
         graphGroup.selectAll('g.nodes').remove();
         graphGroup.selectAll('g.labels').remove();
-        graphGroup.selectAll('g.indirectLinks').remove();
-    
+
         currentActiveNodeName = data.name;
-    
+
+        // We keep "displayGroupNodes" logic for your group toggles
         var displayGroupNodes = groupNodeSwitch.checked;
         var displayAssetNodes = assetNodesSwitch.checked;
         var displayIndirectRelationship = indirectRelationshipNodeSwitch.checked;
         var hasIndirectRelationships = containsIndirectRelationships(data);
 
+        // This was your logic for certain conditions:
         const isActiveNodeAGroup = (
             (data.groupType && data.groupType === data.name) ||
             (data.type && data.type === data.name)
         );
-    
-        if (isActiveNodeAGroup && depthSlider.value < 3) { 
-            displayGroupNodes = false; 
+
+        if (isActiveNodeAGroup && depthSlider.value < 3) {
+            // Possibly hide group nodes for shallow depth
+            displayGroupNodes = false;
         } else {
             resetSimulationForForces();
         }
-    
+
+        // Instead of permanently removing group nodes from the data, let's do it like you had:
         hideGroupNodes(data, displayGroupNodes);
         filterDataByVisibleGroups(data);
-    
+
         const root = d3.hierarchy(data);
         const links = root.links();
         let nodes = root.descendants();
-    
-        // Filter out the root "group" node if it's literally named the same as the current node
+
+        // Filter out a "root group node" if it's literally named the same as the current node
         nodes = nodes.filter(node => {
             return node.data.name !== currentActiveNodeName || !node.data.groupType;
         });
-    
+
         nodesDisplayed = nodes;
-    
+
+        // Lay them out near the center for the initial force
         const centerX = width / 2;
         const centerY = height / 2;
         nodes.forEach((node, i) => {
@@ -616,7 +679,8 @@ $(document).ready(function() {
             const radius = 100;
             node.x = centerX + radius * Math.cos(angle);
             node.y = centerY + radius * Math.sin(angle);
-            
+
+            // Force the active node to the center
             if (node.data.name === data.name) {
                 node.x = centerX;
                 node.y = centerY;
@@ -624,15 +688,14 @@ $(document).ready(function() {
                 node.fy = centerY;
             }
         });
-    
+
+        // Configure the forces
         simulation
             .nodes(nodes)
             .alpha(0)
             .alphaDecay(0.005)
             .velocityDecay(0.5)
-            .force("charge", d3.forceManyBody()
-                .strength(-1000)
-                .distanceMin(150))
+            .force("charge", d3.forceManyBody().strength(-1000).distanceMin(150))
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("collide", d3.forceCollide().radius(50));
 
@@ -643,7 +706,7 @@ $(document).ready(function() {
                     if (!childArr.length) return;
                     const parent = childArr[0].parentNode;
                     if (!parent) return;
-    
+
                     const n = childArr.length;
                     childArr.forEach((child, i) => {
                         const angle = (2 * Math.PI / n) * i;
@@ -668,7 +731,7 @@ $(document).ready(function() {
             };
             return force;
         }
-    
+
         if (displayGroupNodes) {
             simulation
                 .force("radial", d3.forceRadial(50, width / 2, height / 2))
@@ -700,13 +763,13 @@ $(document).ready(function() {
                 .force("circularChildren", forceCircularChildren(50))
                 .force("collide", d3.forceCollide().radius(15));
         }
-    
+
         if (currentActiveNodeName !== rootNode.name && depthSlider.value == 2) {
             simulation
                 .force("radial", null)
                 .force("charge", d3.forceManyBody().strength(-1000));
         }
-    
+
         const totalNodes = data.totalNodesDisplayed;
         if (totalNodes >= 2 && totalNodes <= 6) {
             resetSimulationForForces();
@@ -718,106 +781,75 @@ $(document).ready(function() {
                     .distance(75)
                 );
         }
-    
+
         simulation.force("link").links(links);
-    
-        const activeNodeName = data.name;
-        function shouldHaveCircle(d) {
-            if (d.data.name === activeNodeName) return true;
-            if (d.data.groupType) return true;
-            return displayAssetNodes;
-        }
-    
-        let indirectLinkGroup = graphGroup.select('g.indirectLinks');
-        if (indirectLinkGroup.empty()) {
-            indirectLinkGroup = graphGroup.append('g').attr('class', 'indirectLinks');
-        }
-        let linkGroup = graphGroup.select('g.links');
-        if (linkGroup.empty()) {
-            linkGroup = graphGroup.append('g').attr('class', 'links');
-        }
-        let nodeGroup = graphGroup.select('g.nodes');
-        if (nodeGroup.empty()) {
-            nodeGroup = graphGroup.append('g').attr('class', 'nodes');
-        }
-        let labelGroup = graphGroup.select('g.labels');
-        if (labelGroup.empty()) {
-            labelGroup = graphGroup.append('g').attr('class', 'labels');
-        }
-    
+
+        // Create <g> layers in the correct z-order:
+        let indirectLinkGroup = graphGroup.append('g').attr('class', 'indirectLinks');
+        let linkGroup = graphGroup.append('g').attr('class', 'links');
+        let nodeGroup = graphGroup.append('g').attr('class', 'nodes');
+        let labelGroup = graphGroup.append('g').attr('class', 'labels');
+
+        // ------------------------------------------------------------------
+        // Indirect Links (draw them if toggle is on)
+        // ------------------------------------------------------------------
         let indirectLinks = [];
         if (hasIndirectRelationships && displayIndirectRelationship) {
             const indirectNodes = getIndirectRelationshipNodes(data);
-            console.log(indirectNodes);
             indirectNodes.forEach(sourceNode => {
                 const source = nodes.find(n => n.data.name === sourceNode.name);
                 if (source) {
                     sourceNode.indirectRelationships.forEach(targetObj => {
-                        // targetObj has shape { name: 'PO 1', type: 'Procurements' }, for example
                         const found = nodes.find(n => n.data.name === targetObj.name);
                         if (found) {
-                            indirectLinks.push({
-                                source: source,
-                                target: found
-                            });
+                            indirectLinks.push({ source: source, target: found });
                         }
                     });
                 }
             });
         }
-    
-        let indirectLinkSelection = indirectLinkGroup
+        indirectLinkSelectionGlobal = indirectLinkGroup
             .selectAll('line.indirect-link')
-            .data(indirectLinks, d => d.source.data.name + '->' + d.target.data.name);
-    
-        indirectLinkSelection.exit().remove();
-        let indirectLinkEnter = null;
-        
-        if (groupNodeSwitch.checked) {
-            indirectLinkEnter = indirectLinkSelection.enter()
-                .append('line')
-                .attr('class', 'indirect-link')
-                .attr('stroke', 'var(--indirect-link-clr)')
-                .attr('stroke-width', indirectLinkWidth)
-                .attr('stroke-dasharray', `${indirectLinkWidth}, ${indirectLinkWidth * 5}`);
-        } else {
-            var linkWidthThin = indirectLinkWidth / 3;
-            indirectLinkEnter = indirectLinkSelection.enter()
-                .append('line')
-                .attr('class', 'indirect-link')
-                .attr('stroke', 'var(--indirect-link-clr)')
-                .attr('stroke-width', linkWidthThin)
-                .attr('stroke-dasharray', `${linkWidthThin}, ${linkWidthThin * 5}`);
-        }
-    
-        indirectLinkSelection = indirectLinkEnter.merge(indirectLinkSelection);
-    
+            .data(indirectLinks, d => d.source.data.name + '->' + d.target.data.name)
+            .enter()
+            .append('line')
+            .attr('class', 'indirect-link')
+            .attr('stroke', 'var(--indirect-link-clr)')
+            .attr('stroke-width', indirectLinkWidth)
+            .attr('stroke-dasharray', `${indirectLinkWidth}, ${indirectLinkWidth * 5}`);
+
+        // ------------------------------------------------------------------
+        // Main (direct) links
+        // ------------------------------------------------------------------
         let linkSelection = linkGroup
             .selectAll('line.link')
             .data(links, d => d.source.data.name + '->' + d.target.data.name);
-    
+
         linkSelection.exit().remove();
-    
+
         let linkEnter = linkSelection.enter()
             .append('line')
             .attr('class', 'link')
             .attr('stroke', linkColor)
             .attr('stroke-width', linkWidth);
-    
+
         linkSelection = linkEnter.merge(linkSelection);
         linkSelectionGlobal = linkSelection;
-    
+
+        // ------------------------------------------------------------------
+        // Nodes (we no longer filter out asset nodes or group nodes here)
+        // ------------------------------------------------------------------
         let nodeSelection = nodeGroup
             .selectAll('circle.node')
-            .data(nodes.filter(shouldHaveCircle), d => d.data.name);
-    
+            .data(nodes, d => d.data.name);
+
         nodeSelection.exit().remove();
-    
+
         let nodeEnter = nodeSelection.enter()
             .append('circle')
             .attr('class', 'node')
             .attr('r', d => {
-                if (d.data.name === activeNodeName) {
+                if (d.data.name === currentActiveNodeName) {
                     return activeNodeSize;
                 } else if (d.data.groupType) {
                     return groupNodeSize;
@@ -829,16 +861,19 @@ $(document).ready(function() {
             .attr('stroke', nodeBorderColor)
             .on('click', (event, d) => handleNodeClicked(d.data))
             .call(drag(simulation));
-    
+
         nodeSelection = nodeEnter.merge(nodeSelection);
         nodeSelectionGlobal = nodeSelection;
-    
+
+        // ------------------------------------------------------------------
+        // Labels (always create them for all nodes)
+        // ------------------------------------------------------------------
         let labelSelection = labelGroup
             .selectAll('text.label')
             .data(nodes, d => d.data.name);
-    
+
         labelSelection.exit().remove();
-    
+
         let labelEnter = labelSelection.enter()
             .append('text')
             .attr('class', 'label')
@@ -851,24 +886,27 @@ $(document).ready(function() {
 
         labelSelection = labelEnter.merge(labelSelection);
         labelsSelectionGlobal = labelSelection;
-    
+
+        // Force simulation "tick" behavior
         simulation.on('tick', () => {
-            indirectLinkSelection
-                .attr('x1', d => d.source.x)
-                .attr('y1', d => d.source.y)
-                .attr('x2', d => d.target.x)
-                .attr('y2', d => d.target.y);
-    
+            if (indirectLinkSelectionGlobal) {
+                indirectLinkSelectionGlobal
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+            }
+
             linkSelection
                 .attr('x1', d => d.source.x)
                 .attr('y1', d => d.source.y)
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
-    
+
             nodeSelection
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
-    
+
             labelSelection
                 .attr('x', d => d.x)
                 .attr('y', d => {
@@ -876,33 +914,28 @@ $(document).ready(function() {
                     if (d.data.name === currentActiveNodeName) {
                         return d.y - (r + 3);
                     }
-                    if (!displayAssetNodes) {
-                        return d.y;
-                    }
+                    // Because we always want asset labels "on", 
+                    // we can shift them similarly:
                     return d.y - (r + 3);
                 });
-    
+
             if (simulation.alpha() < 0.3) {
                 fitGraphToContainer(true);
             }
-    
+
             if (simulation.alpha() < 0.05) {
                 simulation.stop();
                 fitGraphToContainer();
             }
         });
 
-        // If you want them to spread out again once newly added nodes appear,
-        // re‐enable this shuffle if you like:
-        // if (displayGroupNodes) {
-        //     shuffleNodeForces();
-        // }
-    
+        // Make sure new nodes are displayed or hidden according to toggles:
+        updateAssetNodesVisibility();
         fitGraphToContainer(true);
         simulation.alpha(0.3).restart();
         updateRightContainer(data);
     }
-    
+
     function getCircleScreenRadius(d) {
         if (d.data.name === currentActiveNodeName) {
             return activeNodeSize / currentZoomScale;
@@ -946,7 +979,7 @@ $(document).ready(function() {
             var key = child.groupType || child.type;
             if (key && visibleGroups.hasOwnProperty(key)) {
                 if (!visibleGroups[key]) {
-                    return false; 
+                    return false;
                 }
             }
             filterDataByVisibleGroups(child);
@@ -996,10 +1029,10 @@ $(document).ready(function() {
     function mergeSameGroupNodes(node) {
         if (!node.children || node.children.length === 0) return node;
         node.children.forEach(child => mergeSameGroupNodes(child));
-    
-        var groupNodesMap = new Map(); 
+
+        var groupNodesMap = new Map();
         var newChildren = [];
-    
+
         for (const child of node.children) {
             if (child.groupType) {
                 if (!groupNodesMap.has(child.groupType)) {
@@ -1030,10 +1063,10 @@ $(document).ready(function() {
             yMin: d3.min(nonGroupNodes, d => d.y),
             yMax: d3.max(nonGroupNodes, d => d.y)
         };
-    
+
         var nodesWidth = nodesBBox.xMax - nodesBBox.xMin;
         var nodesHeight = nodesBBox.yMax - nodesBBox.yMin;
-    
+
         let scale, translateX, translateY;
         let graphPadding;
 
@@ -1114,21 +1147,21 @@ $(document).ready(function() {
     });
 
     window.addEventListener('resize', () => {
-        fitGraphToContainer();
+        fitGraphToContainer(/* noTransition = false */);
     });
-    
+
     function updateRightContainer(data) {
         rightContainer.html("");
-    
+
         rightContainer
             .append("h2")
             .style("background-color", nodeColor({ data: { type: data.type } }))
             .html(`${data.name}`);
-    
+
         rightContainer
             .append("p")
             .html(`<strong>Type: </strong>${data.type || 'Unknown'}`);
-    
+
         const description = (data.description || 'No description available').replace(/\n/g, '<br>');
         rightContainer
             .append("h3")
@@ -1138,21 +1171,21 @@ $(document).ready(function() {
             .append("p")
             .style("text-align", "left")
             .html(description);
-    
+
         rightContainer
             .append("h3")
             .attr("class", "dependencies-header")
             .html("Dependencies");
-    
+
         const displayGroupNodes = groupNodeSwitch.checked;
         const dependencies = data.children || [];
         const desiredOrder = ["Organization", "People", "Technology", "Data"];
-    
+
         if (dependencies.length > 0) {
             if (displayGroupNodes) {
                 const groupNodes = dependencies.filter(d => d.groupType);
                 const nonGroupNodes = dependencies.filter(d => !d.groupType);
-    
+
                 groupNodes.sort((a, b) => {
                     const indexA = desiredOrder.indexOf(a.groupType);
                     const indexB = desiredOrder.indexOf(b.groupType);
@@ -1166,18 +1199,18 @@ $(document).ready(function() {
                         return indexA - indexB;
                     }
                 });
-    
+
                 groupNodes.forEach(groupNode => {
                     createGroupTypeSection(groupNode);
                 });
-    
+
                 nonGroupNodes.forEach(nonGroupNode => {
                     createNodeElement(rightContainer, nonGroupNode);
                 });
-    
+
             } else {
                 const dependenciesByType = d3.group(dependencies, d => d.type || "Unknown");
-    
+
                 const orderedTypes = Array.from(dependenciesByType.keys()).sort((a, b) => {
                     const indexA = desiredOrder.indexOf(a);
                     const indexB = desiredOrder.indexOf(b);
@@ -1191,7 +1224,7 @@ $(document).ready(function() {
                         return indexA - indexB;
                     }
                 });
-    
+
                 orderedTypes.forEach(type => {
                     const nodes = dependenciesByType.get(type);
                     rightContainer
@@ -1209,7 +1242,7 @@ $(document).ready(function() {
                             };
                             handleNodeClicked(pseudoNodeData);
                         });
-    
+
                     nodes.forEach(node => {
                         createNodeElement(rightContainer, node);
                     });
@@ -1220,11 +1253,11 @@ $(document).ready(function() {
                 .attr("class", "no-dependencies")
                 .html("No dependencies available.");
         }
-    
+
         function createGroupTypeSection(groupNode) {
             const groupContainer = rightContainer.append("div")
                 .attr("class", "type-section");
-    
+
             groupContainer
                 .append("p")
                 .style("background-color", nodeColor({ data: { type: groupNode.groupType } }))
@@ -1240,23 +1273,23 @@ $(document).ready(function() {
                     };
                     handleNodeClicked(pseudoNodeData);
                 });
-    
+
             const sortedChildren = (groupNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
             sortedChildren.forEach(childNode => {
                 createNodeElement(groupContainer, childNode);
             });
         }
-    
+
         function createNodeElement(parentContainer, node) {
             const nodeContainer = parentContainer.append("div")
                 .attr("class", "dependency-node-container");
-    
+
             nodeContainer.append("p")
                 .attr("class", "dependency-node")
                 .html(`${node.name}`)
                 .style("cursor", "pointer")
                 .on("click", () => handleNodeClicked(node));
-    
+
             nodeContainer
                 .append("div")
                 .attr("class", "tool-tip")
@@ -1271,6 +1304,66 @@ $(document).ready(function() {
         }
     }
 
-    // Kick it off
+    // -----------------------------------------------------
+    // NEW: Toggle ONLY circles for asset nodes
+    //      Keep labels for assets ALWAYS visible.
+    // -----------------------------------------------------
+    // 1. Remove the original fetch call from asset switch
+    //    so we do NOT re-render the entire graph:
+    // -----------------------------------------------------
+    // Original code (remove/comment out):
+    // assetNodesSwitch.addEventListener('change', () => {
+    //     resetSimulationForForces();
+    //     fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
+    // });
+
+    // -----------------------------------------------------
+    // 2. Now do a pure show/hide of asset circles:
+    // -----------------------------------------------------
+    assetNodesSwitch.addEventListener('change', () => {
+        updateAssetNodesVisibility();
+    });
+
+    // Helper function to update asset node circles & labels
+    function updateAssetNodesVisibility() {
+        if (!nodeSelectionGlobal || !labelsSelectionGlobal) return;
+
+        nodeSelectionGlobal.each(function(d) {
+            const circle = d3.select(this);
+
+            // Always show the active node if it's an asset
+            if (d.data.name === currentActiveNodeName) {
+                circle.attr('display', null);
+            }
+            // If it's a group node, do nothing here (the group toggle is still done via re-fetch)
+            else if (d.data.groupType) {
+                // We'll let the fetch-based logic handle group nodes.
+                // But you could also hide them here if you like.
+            }
+            // Otherwise, it's an asset node
+            else {
+                if (assetNodesSwitch.checked) {
+                    circle.attr('display', null);
+                } else {
+                    circle.attr('display', 'none');
+                }
+            }
+        });
+
+        // Asset labels always on:
+        labelsSelectionGlobal.each(function(d) {
+            const label = d3.select(this);
+            // If it's an asset node (no groupType) and not the active node, always show
+            if (!d.data.groupType && d.data.name !== currentActiveNodeName) {
+                label.attr('display', null);
+            } else {
+                // For active node or group node, also show label:
+                label.attr('display', null);
+            }
+        });
+    }
+
+    // Kick it off (initial load)
     fetchAndRenderGraph();
 });
+

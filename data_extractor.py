@@ -101,18 +101,21 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
         node_desc = row['CI_Descrip'] if pd.notna(row['CI_Descrip']) else "No description available."
         node_rel  = row['Rel_Type'] or None
         is_type_node = False
+
     elif active_node in data['Dependency_Name'].values:
         row = data[data['Dependency_Name'] == active_node].iloc[0]
         node_type = row['Dependency_Type'] if pd.notna(row['Dependency_Type']) else active_node
         node_desc = row['Dependency_Descrip'] if pd.notna(row['Dependency_Descrip']) else "No description available."
         node_rel  = row['Rel_Type'] or None
         is_type_node = False
+
     elif active_node in all_types:
         # If active_node is literally a known Type (like "Procurements", "People", etc.)
         node_type = active_node
         node_desc = f"{active_node}"
         node_rel  = None
         is_type_node = True
+
     else:
         return {"error": f"No data found for active node: {active_node}"}
 
