@@ -905,13 +905,20 @@ $(document).ready(function() {
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
 
-            labelSelection
+                labelSelection
                 .attr('x', d => d.x)
                 .attr('y', d => {
                     const r = getCircleScreenRadius(d);
-                    // Always shift the label above the node
                     return d.y - (r + 3);
                 });
+            
+            preventLabelOverlap(labelSelection);
+
+            if (simulation.alpha() < 0.3) { fitGraphToContainer(true); }
+            if (simulation.alpha() < 0.05) {
+                simulation.stop();
+                fitGraphToContainer();
+            }
 
             if (simulation.alpha() < 0.3) {
                 fitGraphToContainer(true);
@@ -927,6 +934,38 @@ $(document).ready(function() {
         fitGraphToContainer(true);
         simulation.alpha(0.3).restart();
         updateRightContainer(data);
+    }
+
+    // Quick function that checks for overlapping bounding boxes and bumps them apart
+function preventLabelOverlap(selection) {
+    const labels = selection.nodes(); // array of <text> DOM elements
+    
+    for (let i = 0; i < labels.length - 1; i++) {
+        for (let j = i + 1; j < labels.length; j++) {
+            const a = labels[i].getBBox();
+            const b = labels[j].getBBox();
+            
+            // If bounding boxes overlap
+            if (isOverlap(a, b)) {
+            // Bump one label slightly
+            // Here, we move label j downward
+            // but you could do something more elaborate:
+            const dy = (a.y + a.height) - b.y; // minimal y shift
+            d3.select(labels[j])
+                .attr('y', parseFloat(labels[j].getAttribute('y')) + dy + 2);
+            }
+        }
+        }
+    }
+
+    // A helper to detect overlap between two bounding boxes
+    function isOverlap(a, b) {
+        return !(
+        a.x + a.width  < b.x ||  // a is "left" of b
+        a.x            > b.x + b.width ||
+        a.y + a.height < b.y ||  // a is "above" b
+        a.y            > b.y + b.height
+        );
     }
 
     function getCircleScreenRadius(d) {
