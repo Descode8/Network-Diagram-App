@@ -16,7 +16,7 @@ $(document).ready(function() {
     const groupNodeSize = 4;
     const nodeSize = 4;
     const linkWidth = 1;
-    let indirectLinkWidth = 1.5;
+    let indirectLinkWidth = 1; // slightly smaller than your original
 
     const labelColor = 'var(--label-clr)';
     const linkColor = 'var(--link-clr)';
@@ -283,7 +283,7 @@ $(document).ready(function() {
             if (indirectLinkSelectionGlobal) {
                 indirectLinkSelectionGlobal
                     .attr('stroke-width', (indirectLinkWidth / currentZoomScale))
-                    .attr('stroke-dasharray', `${(indirectLinkWidth / currentZoomScale)}, ${(indirectLinkWidth / currentZoomScale) * 5}`);
+                    .attr('stroke-dasharray', `${(indirectLinkWidth / currentZoomScale)}, ${(indirectLinkWidth / currentZoomScale) * 2}`);
             }
         });
 
@@ -385,6 +385,79 @@ $(document).ready(function() {
                 }
             });
         });
+    }
+
+    // -----------------------------------------------------
+    // NEW: We restore the groupNodeSwitch event so that
+    //      group toggles do a fetch + re-render
+    // -----------------------------------------------------
+    groupNodeSwitch.addEventListener('change', () => {
+        resetSimulationForForces();
+        // Re-fetch to flatten or remove group nodes properly
+        fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
+    });
+
+    // -----------------------------------------------------
+    // We already had an event for indirect relationships
+    // but not for re-fetch; we just hide/show lines:
+    // -----------------------------------------------------
+    indirectRelationshipNodeSwitch.addEventListener('change', () => {
+        updateIndirectLinks();
+    });
+
+    function updateIndirectLinks() {
+        // If switch isn't checked, just remove any existing indirect lines
+        if (!indirectRelationshipNodeSwitch.checked) {
+            if (indirectLinkSelectionGlobal) {
+                indirectLinkSelectionGlobal.remove();
+                indirectLinkSelectionGlobal = null;
+            }
+            return;
+        }
+
+        // If switch IS checked, figure out which indirect lines to draw
+        const hasIndirectRelationships = containsIndirectRelationships(graphData);
+        if (!hasIndirectRelationships) return;
+
+        // Build the array of indirect links, but only for nodes that already exist in our graph
+        let indirectNodes = getIndirectRelationshipNodes(graphData);
+        let indirectLinks = [];
+
+        indirectNodes.forEach(sourceObj => {
+            let src = nodesDisplayed.find(n => n.data.name === sourceObj.name);
+            if (!src) return;
+
+            (sourceObj.indirectRelationships || []).forEach(targetObj => {
+                let tgt = nodesDisplayed.find(n => n.data.name === targetObj.name);
+                if (tgt) {
+                    indirectLinks.push({ source: src, target: tgt });
+                }
+            });
+        });
+
+        // Remove any old lines
+        if (indirectLinkSelectionGlobal) {
+            indirectLinkSelectionGlobal.remove();
+        }
+
+        // Select the group (created in renderGraph)
+        let indirectLinkGroup = graphGroup.select('g.indirectLinks');
+        indirectLinkSelectionGlobal = indirectLinkGroup
+            .selectAll('line.indirect-link')
+            .data(indirectLinks, d => d.source.data.name + '->' + d.target.data.name)
+            .enter()
+            .append('line')
+            .attr('class', 'indirect-link')
+            .attr('stroke', 'var(--indirect-link-clr)')
+            .attr('stroke-width', indirectLinkWidth / currentZoomScale)
+            .attr('stroke-dasharray', `${(indirectLinkWidth / currentZoomScale)}, ${(indirectLinkWidth / currentZoomScale) * 2}`);
+
+        // Position them based on nodes' x,y
+        indirectLinkSelectionGlobal
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
     }
 
     // -----------------------------------------------------
@@ -513,6 +586,7 @@ $(document).ready(function() {
 
             input.addEventListener('change', () => {
                 visibleGroups[group] = input.checked;
+                // Re-fetch to flatten or remove group nodes properly
                 fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
             });
         });
@@ -563,70 +637,8 @@ $(document).ready(function() {
     }
 
     // -----------------------------------------------------
-    // Event listener for Indirect Relationship toggle
-    // Instead of re-fetching, we just show/hide lines.
-    // -----------------------------------------------------
-    indirectRelationshipNodeSwitch.addEventListener('change', () => {
-        updateIndirectLinks();
-    });
-
-    function updateIndirectLinks() {
-        // If switch isn't checked, just remove any existing indirect lines
-        if (!indirectRelationshipNodeSwitch.checked) {
-            if (indirectLinkSelectionGlobal) {
-                indirectLinkSelectionGlobal.remove();
-                indirectLinkSelectionGlobal = null;
-            }
-            return;
-        }
-
-        // If switch IS checked, figure out which indirect lines to draw
-        const hasIndirectRelationships = containsIndirectRelationships(graphData);
-        if (!hasIndirectRelationships) return;
-
-        // Build the array of indirect links, but only for nodes that already exist in our graph
-        let indirectNodes = getIndirectRelationshipNodes(graphData);
-        let indirectLinks = [];
-
-        indirectNodes.forEach(sourceObj => {
-            let src = nodesDisplayed.find(n => n.data.name === sourceObj.name);
-            if (!src) return;
-
-            (sourceObj.indirectRelationships || []).forEach(targetObj => {
-                let tgt = nodesDisplayed.find(n => n.data.name === targetObj.name);
-                if (tgt) {
-                    indirectLinks.push({ source: src, target: tgt });
-                }
-            });
-        });
-
-        // Remove any old lines
-        if (indirectLinkSelectionGlobal) {
-            indirectLinkSelectionGlobal.remove();
-        }
-
-        // Select the group (created in renderGraph) 
-        let indirectLinkGroup = graphGroup.select('g.indirectLinks');
-        indirectLinkSelectionGlobal = indirectLinkGroup
-            .selectAll('line.indirect-link')
-            .data(indirectLinks, d => d.source.data.name + '->' + d.target.data.name)
-            .enter()
-            .append('line')
-            .attr('class', 'indirect-link')
-            .attr('stroke', 'var(--indirect-link-clr)')
-            .attr('stroke-width', indirectLinkWidth / currentZoomScale)
-            .attr('stroke-dasharray', `${(indirectLinkWidth / currentZoomScale)}, ${(indirectLinkWidth / currentZoomScale) * 5}`);
-
-        // Position them based on nodes' x,y 
-        indirectLinkSelectionGlobal
-            .attr('x1', d => d.source.x)
-            .attr('y1', d => d.source.y)
-            .attr('x2', d => d.target.x)
-            .attr('y2', d => d.target.y);
-    }
-
-    // -----------------------------------------------------
-    // renderGraph
+    // renderGraph (no changes except we re-run it after
+    // group toggles or fetch calls)
     // -----------------------------------------------------
     function renderGraph(data) {
         // Remove old groups so we can re-append them in correct z-order
@@ -637,26 +649,23 @@ $(document).ready(function() {
 
         currentActiveNodeName = data.name;
 
-        // We keep "displayGroupNodes" logic for your group toggles
         var displayGroupNodes = groupNodeSwitch.checked;
         var displayAssetNodes = assetNodesSwitch.checked;
         var displayIndirectRelationship = indirectRelationshipNodeSwitch.checked;
         var hasIndirectRelationships = containsIndirectRelationships(data);
 
-        // This was your logic for certain conditions:
         const isActiveNodeAGroup = (
             (data.groupType && data.groupType === data.name) ||
             (data.type && data.type === data.name)
         );
 
+        // Possibly hide group nodes for shallow depth:
         if (isActiveNodeAGroup && depthSlider.value < 3) {
-            // Possibly hide group nodes for shallow depth
             displayGroupNodes = false;
         } else {
             resetSimulationForForces();
         }
 
-        // Instead of permanently removing group nodes from the data, let's do it like you had:
         hideGroupNodes(data, displayGroupNodes);
         filterDataByVisibleGroups(data);
 
@@ -664,14 +673,13 @@ $(document).ready(function() {
         const links = root.links();
         let nodes = root.descendants();
 
-        // Filter out a "root group node" if it's literally named the same as the current node
+        // Filter out root group node if it is the same name as active:
         nodes = nodes.filter(node => {
             return node.data.name !== currentActiveNodeName || !node.data.groupType;
         });
 
         nodesDisplayed = nodes;
 
-        // Lay them out near the center for the initial force
         const centerX = width / 2;
         const centerY = height / 2;
         nodes.forEach((node, i) => {
@@ -680,7 +688,6 @@ $(document).ready(function() {
             node.x = centerX + radius * Math.cos(angle);
             node.y = centerY + radius * Math.sin(angle);
 
-            // Force the active node to the center
             if (node.data.name === data.name) {
                 node.x = centerX;
                 node.y = centerY;
@@ -689,7 +696,6 @@ $(document).ready(function() {
             }
         });
 
-        // Configure the forces
         simulation
             .nodes(nodes)
             .alpha(0)
@@ -764,6 +770,7 @@ $(document).ready(function() {
                 .force("collide", d3.forceCollide().radius(15));
         }
 
+        // Additional logic for certain partial depth:
         if (currentActiveNodeName !== rootNode.name && depthSlider.value == 2) {
             simulation
                 .force("radial", null)
@@ -784,15 +791,13 @@ $(document).ready(function() {
 
         simulation.force("link").links(links);
 
-        // Create <g> layers in the correct z-order:
+        // Create <g> layers in correct z-order:
         let indirectLinkGroup = graphGroup.append('g').attr('class', 'indirectLinks');
         let linkGroup = graphGroup.append('g').attr('class', 'links');
         let nodeGroup = graphGroup.append('g').attr('class', 'nodes');
         let labelGroup = graphGroup.append('g').attr('class', 'labels');
 
-        // ------------------------------------------------------------------
-        // Indirect Links (draw them if toggle is on)
-        // ------------------------------------------------------------------
+        // Indirect links
         let indirectLinks = [];
         if (hasIndirectRelationships && displayIndirectRelationship) {
             const indirectNodes = getIndirectRelationshipNodes(data);
@@ -818,9 +823,7 @@ $(document).ready(function() {
             .attr('stroke-width', indirectLinkWidth)
             .attr('stroke-dasharray', `${indirectLinkWidth}, ${indirectLinkWidth * 5}`);
 
-        // ------------------------------------------------------------------
-        // Main (direct) links
-        // ------------------------------------------------------------------
+        // Main links
         let linkSelection = linkGroup
             .selectAll('line.link')
             .data(links, d => d.source.data.name + '->' + d.target.data.name);
@@ -836,9 +839,7 @@ $(document).ready(function() {
         linkSelection = linkEnter.merge(linkSelection);
         linkSelectionGlobal = linkSelection;
 
-        // ------------------------------------------------------------------
-        // Nodes (we no longer filter out asset nodes or group nodes here)
-        // ------------------------------------------------------------------
+        // Nodes
         let nodeSelection = nodeGroup
             .selectAll('circle.node')
             .data(nodes, d => d.data.name);
@@ -865,9 +866,7 @@ $(document).ready(function() {
         nodeSelection = nodeEnter.merge(nodeSelection);
         nodeSelectionGlobal = nodeSelection;
 
-        // ------------------------------------------------------------------
-        // Labels (always create them for all nodes)
-        // ------------------------------------------------------------------
+        // Labels
         let labelSelection = labelGroup
             .selectAll('text.label')
             .data(nodes, d => d.data.name);
@@ -887,7 +886,6 @@ $(document).ready(function() {
         labelSelection = labelEnter.merge(labelSelection);
         labelsSelectionGlobal = labelSelection;
 
-        // Force simulation "tick" behavior
         simulation.on('tick', () => {
             if (indirectLinkSelectionGlobal) {
                 indirectLinkSelectionGlobal
@@ -911,25 +909,20 @@ $(document).ready(function() {
                 .attr('x', d => d.x)
                 .attr('y', d => {
                     const r = getCircleScreenRadius(d);
-                    if (d.data.name === currentActiveNodeName) {
-                        return d.y - (r + 3);
-                    }
-                    // Because we always want asset labels "on", 
-                    // we can shift them similarly:
+                    // Always shift the label above the node
                     return d.y - (r + 3);
                 });
 
             if (simulation.alpha() < 0.3) {
                 fitGraphToContainer(true);
             }
-
             if (simulation.alpha() < 0.05) {
                 simulation.stop();
                 fitGraphToContainer();
             }
         });
 
-        // Make sure new nodes are displayed or hidden according to toggles:
+        // Also update the local toggles for assets:
         updateAssetNodesVisibility();
         fitGraphToContainer(true);
         simulation.alpha(0.3).restart();
@@ -953,6 +946,7 @@ $(document).ready(function() {
         let flattenedChildren = [];
         node.children.forEach(child => {
             if (child.groupType && !displayGroupNodes) {
+                // If a child is a group node and groupNodeSwitch is off, flatten it
                 if (child.name === currentActiveNodeName) {
                     hideGroupNodes(child, displayGroupNodes);
                     flattenedChildren.push(child);
@@ -965,6 +959,7 @@ $(document).ready(function() {
                     }
                 }
             } else {
+                // otherwise keep the child
                 hideGroupNodes(child, displayGroupNodes);
                 flattenedChildren.push(child);
             }
@@ -1309,16 +1304,7 @@ $(document).ready(function() {
     //      Keep labels for assets ALWAYS visible.
     // -----------------------------------------------------
     // 1. Remove the original fetch call from asset switch
-    //    so we do NOT re-render the entire graph:
-    // -----------------------------------------------------
-    // Original code (remove/comment out):
-    // assetNodesSwitch.addEventListener('change', () => {
-    //     resetSimulationForForces();
-    //     fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
-    // });
-
-    // -----------------------------------------------------
-    // 2. Now do a pure show/hide of asset circles:
+    // 2. Use a local show/hide of asset circles:
     // -----------------------------------------------------
     assetNodesSwitch.addEventListener('change', () => {
         updateAssetNodesVisibility();
@@ -1335,10 +1321,9 @@ $(document).ready(function() {
             if (d.data.name === currentActiveNodeName) {
                 circle.attr('display', null);
             }
-            // If it's a group node, do nothing here (the group toggle is still done via re-fetch)
+            // If it's a group node, we do nothing here
             else if (d.data.groupType) {
-                // We'll let the fetch-based logic handle group nodes.
-                // But you could also hide them here if you like.
+                // let the fetch-based logic handle group node toggling
             }
             // Otherwise, it's an asset node
             else {
@@ -1353,11 +1338,11 @@ $(document).ready(function() {
         // Asset labels always on:
         labelsSelectionGlobal.each(function(d) {
             const label = d3.select(this);
-            // If it's an asset node (no groupType) and not the active node, always show
-            if (!d.data.groupType && d.data.name !== currentActiveNodeName) {
+            // If it's an asset node (no groupType) OR active node, show label
+            if (!d.data.groupType || d.data.name === currentActiveNodeName) {
                 label.attr('display', null);
             } else {
-                // For active node or group node, also show label:
+                // It's a group node => label can still show per your design
                 label.attr('display', null);
             }
         });
@@ -1366,4 +1351,3 @@ $(document).ready(function() {
     // Kick it off (initial load)
     fetchAndRenderGraph();
 });
-
