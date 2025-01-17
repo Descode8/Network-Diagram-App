@@ -358,34 +358,34 @@ $(document).ready(function() {
         return null;
     }
 
-    // function ensureIndirectNodesVisible(data) {
-    //     if (!indirectRelationshipNodeSwitch.checked) return;
+    function ensureIndirectNodesVisible(data) {
+        if (!indirectRelationshipNodeSwitch.checked) return;
 
-    //     const indirectNodes = getIndirectRelationshipNodes(data);
-    //     indirectNodes.forEach(sourceItem => {
-    //         const sourceNode = findNodeByName(data, sourceItem.name);
-    //         if (!sourceNode) return;
+        const indirectNodes = getIndirectRelationshipNodes(data);
+        indirectNodes.forEach(sourceItem => {
+            const sourceNode = findNodeByName(data, sourceItem.name);
+            if (!sourceNode) return;
 
-    //         sourceItem.indirectRelationships.forEach(targetObj => {
-    //             const { name: targetName, type: targetType } = targetObj;
-    //             const targetExists = findNodeByName(data, targetName);
+            sourceItem.indirectRelationships.forEach(targetObj => {
+                const { name: targetName, type: targetType } = targetObj;
+                const targetExists = findNodeByName(data, targetName);
 
-    //             if (!targetExists) {
-    //                 // Add this new node directly under 'sourceNode'
-    //                 const newIndirectNode = {
-    //                     name: targetName,
-    //                     type: targetType || 'Unknown',
-    //                     description: "Automatically added via indirect relationship",
-    //                     children: []
-    //                 };
-    //                 if (!sourceNode.children) {
-    //                     sourceNode.children = [];
-    //                 }
-    //                 sourceNode.children.push(newIndirectNode);
-    //             }
-    //         });
-    //     });
-    // }
+                if (!targetExists) {
+                    // Add this new node directly under 'sourceNode'
+                    const newIndirectNode = {
+                        name: targetName,
+                        type: targetType || 'Unknown',
+                        description: "Automatically added via indirect relationship",
+                        children: []
+                    };
+                    if (!sourceNode.children) {
+                        sourceNode.children = [];
+                    }
+                    sourceNode.children.push(newIndirectNode);
+                }
+            });
+        });
+    }
 
     // -----------------------------------------------------
     // NEW: We restore the groupNodeSwitch event so that

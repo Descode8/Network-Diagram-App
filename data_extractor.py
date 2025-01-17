@@ -46,7 +46,9 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
     # 2) Helper: get node type from name
     # ---------------------------------------
     def get_node_type(node_name: str) -> str:
-        """Given node_name, return the best guess for its 'type' from the DataFrame, else 'Unknown'."""
+        """
+        Given node_name, return the best guess for its 'type' from the DataFrame, else 'Unknown'.
+        """
         # 1) Check if it’s in CI_Name
         row_ci = data[data['CI_Name'] == node_name]
         if not row_ci.empty:
