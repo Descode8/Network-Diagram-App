@@ -347,7 +347,8 @@ title {
 }
 
 .search-container, .group-asset-toggle-container, .switches-container, 
-#depthSlider, .groupSwitch span, .assetSwitch span, .indirectRelationshipSwitch span .tool-tip {
+#depthSlider, .groupSwitch span, .assetSwitch span, .indirectRelationshipSwitch span .tool-tip,
+.see-all-assets, .close-all-assets   {
     transition: 0.5s ease-in-out; 
 }
 
@@ -361,7 +362,7 @@ title {
 }
 
 .search-container:hover, .group-asset-toggle-container:hover, 
-.switches-container:hover, #depthSlider:hover, .tool-tip {
+.switches-container:hover, #depthSlider:hover, .tool-tip, .see-all-assets:hover, .close-all-assets:hover {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
@@ -614,141 +615,135 @@ input:checked + .slider .checkmark {
     opacity: 1;
 }
 
-.see-all-assets {
-    margin: 5px;
+.see-all-assets, .close-all-assets {
+    font-weight: bold;
     padding: 5px 10px;
     font-size: .75rem;
     display: flex;
     place-content: center;
-    margin: 2px auto;
+    margin: 5px auto;
+    background: linear-gradient(to bottom, var(--scrollbar-clr), var(--pane-ttle-bg-clr), var(--pane-ttle-bg-clr), var(--pane-ttle-bg-clr));
+    color: white;
+    border: none;
+    border-radius: 2px;
+}
+
+.see-all-assets:hover, .close-all-assets:hover {
+    cursor: pointer;
 }
 
 /* The overlay covering the page (already in your code) */
 /* The overlay covering the page */
+/* Full-screen overlay that blurs the background */
+/* The overlay itself */
 .all-assets-overlay {
     position: fixed;
     top: 0;
-    right: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-
-    /* Overlays typically have a background to dim the main screen or
-       you can keep the same color you had, e.g. var(--pane-bg-clr) */
-    background-color: var(--pane-bg-clr);
-
-    /* The key for sliding in/out: Start "off-canvas" to the right */
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
     transform: translateX(100%);
     transition: transform 0.5s ease-in-out;
-
-    z-index: 10000; 
-    overflow-y: auto;
-    display: block; /* Let’s keep it block; we’ll manage “hiding” with transform */
+    overflow: hidden; /* Prevent overflow of the overlay */
 }
 
-/* When active (shown), move overlay into view */
+/* Show the overlay when active */
 .all-assets-overlay.show {
     transform: translateX(0);
 }
 
-
-/* Main content area within the overlay */
-.all-assets-content {
-    max-width: 100%;
-    margin: 0 auto;
+/* The modal content */
+.all-assets-overlay .all-assets-content {
+    width: 80%;
+    height: 80%;
+    background-color: var(--pane-bg-clr);
+    overflow: hidden; /* Prevent the entire modal from scrolling */
     padding: 10px;
-    /* You could also add a box-shadow or border here if desired */
+    border-radius: 5px;
+    border: 2px solid var(--bdr-clr);
+    box-shadow: 0 0 10px 0 rgb(0, 0, 0);
+    display: flex; /* Make it a flex container */
+    flex-direction: column; /* Allow vertical stacking */
 }
 
-/* The container that holds all the columns */
+/* The main container holding the groups */
 #allAssetsContainer {
-    display: flex;    /* Place columns in a row */
-    flex-direction: row;
-    overflow-x: auto; /* Allow horizontal scrolling */
-    gap: 10px;        /* Spacing between columns */
-    margin-top: 20px;
-    height: 100%;
-    width: 100%;
+    display: flex; /* Arrange the columns in a row */
+    overflow-x: auto; /* Allow horizontal scrolling if needed */
+    gap: 10px; /* Spacing between columns */
 }
 
-/* Each group’s column */
-.assets-column {
-    flex: 1 1 auto;   /* Expand/shrink as needed */
-    min-width: 200px; /* Don’t let columns get too narrow */
-    max-width: 300px; /* You can tweak this to control column width */
-    background: #fff; /* Or var(--pane-bg-clr) if you prefer consistent color */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 5px;
+/* Individual group (column) */
+.asset-group {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Ensure it fills the container height */
 }
 
-/* Group heading (in JS, we override background-color) */
-.assets-column h3 {
-    margin: 0;
-    padding: 8px;
+/* Group header (non-scrolling part) */
+.asset-group > .asset-group-header {
+    color: var(--svg-bg-clr);
+    padding: 10px;
+    font-size: 1rem;
     text-align: center;
-    font-weight: normal;
+    font-weight: bold;
+    background-color: var(--header-bg-clr);
 }
 
-.asset-items-container {
-    max-height: 100%;  /* or any height you prefer */
-    overflow-y: auto;   /* let users scroll within this container */
-    background-color: var(--svg-bg-clr);
-    padding: 2px;
-}
-
-
-/* Individual asset items */
-.asset-item {
+.asset-group-header {
     margin: 0;
-    font-size: 0.85rem;
 }
 
-/* Close button */
-.close-all-assets {
-    float: right;
-    background: none;
-    border: none;
-    font-size: 1.5rem;
+.asset-item {
+    padding: 3px;
+    margin: 0;
+    font-size: 0.75rem;
+    text-align: left;
+}
+
+.asset-item:hover {
+    font-weight: bold;
+    text-decoration: underline;
     cursor: pointer;
 }
 
-.asset-group {
-    /* Make the group column fill the viewport minus a bit of top space */
-    height: calc(100vh - 60px); /* adjust 60px as needed for top bar/spacing */
-    display: flex;
-    flex-direction: column;
-    margin: 0 auto; /* spacing between columns */
-    border-radius: 4px;
-}
-
-  /* The header sits at the top, so it won't scroll away */
-.asset-group > .asset-group-header {
-    color: var(--svg-bg-clr);
-    border-radius: 1px;
-    padding: 2px 5px;
-    margin: 0;
-    font-size: 1rem;
-    text-align: center;
-}
-
+/* Scrollable container for items */
 .asset-items-container {
-    max-height: 100%;
-    overflow-y: auto;
+    overflow-y: auto; /* Allow vertical scrolling */
     background-color: var(--svg-bg-clr);
-    padding: 2px;
+    border: .75px solid var(--bdr-clr);
+    padding: 3px;
+    font-size: 0.75rem;
+    text-align: left;
+    min-width: 200px;
+    width: max-content;
 }
 
-  /* Override scrollbar styles just for .asset-items-container */
+/* Style the scrollbar inside .asset-items-container */
 .asset-items-container::-webkit-scrollbar {
-    width: 10px;
-    background-color: var(--svg-bg-clr); /* Make the scrollbar track background white */
+    width: 8px;
+}
+
+.asset-items-container::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-clr);
+    border-radius: 1px;
 }
 
 .asset-items-container::-webkit-scrollbar-track {
-    background-color: var(--svg-bg-clr); /* The track (behind the thumb) stays white */
-    margin: 0 2px;
+    background-color: var(--svg-bg-clr);
 }
 
-
+.close-all-assets {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
 
 

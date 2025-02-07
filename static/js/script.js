@@ -183,7 +183,7 @@ $(document).ready(function() {
                         handleNodeClicked({ name: assetName });
 
                         // ---- CLOSE THE OVERLAY AFTER CLICKING ----
-                        $('.all-assets-overlay').fadeOut();
+                        $('.all-assets-overlay').removeClass('show');
                     });
 
                 itemsContainer.append(assetItem);
@@ -1270,6 +1270,7 @@ $(document).ready(function() {
         rightContainer
             .append("button")
             .attr("class", "see-all-assets")
+            .attr('title', 'See All Assets')
             .html("See All Assets");
 
         const displayGroupNodes = groupNodeSwitch.checked;
