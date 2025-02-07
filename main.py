@@ -36,8 +36,8 @@ def index():
 
 @app.route('/all-assets', methods=['GET'])
 def all_assets():
-    grouped = get_grouped_assets()
-    return jsonify(grouped)
+    groups = get_grouped_assets()
+    return jsonify(groups)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

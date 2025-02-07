@@ -690,7 +690,7 @@ input:checked + .slider .checkmark {
 /* Group header (non-scrolling part) */
 .asset-group > .asset-group-header {
     color: var(--svg-bg-clr);
-    padding: 10px;
+    padding: 2px 5px;
     font-size: 1rem;
     text-align: center;
     font-weight: bold;

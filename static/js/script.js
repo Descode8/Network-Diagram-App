@@ -50,10 +50,27 @@ $(document).ready(function() {
 
     let allNodes = []; // Holds all node names and group types
 
-    // Global references (for toggling visibility without re-render):
-    let currentZoomScale = 1;
-    let nodeSelectionGlobal, linkSelectionGlobal, labelsSelectionGlobal;
-    let indirectLinkSelectionGlobal = null;
+    // -----------------------------------------------------
+    // Fetch all assets for autocomplete from /all-assets route
+    // -----------------------------------------------------
+    function fetchAllAssetsForAutocomplete() {
+        fetch('/all-assets', { headers: { 'Accept': 'application/json' } })
+            .then(response => response.json())
+            .then(grouped => {
+                let assetNames = [];
+                for (const type in grouped) {
+                    if (grouped.hasOwnProperty(type)) {
+                        assetNames = assetNames.concat(grouped[type]);
+                    }
+                }
+                // Merge the fetched asset names with any names already in allNodes
+                allNodes = [...new Set([...allNodes, ...assetNames])];
+            })
+            .catch(err => console.error('Error fetching all assets for auto complete:', err));
+    }
+    
+    // Call it once on page load
+    fetchAllAssetsForAutocomplete();
 
     // -----------------------------------------------------
     // Left/Right Pane Toggle
@@ -66,7 +83,7 @@ $(document).ready(function() {
             $('.graph-container').css('width', '85vw');
             $('.expand-collapse-buttonLeft').attr('title', 'Expand Left Pane');
         } else {
-            if(!rightPaneIsVisible) {
+            if (!rightPaneIsVisible) {
                 $('.left-pane').css({'display': 'flex', 'width': '17vw'});
                 $('.expand-collapse-buttonLeft').css('transform', 'rotate(0deg)');
                 $('.graph-container').css('width', '85vw');
@@ -98,11 +115,11 @@ $(document).ready(function() {
             $('.expand-collapse-buttonRight').attr('title', 'Expand Right Pane');
         } else {
             if (!leftPaneIsVisible) {
-                $('.right-pane').css({'display': 'flex','width': '17vw'});
+                $('.right-pane').css({'display': 'flex', 'width': '17vw'});
                 $('.expand-collapse-buttonRight').css('transform', 'rotate(0deg)');
                 $('.graph-container').css('width', '83vw');
             } else {
-                $('.right-pane').css({'display': 'flex','width': '17vw'});
+                $('.right-pane').css({'display': 'flex', 'width': '17vw'});
                 $('.expand-collapse-buttonRight').css('transform', 'rotate(0deg)');
                 $('.graph-container').css('width', '66vw');
                 rightPaneIsVisible = true;
@@ -123,7 +140,7 @@ $(document).ready(function() {
     // The “All Assets” Overlay
     // -----------------------------------------------------
     // Use event delegation so dynamically created buttons are handled.
-// Show the overlay
+    // Show the overlay
     $(document).on('click', '.see-all-assets', function(e) {
         e.preventDefault();
         $.ajax({
@@ -419,10 +436,10 @@ $(document).ready(function() {
     });
 
     onRefreshButton.addEventListener('click', () => {
-        shuffleNodeForces();
+        shuffleNodeForForces();
     });
 
-    function shuffleNodeForces() {
+    function shuffleNodeForForces() {
         nodesDisplayed.forEach(d => {
             d.fx = null;
             d.fy = null;
@@ -527,8 +544,8 @@ $(document).ready(function() {
             .append('line')
             .attr('class', 'indirect-link')
             .attr('stroke', 'var(--indirect-link-clr)')
-            .attr('stroke-width', indirectLinkWidth / currentZoomScale)
-            .attr('stroke-dasharray', `${(indirectLinkWidth / currentZoomScale)}, ${(indirectLinkWidth / currentZoomScale) * 2}`);
+            .attr('stroke-width', indirectLinkWidth)
+            .attr('stroke-dasharray', `${indirectLinkWidth}, ${indirectLinkWidth * 5}`);
 
         indirectLinkSelectionGlobal
             .attr('x1', d => d.source.x)
