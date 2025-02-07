@@ -661,8 +661,8 @@ input:checked + .slider .checkmark {
 
 /* The modal content */
 .all-assets-overlay .all-assets-content {
-    width: 80%;
-    height: 80%;
+    width: 85%;
+    height: 85%;
     background-color: var(--pane-bg-clr);
     overflow: hidden; /* Prevent the entire modal from scrolling */
     padding: 10px;
