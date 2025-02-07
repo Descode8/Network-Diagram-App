@@ -666,6 +666,7 @@ input:checked + .slider .checkmark {
     background-color: var(--pane-bg-clr);
     overflow: hidden; /* Prevent the entire modal from scrolling */
     padding: 10px;
+    padding-bottom: 0;
     border-radius: 5px;
     border: 2px solid var(--bdr-clr);
     box-shadow: 0 0 10px 0 rgb(0, 0, 0);
@@ -676,6 +677,7 @@ input:checked + .slider .checkmark {
 /* The main container holding the groups */
 #allAssetsContainer {
     display: flex; /* Arrange the columns in a row */
+    flex-grow: 1;
     overflow-x: auto; /* Allow horizontal scrolling if needed */
     gap: 10px; /* Spacing between columns */
 }
