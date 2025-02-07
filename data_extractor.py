@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from collections import deque
 import itertools
+from collections import defaultdict
 
 def fetch_graph_data(excel_file='data/network_diagram.xlsx') -> tuple:
     try:
@@ -9,7 +10,6 @@ def fetch_graph_data(excel_file='data/network_diagram.xlsx') -> tuple:
             raise FileNotFoundError(f"{excel_file} not found.")
         
         data = pd.read_excel(excel_file)
-        
         # Normalize 'CI_Name' and 'Dependency_Name' by stripping spaces
         data['CI_Name'] = data['CI_Name'].astype(str).str.strip()
         data['Dependency_Name'] = data['Dependency_Name'].astype(str).str.strip()
@@ -439,3 +439,81 @@ def build_hierarchy(data: pd.DataFrame, depth: int, active_node: str):
 
     active_node_relationships["totalNodesDisplayed"] = total_count
     return active_node_relationships
+
+def get_all_assets(excel_file='data/network_diagram.xlsx'):
+    """
+    Retrieves all unique assets from both 'CI_Name' and 'Dependency_Name' columns.
+    Think of this like merging two baskets (one for CI_Names and one for Dependency_Names)
+    and removing duplicates to get a complete list of unique assets.
+    """
+    data, _ = fetch_graph_data(excel_file)
+    if data is None:
+        return []
+
+    # Normalize the asset names (this ensures that any leading/trailing spaces are removed)
+    data['CI_Name'] = data['CI_Name'].astype(str).str.strip()
+    data['Dependency_Name'] = data['Dependency_Name'].astype(str).str.strip()
+    
+    # Extract assets from each column and use a set to remove duplicates
+    ci_assets = set(data['CI_Name'].tolist())
+    dependency_assets = set(data['Dependency_Name'].tolist())
+    
+    # Combine the two sets (like merging two lists and removing duplicate items)
+    all_assets_set = ci_assets.union(dependency_assets)
+    
+    # Convert back to a list (or keep as a set if order is not important)
+    return list(all_assets_set)
+
+# print(get_all_assets())
+
+def get_grouped_assets(excel_file='data/network_diagram.xlsx'):
+    """
+    Return a dict grouping asset names by their type. E.g.:
+    {
+        "Applications": ["IT Service Management System", "Help Desk ..."],
+        "Data": [...],
+        ...
+    }
+    """
+    data, _ = fetch_graph_data(excel_file)
+    if data is None:
+        return {}
+
+    # Ensure columns are strings, strip whitespace
+    data['CI_Name'] = data['CI_Name'].astype(str).str.strip()
+    data['Dependency_Name'] = data['Dependency_Name'].astype(str).str.strip()
+
+    # Build a unified list of { name, type } for both CI and Dependency
+    all_entries = []
+    for _, row in data.iterrows():
+        ci_name = row['CI_Name']
+        ci_type = row['CI_Type'] if pd.notna(row['CI_Type']) else 'Unknown'
+        all_entries.append({'name': ci_name, 'type': ci_type})
+
+        dep_name = row['Dependency_Name']
+        dep_type = row['Dependency_Type'] if pd.notna(row['Dependency_Type']) else 'Unknown'
+        all_entries.append({'name': dep_name, 'type': dep_type})
+
+    # Deduplicate by picking a single type for each asset name
+    # (If the same name appears under multiple types, we use whichever is not "Unknown")
+    asset_to_type = {}
+    for item in all_entries:
+        name = item['name']
+        typ  = item['type']
+        if name not in asset_to_type:
+            asset_to_type[name] = typ
+        else:
+            # If the stored type is 'Unknown' but new type is better, replace
+            if asset_to_type[name] == 'Unknown' and typ != 'Unknown':
+                asset_to_type[name] = typ
+
+    # Group assets by their final type
+    grouped = defaultdict(list)
+    for name, typ in asset_to_type.items():
+        grouped[typ].append(name)
+
+    # Sort the asset names in each group
+    for typ in grouped:
+        grouped[typ].sort()
+
+    return dict(grouped)

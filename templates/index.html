@@ -130,4 +130,14 @@ Right Pane: Displays details for the selected node.
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 
 </body>
+
+<!-- All Assets Overlay (initially hidden) -->
+<!-- This is your separate All Assets Overlay (hidden by default) -->
+<div class="all-assets-overlay" style="display: none;">
+    <div class="all-assets-content">
+        <button class="close-all-assets" title="Close">&times; Close</button>
+        <!-- A container where we'll dynamically inject the groups/assets -->
+        <div id="allAssetsContainer"></div>
+    </div>
+</div>
 </html>

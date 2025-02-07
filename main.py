@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, render_template, request
 from data_extractor import build_hierarchy
 from data_extractor import fetch_graph_data
+from data_extractor import get_grouped_assets
 
 app = Flask(__name__)
 
@@ -32,6 +33,11 @@ def index():
     else:
         # Render the HTML page for non-JSON requests
         return render_template('index.html')
+
+@app.route('/all-assets', methods=['GET'])
+def all_assets():
+    grouped = get_grouped_assets()
+    return jsonify(grouped)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

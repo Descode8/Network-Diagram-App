@@ -120,6 +120,97 @@ $(document).ready(function() {
     }
 
     // -----------------------------------------------------
+    // The “All Assets” Overlay
+    // -----------------------------------------------------
+    // Use event delegation so dynamically created buttons are handled.
+    $(document).on('click', '.see-all-assets', function(e) {
+        e.preventDefault();
+        // Fetch data from your Flask endpoint:
+        $.ajax({
+            url: '/all-assets',
+            method: 'GET',
+            dataType: 'json',
+            success: function(groupedData) {
+                populateAllAssetsPane(groupedData);
+                $('.all-assets-overlay').fadeIn();
+            },
+            error: function() {
+                alert('Error fetching all assets.');
+            }
+        });
+    });
+
+    $(document).on('click', '.close-all-assets', function() {
+        $('.all-assets-overlay').fadeOut();
+    });
+
+    // Populates the All Assets overlay with clickable items
+    function populateAllAssetsPane(groupedData) {
+        const container = $('#allAssetsContainer');
+        container.empty(); // Clear old data, if any
+
+        // groupedData example:
+        // {
+        //   "Applications": ["Help Desk...", "IT Service..."],
+        //   "Data": [...],
+        //   ...
+        // }
+
+        Object.entries(groupedData).forEach(([groupName, assetList]) => {
+            // Make a group wrapper
+            const groupDiv = $('<div>').addClass('asset-group');
+
+            // Group header
+            const groupHeader = $('<h3>')
+                .text(groupName)
+                .addClass('asset-group-header')
+                .css('background-color', getGroupColor(groupName));
+            groupDiv.append(groupHeader);
+
+            // Create a container for the items
+            const itemsContainer = $('<div>').addClass('asset-items-container');
+
+            // Loop through each asset and append to itemsContainer
+            assetList.forEach(assetName => {
+                const assetItem = $('<p>')
+                    .addClass('asset-item')  // For hover underline
+                    .text(assetName)
+                    .on('click', () => {
+                        // Make this asset the active node
+                        handleNodeClicked({ name: assetName });
+
+                        // Optionally close the overlay after clicking:
+                        // $('.all-assets-overlay').fadeOut();
+                    });
+
+                itemsContainer.append(assetItem);
+            });
+
+            // Append itemsContainer to the main groupDiv
+            groupDiv.append(itemsContainer);
+
+            // Then append groupDiv to your main overlay container
+            container.append(groupDiv);
+        });
+    }
+
+    // Maps group name to color
+    function getGroupColor(groupName) {
+        switch (groupName) {
+            case 'Organization': return 'var(--org-nde-clr)';
+            case 'Applications': return 'var(--app-nde-clr)';
+            case 'Data':         return 'var(--data-nde-clr)';
+            case 'Facilities':   return 'var(--fclty-nde-clr)';
+            case 'People':       return 'var(--ppl-nde-clr)';
+            case 'Procurements': return 'var(--procure-nde-clr)';
+            case 'Technology':   return 'var(--tech-nde-clr)';
+            case 'Server':       return 'var(--server-nde-clr)';
+            case 'Network':      return 'var(--netwrk-nde-clr)';
+            default:             return 'yellow';
+        }
+    }
+
+    // -----------------------------------------------------
     // Search and Clear Buttons
     // -----------------------------------------------------
     searchInput.addEventListener('input', () => {
@@ -158,9 +249,6 @@ $(document).ready(function() {
         }, 3000);
     }
 
-    // -----------------------------------------------------
-    // Only push strings into allNodes
-    // -----------------------------------------------------
     function populateNodeList(data) {
         function traverse(node) {
             if (typeof node.name === 'string') {
@@ -290,7 +378,7 @@ $(document).ready(function() {
     svg.call(zoom);
 
     // -----------------------------------------------------
-    // Color function
+    // Color function (for nodes)
     // -----------------------------------------------------
     function nodeColor(node) {
         let nodes = node.data.groupType || node.data.type;
@@ -318,7 +406,7 @@ $(document).ready(function() {
         }
     }
 
-    // We create a single main group. We'll reorder sub-groups each render:
+    // Set up main group + force simulation
     svg.attr('width', width).attr('height', height);
     const graphGroup = svg.append('g');
     const simulation = d3.forceSimulation();
@@ -371,7 +459,6 @@ $(document).ready(function() {
                 const targetExists = findNodeByName(data, targetName);
 
                 if (!targetExists) {
-                    // Add this new node directly under 'sourceNode'
                     const newIndirectNode = {
                         name: targetName,
                         type: targetType || 'Unknown',
@@ -387,20 +474,12 @@ $(document).ready(function() {
         });
     }
 
-    // -----------------------------------------------------
-    // NEW: We restore the groupNodeSwitch event so that
-    //      group toggles do a fetch + re-render
-    // -----------------------------------------------------
     groupNodeSwitch.addEventListener('change', () => {
         resetSimulationForForces();
         // Re-fetch to flatten or remove group nodes properly
         fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
     });
 
-    // -----------------------------------------------------
-    // We already had an event for indirect relationships
-    // but not for re-fetch; we just hide/show lines:
-    // -----------------------------------------------------
     indirectRelationshipNodeSwitch.addEventListener('change', () => {
         updateIndirectLinks();
     });
@@ -414,12 +493,10 @@ $(document).ready(function() {
             }
             return;
         }
-
         // If switch IS checked, figure out which indirect lines to draw
         const hasIndirectRelationships = containsIndirectRelationships(graphData);
         if (!hasIndirectRelationships) return;
 
-        // Build the array of indirect links, but only for nodes that already exist in our graph
         let indirectNodes = getIndirectRelationshipNodes(graphData);
         let indirectLinks = [];
 
@@ -435,12 +512,10 @@ $(document).ready(function() {
             });
         });
 
-        // Remove any old lines
         if (indirectLinkSelectionGlobal) {
             indirectLinkSelectionGlobal.remove();
         }
 
-        // Select the group (created in renderGraph)
         let indirectLinkGroup = graphGroup.select('g.indirectLinks');
         indirectLinkSelectionGlobal = indirectLinkGroup
             .selectAll('line.indirect-link')
@@ -452,7 +527,6 @@ $(document).ready(function() {
             .attr('stroke-width', indirectLinkWidth / currentZoomScale)
             .attr('stroke-dasharray', `${(indirectLinkWidth / currentZoomScale)}, ${(indirectLinkWidth / currentZoomScale) * 2}`);
 
-        // Position them based on nodes' x,y
         indirectLinkSelectionGlobal
             .attr('x1', d => d.source.x)
             .attr('y1', d => d.source.y)
@@ -478,10 +552,7 @@ $(document).ready(function() {
                 }
                 graphData = data;
 
-                // Check if indirect relationships exist
                 const hasIndirectRelationships = containsIndirectRelationships(data);
-
-                // Show or hide the toggle for indirect relationships
                 const indirectSwitch = document.querySelector('.indirectRelationshipSwitch');
                 if (hasIndirectRelationships) {
                     indirectSwitch.style.display = 'block';
@@ -491,11 +562,6 @@ $(document).ready(function() {
 
                 getAllChildren(data);
                 showGroupToggles();
-
-                // Process indirect nodes if needed
-                // if (hasIndirectRelationships) {
-                //     ensureIndirectNodesVisible(data);
-                // }
 
                 mergeSameGroupNodes(data);
                 populateNodeList(data);
@@ -586,7 +652,6 @@ $(document).ready(function() {
 
             input.addEventListener('change', () => {
                 visibleGroups[group] = input.checked;
-                // Re-fetch to flatten or remove group nodes properly
                 fetchAndRenderGraph(depthSlider.value, searchInput.value.trim());
             });
         });
@@ -637,8 +702,7 @@ $(document).ready(function() {
     }
 
     // -----------------------------------------------------
-    // renderGraph (no changes except we re-run it after
-    // group toggles or fetch calls)
+    // renderGraph
     // -----------------------------------------------------
     function renderGraph(data) {
         // Remove old groups so we can re-append them in correct z-order
@@ -659,7 +723,6 @@ $(document).ready(function() {
             (data.type && data.type === data.name)
         );
 
-        // Possibly hide group nodes for shallow depth:
         if (isActiveNodeAGroup && depthSlider.value < 3) {
             displayGroupNodes = false;
         } else {
@@ -770,7 +833,6 @@ $(document).ready(function() {
                 .force("collide", d3.forceCollide().radius(15));
         }
 
-        // Additional logic for certain partial depth:
         if (currentActiveNodeName !== rootNode.name && depthSlider.value == 2) {
             simulation
                 .force("radial", null)
@@ -905,13 +967,13 @@ $(document).ready(function() {
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
 
-                labelSelection
+            labelSelection
                 .attr('x', d => d.x)
                 .attr('y', d => {
                     const r = getCircleScreenRadius(d);
                     return d.y - (r + 3);
                 });
-            
+
             preventLabelOverlap(labelSelection);
 
             if (simulation.alpha() < 0.3) { fitGraphToContainer(true); }
@@ -936,35 +998,29 @@ $(document).ready(function() {
         updateRightContainer(data);
     }
 
-    // Quick function that checks for overlapping bounding boxes and bumps them apart
-function preventLabelOverlap(selection) {
-    const labels = selection.nodes(); // array of <text> DOM elements
-    
-    for (let i = 0; i < labels.length - 1; i++) {
-        for (let j = i + 1; j < labels.length; j++) {
-            const a = labels[i].getBBox();
-            const b = labels[j].getBBox();
-            
-            // If bounding boxes overlap
-            if (isOverlap(a, b)) {
-            // Bump one label slightly
-            // Here, we move label j downward
-            // but you could do something more elaborate:
-            const dy = (a.y + a.height) - b.y; // minimal y shift
-            d3.select(labels[j])
-                .attr('y', parseFloat(labels[j].getAttribute('y')) + dy + 2);
+    // Helper for label overlap
+    function preventLabelOverlap(selection) {
+        const labels = selection.nodes();
+
+        for (let i = 0; i < labels.length - 1; i++) {
+            for (let j = i + 1; j < labels.length; j++) {
+                const a = labels[i].getBBox();
+                const b = labels[j].getBBox();
+                if (isOverlap(a, b)) {
+                    const dy = (a.y + a.height) - b.y;
+                    d3.select(labels[j])
+                        .attr('y', parseFloat(labels[j].getAttribute('y')) + dy + 2);
+                }
             }
-        }
         }
     }
 
-    // A helper to detect overlap between two bounding boxes
     function isOverlap(a, b) {
         return !(
-        a.x + a.width  < b.x ||  // a is "left" of b
-        a.x            > b.x + b.width ||
-        a.y + a.height < b.y ||  // a is "above" b
-        a.y            > b.y + b.height
+            a.x + a.width < b.x ||
+            a.x > b.x + b.width ||
+            a.y + a.height < b.y ||
+            a.y > b.y + b.height
         );
     }
 
@@ -985,7 +1041,6 @@ function preventLabelOverlap(selection) {
         let flattenedChildren = [];
         node.children.forEach(child => {
             if (child.groupType && !displayGroupNodes) {
-                // If a child is a group node and groupNodeSwitch is off, flatten it
                 if (child.name === currentActiveNodeName) {
                     hideGroupNodes(child, displayGroupNodes);
                     flattenedChildren.push(child);
@@ -998,7 +1053,6 @@ function preventLabelOverlap(selection) {
                     }
                 }
             } else {
-                // otherwise keep the child
                 hideGroupNodes(child, displayGroupNodes);
                 flattenedChildren.push(child);
             }
@@ -1021,14 +1075,12 @@ function preventLabelOverlap(selection) {
         });
     }
 
+    // Called when user clicks a node’s label/circle or from All Assets
     function handleNodeClicked(nodeData) {
         var clickedName = nodeData.name || nodeData.groupType;
-        if (!clickedName) {
-            return;
-        }
-        if (clickedName === currentActiveNodeName) {
-            return;
-        }
+        if (!clickedName) return;
+        if (clickedName === currentActiveNodeName) return;
+
         searchInput.value = clickedName;
         fetchAndRenderGraph(depthSlider.value, clickedName);
     }
@@ -1104,6 +1156,7 @@ function preventLabelOverlap(selection) {
         let scale, translateX, translateY;
         let graphPadding;
 
+        // Adjust graphPadding based on groupNodeSwitch and node count
         if (groupNodeSwitch.checked) {
             if (nonGroupNodes.length > 50) {
                 graphPadding = 75;
@@ -1210,6 +1263,11 @@ function preventLabelOverlap(selection) {
             .append("h3")
             .attr("class", "dependencies-header")
             .html("Dependencies");
+
+        rightContainer
+            .append("button")
+            .attr("class", "see-all-assets")
+            .html("See All Assets");
 
         const displayGroupNodes = groupNodeSwitch.checked;
         const dependencies = data.children || [];
@@ -1339,17 +1397,12 @@ function preventLabelOverlap(selection) {
     }
 
     // -----------------------------------------------------
-    // NEW: Toggle ONLY circles for asset nodes
-    //      Keep labels for assets ALWAYS visible.
-    // -----------------------------------------------------
-    // 1. Remove the original fetch call from asset switch
-    // 2. Use a local show/hide of asset circles:
+    // Toggle ONLY circles for asset nodes, keep labels on
     // -----------------------------------------------------
     assetNodesSwitch.addEventListener('change', () => {
         updateAssetNodesVisibility();
     });
 
-    // Helper function to update asset node circles & labels
     function updateAssetNodesVisibility() {
         if (!nodeSelectionGlobal || !labelsSelectionGlobal) return;
 
@@ -1360,9 +1413,9 @@ function preventLabelOverlap(selection) {
             if (d.data.name === currentActiveNodeName) {
                 circle.attr('display', null);
             }
-            // If it's a group node, we do nothing here
+            // If it's a group node, do nothing
             else if (d.data.groupType) {
-                // let the fetch-based logic handle group node toggling
+                // let the fetch-based logic handle group toggling
             }
             // Otherwise, it's an asset node
             else {
@@ -1377,11 +1430,9 @@ function preventLabelOverlap(selection) {
         // Asset labels always on:
         labelsSelectionGlobal.each(function(d) {
             const label = d3.select(this);
-            // If it's an asset node (no groupType) OR active node, show label
             if (!d.data.groupType || d.data.name === currentActiveNodeName) {
                 label.attr('display', null);
             } else {
-                // It's a group node => label can still show per your design
                 label.attr('display', null);
             }
         });
