@@ -123,16 +123,17 @@ $(document).ready(function() {
     // The “All Assets” Overlay
     // -----------------------------------------------------
     // Use event delegation so dynamically created buttons are handled.
+// Show the overlay
     $(document).on('click', '.see-all-assets', function(e) {
         e.preventDefault();
-        // Fetch data from your Flask endpoint:
         $.ajax({
             url: '/all-assets',
             method: 'GET',
             dataType: 'json',
             success: function(groupedData) {
                 populateAllAssetsPane(groupedData);
-                $('.all-assets-overlay').fadeIn();
+                // Instead of $('.all-assets-overlay').fadeIn();
+                $('.all-assets-overlay').addClass('show');
             },
             error: function() {
                 alert('Error fetching all assets.');
@@ -140,8 +141,10 @@ $(document).ready(function() {
         });
     });
 
+    // Hide the overlay
     $(document).on('click', '.close-all-assets', function() {
-        $('.all-assets-overlay').fadeOut();
+        // Instead of $('.all-assets-overlay').fadeOut();
+        $('.all-assets-overlay').removeClass('show');
     });
 
     // Populates the All Assets overlay with clickable items
@@ -179,8 +182,8 @@ $(document).ready(function() {
                         // Make this asset the active node
                         handleNodeClicked({ name: assetName });
 
-                        // Optionally close the overlay after clicking:
-                        // $('.all-assets-overlay').fadeOut();
+                        // ---- CLOSE THE OVERLAY AFTER CLICKING ----
+                        $('.all-assets-overlay').fadeOut();
                     });
 
                 itemsContainer.append(assetItem);

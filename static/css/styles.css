@@ -81,7 +81,6 @@ body, html {
 
 .right-pane {
     gap: 0px; 
-    background-color: var(--svg-bg-clr);
 }
 
 /* .left-pane {
@@ -625,16 +624,32 @@ input:checked + .slider .checkmark {
 }
 
 /* The overlay covering the page (already in your code) */
+/* The overlay covering the page */
 .all-assets-overlay {
     position: fixed;
     top: 0;
-    left: 0;
+    right: 0;
     width: 100%;
     height: 100%;
+
+    /* Overlays typically have a background to dim the main screen or
+       you can keep the same color you had, e.g. var(--pane-bg-clr) */
     background-color: var(--pane-bg-clr);
-    z-index: 10000;
+
+    /* The key for sliding in/out: Start "off-canvas" to the right */
+    transform: translateX(100%);
+    transition: transform 0.5s ease-in-out;
+
+    z-index: 10000; 
     overflow-y: auto;
+    display: block; /* Let’s keep it block; we’ll manage “hiding” with transform */
 }
+
+/* When active (shown), move overlay into view */
+.all-assets-overlay.show {
+    transform: translateX(0);
+}
+
 
 /* Main content area within the overlay */
 .all-assets-content {
@@ -681,15 +696,11 @@ input:checked + .slider .checkmark {
     padding: 2px;
 }
 
+
 /* Individual asset items */
 .asset-item {
     margin: 0;
     font-size: 0.85rem;
-    cursor: pointer;
-}
-
-.asset-item:hover {
-    text-decoration: underline;
 }
 
 /* Close button */
