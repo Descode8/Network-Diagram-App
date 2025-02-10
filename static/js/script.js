@@ -1287,8 +1287,8 @@ $(document).ready(function() {
         rightContainer
             .append("button")
             .attr("class", "see-all-assets")
-            .attr('title', 'See All Assets')
-            .html("See All Assets");
+            .attr('title', 'View All Assets')
+            .html("View All Assets");
 
         const displayGroupNodes = groupNodeSwitch.checked;
         const dependencies = data.children || [];

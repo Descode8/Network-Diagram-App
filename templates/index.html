@@ -135,7 +135,9 @@ Right Pane: Displays details for the selected node.
 <!-- This is your separate All Assets Overlay (hidden by default) -->
 <div class="all-assets-overlay">
     <div class="all-assets-content">
-        <button class="close-all-assets" title="Close">&times; Close</button>
+        <button class="close-all-assets" title="Close">
+            <img src="{{ url_for('static', filename='images/x.svg') }}" class="clear-icon" alt="Clear Icon">
+        </button>
         <!-- A container where we'll dynamically inject the groups/assets -->
         <div id="allAssetsContainer"></div>
     </div>
