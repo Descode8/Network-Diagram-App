@@ -1,6 +1,7 @@
 $(document).ready(function() {
     let width = $('.graph-container')[0].clientWidth;
     let height = $('.graph-container')[0].clientHeight;
+    let rightPaneInitialized = false;
 
     let rootNode = null;
     let activeNode = null;
@@ -16,7 +17,7 @@ $(document).ready(function() {
     const groupNodeSize = 4;
     const nodeSize = 4;
     const linkWidth = 1;
-    let indirectLinkWidth = 1; // slightly smaller than your original
+    let indirectLinkWidth = 1.2; // slightly smaller than your original
 
     const labelColor = 'var(--label-clr)';
     const linkColor = 'var(--link-clr)';
@@ -552,6 +553,8 @@ $(document).ready(function() {
             .attr('y1', d => d.source.y)
             .attr('x2', d => d.target.x)
             .attr('y2', d => d.target.y);
+        
+        fitGraphToContainer(true);
     }
 
     // -----------------------------------------------------
@@ -1257,158 +1260,149 @@ $(document).ready(function() {
         fitGraphToContainer(/* noTransition = false */);
     });
 
-    function updateRightContainer(data) {
+    /*****************************************************************
+    * Comment back to use 'See All Assets' button to view all assets *
+    ******************************************************************/
+    // function updateRightContainer(data) {
+    //     rightContainer.html("");
+
+    //     rightContainer
+    //         .append("h2")
+    //         .style("background-color", nodeColor({ data: { type: data.type } }))
+    //         .html(`${data.name}`);
+
+    //     rightContainer
+    //         .append("p")
+    //         .html(`<strong>Type: </strong>${data.type || 'Unknown'}`);
+
+    //     const description = (data.description || 'No description available').replace(/\n/g, '<br>');
+    //     rightContainer
+    //         .append("h3")
+    //         .attr("class", "description-header")
+    //         .html("Description");
+    //     rightContainer
+    //         .append("p")
+    //         .style("text-align", "left")
+    //         .html(description);
+
+    //     rightContainer
+    //         .append("h3")
+    //         .attr("class", "dependencies-header")
+    //         .html("Dependencies");
+
+    //     rightContainer
+    //         .append("button")
+    //         .attr("class", "see-all-assets")
+    //         .attr('title', 'View All Assets')
+    //         .html("View All Assets");
+
+    // Then modify updateRightContainer like this:
+    ////////////////////////////////////////////////////////////////
+    // updateRightContainer: Shows active node info at top
+    // and ALWAYS shows rootNode’s groups/items as dependencies.
+    //
+    // 1) The .description-header & .dependencies-header
+    //    match your old naming & styling.
+    // 2) The "See All Assets" button also matches the old naming.
+    ////////////////////////////////////////////////////////////////
+    function updateRightContainer(activeNodeData) {
+        // 1) Clear the right pane
         rightContainer.html("");
 
+        // 2) Top section (active node's info)
         rightContainer
             .append("h2")
-            .style("background-color", nodeColor({ data: { type: data.type } }))
-            .html(`${data.name}`);
+            .style("background-color", nodeColor({ data: { type: activeNodeData.type } }))
+            .html(`${activeNodeData.name}`);
 
         rightContainer
             .append("p")
-            .html(`<strong>Type: </strong>${data.type || 'Unknown'}`);
+            .html(`<strong>Type: </strong>${activeNodeData.type || 'Unknown'}`);
 
-        const description = (data.description || 'No description available').replace(/\n/g, '<br>');
+        const description = (activeNodeData.description || 'No description available')
+            .replace(/\n/g, '<br>');
+
         rightContainer
             .append("h3")
             .attr("class", "description-header")
             .html("Description");
+
         rightContainer
             .append("p")
             .style("text-align", "left")
             .html(description);
 
+        // 3) Dependencies header
         rightContainer
             .append("h3")
             .attr("class", "dependencies-header")
             .html("Dependencies");
 
+        // 4) "See All Assets" button
         rightContainer
             .append("button")
             .attr("class", "see-all-assets")
-            .attr('title', 'View All Assets')
+            .attr("title", "View All Assets")
             .html("View All Assets");
 
-        const displayGroupNodes = groupNodeSwitch.checked;
-        const dependencies = data.children || [];
-        const desiredOrder = ["Organization", "People", "Technology", "Data"];
-
-        if (dependencies.length > 0) {
-            if (displayGroupNodes) {
-                const groupNodes = dependencies.filter(d => d.groupType);
-                const nonGroupNodes = dependencies.filter(d => !d.groupType);
-
-                groupNodes.sort((a, b) => {
-                    const indexA = desiredOrder.indexOf(a.groupType);
-                    const indexB = desiredOrder.indexOf(b.groupType);
-                    if (indexA === -1 && indexB === -1) {
-                        return a.groupType.localeCompare(b.groupType);
-                    } else if (indexA === -1) {
-                        return 1;
-                    } else if (indexB === -1) {
-                        return -1;
-                    } else {
-                        return indexA - indexB;
-                    }
-                });
-
-                groupNodes.forEach(groupNode => {
-                    createGroupTypeSection(groupNode);
-                });
-
-                nonGroupNodes.forEach(nonGroupNode => {
-                    createNodeElement(rightContainer, nonGroupNode);
-                });
-
-            } else {
-                const dependenciesByType = d3.group(dependencies, d => d.type || "Unknown");
-
-                const orderedTypes = Array.from(dependenciesByType.keys()).sort((a, b) => {
-                    const indexA = desiredOrder.indexOf(a);
-                    const indexB = desiredOrder.indexOf(b);
-                    if (indexA === -1 && indexB === -1) {
-                        return a.localeCompare(b);
-                    } else if (indexA === -1) {
-                        return 1;
-                    } else if (indexB === -1) {
-                        return -1;
-                    } else {
-                        return indexA - indexB;
-                    }
-                });
-
-                orderedTypes.forEach(type => {
-                    const nodes = dependenciesByType.get(type);
-                    rightContainer
-                        .append("p")
-                        .attr("class", "dependency-type-header")
-                        .style("background-color", nodeColor({ data: { type: type } }))
-                        .html(type)
-                        .style("cursor", "pointer")
-                        .on("click", () => {
-                            const pseudoNodeData = {
-                                name: type,
-                                type: type,
-                                description: `${type}`,
-                                children: nodes
-                            };
-                            handleNodeClicked(pseudoNodeData);
-                        });
-
-                    nodes.forEach(node => {
-                        createNodeElement(rightContainer, node);
-                    });
-                });
-            }
-        } else {
-            rightContainer.append("p")
+        // 5) If rootNode or its children are missing, bail out
+        if (!rootNode || !rootNode.children || rootNode.children.length === 0) {
+            rightContainer
+                .append("p")
                 .attr("class", "no-dependencies")
                 .html("No dependencies available.");
+            return;
         }
 
-        function createGroupTypeSection(groupNode) {
-            const groupContainer = rightContainer.append("div")
-                .attr("class", "type-section");
-
-            groupContainer
+        // 6) Each child of rootNode is treated as a "group node."
+        rootNode.children.forEach(groupNode => {
+            // Show the group's name
+            rightContainer
                 .append("p")
-                .style("background-color", nodeColor({ data: { type: groupNode.groupType } }))
                 .attr("class", "dependency-type-header")
-                .html(groupNode.groupType)
+                .style("background-color", nodeColor({ data: { type: groupNode.groupType } }))
                 .style("cursor", "pointer")
+                .html(groupNode.name || groupNode.groupType)
                 .on("click", () => {
-                    const pseudoNodeData = {
-                        name: groupNode.groupType,
-                        type: groupNode.groupType,
-                        description: `${groupNode.groupType}`,
-                        children: groupNode.children || []
-                    };
-                    handleNodeClicked(pseudoNodeData);
+                    // Clicking the group heading can focus that group in the graph
+                    handleNodeClicked(groupNode);
                 });
 
-            const sortedChildren = (groupNode.children || []).slice().sort((a, b) => a.name.localeCompare(b.name));
-            sortedChildren.forEach(childNode => {
-                createNodeElement(groupContainer, childNode);
-            });
-        }
-
-        function createNodeElement(parentContainer, node) {
-            const nodeContainer = parentContainer.append("div")
-                .attr("class", "dependency-node-container");
-
-            nodeContainer.append("p")
-                .attr("class", "dependency-node")
-                .html(`${node.name}`)
-                .style("cursor", "pointer")
-                .on("click", () => handleNodeClicked(node));
-
-            nodeContainer
-                .append("div")
-                .attr("class", "tool-tip")
-                .html(node.description ? node.description.replace(/\n/g, '<br>') : 'No description available');
-        }
+            // Show this group's children
+            if (Array.isArray(groupNode.children) && groupNode.children.length > 0) {
+                groupNode.children.forEach(childItem => {
+                    createNodeElement(rightContainer, childItem);
+                });
+            } else {
+                rightContainer
+                    .append("p")
+                    .attr("class", "no-dependencies")
+                    .html(`No items under ${groupNode.name || groupNode.groupType}.`);
+            }
+        });
     }
+
+    // Helper function to list a single child item under a group
+    function createNodeElement(parentContainer, node) {
+        const nodeContainer = parentContainer.append("div")
+            .attr("class", "dependency-node-container");
+
+        nodeContainer
+            .append("p")
+            .attr("class", "dependency-node")
+            .style("cursor", "pointer")
+            .html(node.name)
+            .on("click", () => handleNodeClicked(node));
+
+        nodeContainer
+            .append("div")
+            .attr("class", "tool-tip")
+            .html(node.description
+                ? node.description.replace(/\n/g, '<br>')
+                : 'No description available'
+            );
+    }
+
 
     function showGroupToggles() {
         var dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');

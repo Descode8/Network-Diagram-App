@@ -175,13 +175,13 @@ hr {
     margin-top: 0;
     font-size: .9rem;
     margin: 0;
-    padding: 1px; 
+    padding: 2px; 
     text-align: center;
     background-color: var(--descrip-clr);
     font-weight: bold;
     color: white;
-    border-top: 2px solid var(--bdr-clr);
-    border-bottom: 2px solid var(--bdr-clr);
+    /* border-top: 2px solid var(--bdr-clr);
+    border-bottom: 2px solid var(--bdr-clr); */
 }
 
 .dependencies-header {
@@ -274,7 +274,7 @@ title {
 /* Change the appearance of the vertical thumb */
 .custom-slider input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    background-color: var(--bdr-clr); ;
+    background-color: var(--scrollbar-clr); 
     width: 12px;
     height: 40px;
     margin-top: -14px;
@@ -622,14 +622,19 @@ input:checked + .slider .checkmark {
     display: flex;
     place-content: center;
     margin: 5px auto;
-    background: linear-gradient(to right, white, white);
+    background-color: var(--svg-bg-clr);
     color: var(--pane-ttle-bg-clr);
     border: .75px solid var(--bdr-clr);
     border-radius: 20px;
 }
 
+.see-all-assets {
+    display: none;
+}
+
 .see-all-assets:hover, .close-all-assets:hover {
     cursor: pointer;
+    color: rgba(24, 40, 83, 1);
 }
 
 /* The overlay covering the page (already in your code) */
@@ -661,11 +666,12 @@ input:checked + .slider .checkmark {
 
 /* The modal content */
 .all-assets-overlay .all-assets-content {
-    width: 90%;
-    height: 85%;
+    width: fit-content;
+    max-width: 80%;
+    height: 80%;
     background-color: var(--pane-bg-clr);
     overflow: hidden; /* Prevent the entire modal from scrolling */
-    padding-top: 10px;
+    padding-top: 5px;
     padding-bottom: 0;
     border-radius: 5px;
     border: 2px solid var(--bdr-clr);
@@ -678,8 +684,9 @@ input:checked + .slider .checkmark {
 #allAssetsContainer {
     display: flex; /* Arrange the columns in a row */
     flex-grow: 1;
+    justify-content: left;
     overflow-x: auto; /* Allow horizontal scrolling if needed */
-    gap: 10px; /* Spacing between columns */
+    gap: 5px; /* Spacing between columns */
 }
 
 /* Individual group (column) */
@@ -690,22 +697,21 @@ input:checked + .slider .checkmark {
 }
 
 .asset-group:first-child {
-    margin-left: 10px; /* Add space to the left of the first group */
+    margin-left: 5px; /* Add space to the left of the first group */
 }
 
 .asset-group:last-child {
-    margin-right: 10px; /* Add space to the right of the last group */
+    margin-right: 5px; /* Add space to the right of the last group */
 }
 
-/* Group header (non-scrolling part) */
-.asset-group > .asset-group-header {
+.asset-group-header {
     color: var(--svg-bg-clr);
     padding: 2px 5px;
     font-size: 1rem;
     text-align: center;
     font-weight: bold;
     background-color: var(--header-bg-clr);
-}
+} 
 
 .asset-group-header {
     margin: 0;
@@ -725,15 +731,20 @@ input:checked + .slider .checkmark {
 }
 
 /* Scrollable container for items */
+/* Ensure asset-items match header width */
 .asset-items-container {
     overflow-y: auto; /* Allow vertical scrolling */
     background-color: var(--svg-bg-clr);
-    border: .75px solid var(--bdr-clr);
+    border: 0.75px solid var(--bdr-clr);
+    border-top: none;
     padding: 3px;
     font-size: 0.75rem;
     text-align: left;
-    width: max-content;
-    min-width: inherit;
+    width: inherit; /* Match width to parent container */
+    min-width: 150px; /* Set a minimum width */
+    max-width: 250px; /* Set a max width to control wrapping */
+    word-wrap: break-word; /* Wrap long words */
+    white-space: normal; /* Ensure text wraps */
 }
 
 /* Style the scrollbar inside .asset-items-container */
@@ -743,7 +754,6 @@ input:checked + .slider .checkmark {
 
 .asset-items-container::-webkit-scrollbar-thumb {
     background-color: var(--scrollbar-thumb-clr);
-    border-radius: 1px;
 }
 
 .asset-items-container::-webkit-scrollbar-track {
@@ -752,10 +762,11 @@ input:checked + .slider .checkmark {
 
 .close-all-assets {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
+    top: 1%;
+    right: 1%;
+    margin: 0px auto;
+    border-radius: 50%;
+    padding: 2px;
 }
 
 
