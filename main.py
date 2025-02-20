@@ -2,6 +2,8 @@ from flask import Flask, jsonify, render_template, request
 from data_extractor import build_hierarchy
 from data_extractor import fetch_graph_data
 from data_extractor import get_grouped_assets
+from data_extractor import get_all_dependencies
+
 
 app = Flask(__name__)
 
@@ -33,6 +35,14 @@ def index():
     else:
         # Render the HTML page for non-JSON requests
         return render_template('index.html')
+    
+@app.route('/all-dependencies', methods=['GET'])
+def all_dependencies():
+    try:
+        dependencies_list = get_all_dependencies()  # returns list of {Dependency_Type, Dependency_Name, Dependency_Descrip}
+        return jsonify(dependencies_list)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/all-assets', methods=['GET'])
 def all_assets():

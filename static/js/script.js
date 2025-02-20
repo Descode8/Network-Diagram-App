@@ -1,4 +1,6 @@
 $(document).ready(function() {
+    let allDependencies = []; // Will hold the distinct dependencies from get_all_dependencies()
+
     let width = $('.graph-container')[0].clientWidth;
     let height = $('.graph-container')[0].clientHeight;
     let rightPaneInitialized = false;
@@ -230,6 +232,15 @@ $(document).ready(function() {
             default:             return 'yellow';
         }
     }
+
+    function fetchAllDependencies() {
+        fetch('/all-dependencies', { headers: { 'Accept': 'application/json' } })
+            .then(response => response.json())
+            .then(data => {
+                allDependencies = data;  // Store them for later usage
+            })
+            .catch(err => console.error('Error fetching all dependencies:', err));
+    }  
 
     // -----------------------------------------------------
     // Search and Clear Buttons
@@ -1305,88 +1316,136 @@ $(document).ready(function() {
     //    match your old naming & styling.
     // 2) The "See All Assets" button also matches the old naming.
     ////////////////////////////////////////////////////////////////
-    function updateRightContainer(activeNodeData) {
-        // 1) Clear the right pane
-        rightContainer.html("");
 
-        // 2) Top section (active node's info)
-        rightContainer
-            .append("h2")
-            .style("background-color", nodeColor({ data: { type: activeNodeData.type } }))
-            .html(`${activeNodeData.name}`);
+    
+function updateRightContainer(activeNodeData) {
+    // 1) Clear the right pane
+    rightContainer.html("");
 
-        rightContainer
+    //---------------------------------------------------
+    // 2) Top Section (Active Node Info)
+    //---------------------------------------------------
+    const topSection = rightContainer
+        .append("div")
+        .attr("class", "top-section");
+
+    // Active node name (H2)
+    topSection
+        .append("h2")
+        .style("background-color", nodeColor({ data: { type: activeNodeData.type } }))
+        .html(`${activeNodeData.name}`);
+
+    // Type line
+    topSection
+        .append("p")
+        .html(`<strong>Type: </strong>${activeNodeData.type || "Unknown"}`);
+
+    // Description header
+    topSection
+        .append("h3")
+        .attr("class", "description-header")
+        .html("Description");
+
+    // Description text
+    const description = (activeNodeData.description || "No description available")
+        .replace(/\n/g, "<br>");
+    topSection
+        .append("p")
+        .style("text-align", "left")
+        .html(description);
+
+    // Dependencies header
+    topSection
+        .append("h3")
+        .attr("class", "dependencies-header")
+        .html("Dependencies");
+
+    //---------------------------------------------------
+    // 3) Dependencies Wrapper (Scroll Area)
+    //---------------------------------------------------
+    const dependenciesWrapper = rightContainer
+        .append("div")
+        .attr("class", "dependencies-wrapper");
+
+    // If no rootNode or children, bail out
+    if (!rootNode || !rootNode.children || rootNode.children.length === 0) {
+        dependenciesWrapper
             .append("p")
-            .html(`<strong>Type: </strong>${activeNodeData.type || 'Unknown'}`);
-
-        const description = (activeNodeData.description || 'No description available')
-            .replace(/\n/g, '<br>');
-
-        rightContainer
-            .append("h3")
-            .attr("class", "description-header")
-            .html("Description");
-
-        rightContainer
-            .append("p")
-            .style("text-align", "left")
-            .html(description);
-
-        // 3) Dependencies header
-        rightContainer
-            .append("h3")
-            .attr("class", "dependencies-header")
-            .html("Dependencies");
-
-        // 4) "See All Assets" button
-        rightContainer
-            .append("button")
-            .attr("class", "see-all-assets")
-            .attr("title", "View All Assets")
-            .html("View All Assets");
-
-        // 5) If rootNode or its children are missing, bail out
-        if (!rootNode || !rootNode.children || rootNode.children.length === 0) {
-            rightContainer
-                .append("p")
-                .attr("class", "no-dependencies")
-                .html("No dependencies available.");
-            return;
-        }
-
-        // 6) Each child of rootNode is treated as a "group node."
-        rootNode.children.forEach(groupNode => {
-            // Show the group's name
-            rightContainer
-                .append("p")
-                .attr("class", "dependency-type-header")
-                .style("background-color", nodeColor({ data: { type: groupNode.groupType } }))
-                .style("cursor", "pointer")
-                .html(groupNode.name || groupNode.groupType)
-                .on("click", () => {
-                    // Clicking the group heading can focus that group in the graph
-                    handleNodeClicked(groupNode);
-                });
-
-            // Show this group's children
-            if (Array.isArray(groupNode.children) && groupNode.children.length > 0) {
-                groupNode.children.forEach(childItem => {
-                    createNodeElement(rightContainer, childItem);
-                });
-            } else {
-                rightContainer
-                    .append("p")
-                    .attr("class", "no-dependencies")
-                    .html(`No items under ${groupNode.name || groupNode.groupType}.`);
-            }
-        });
+            .attr("class", "no-dependencies")
+            .html("No dependencies available.");
+        return;
     }
 
-    // Helper function to list a single child item under a group
+    //---------------------------------------------------
+    // 4) (Optional) Loop Over and Display Root-Node Dependencies
+    //---------------------------------------------------
+    // -- (If you had code previously listing the direct 'rootNode.children', 
+    //     it would go here, also appending to `dependenciesWrapper`.)
+
+    //---------------------------------------------------
+    // 5) “All Dependencies” Section
+    //---------------------------------------------------
+    // Check if `allDependencies` is loaded
+    if (!allDependencies || !allDependencies.length) {
+        // If you prefer not to show anything if empty, just do nothing
+        return;
+    }
+
+    // (Optional) Add a sub-header for “All Dependencies”
+
+    // Group by Dependency_Type
+    const depsByType = d3.group(allDependencies, d => d.Dependency_Type);
+
+    depsByType.forEach((depItems, depType) => {
+        // Type header
+        dependenciesWrapper
+            .append("p")
+            .attr("class", "dependency-type-header")
+            .style("background-color", nodeColor({ data: { type: depType } }))
+            .text(depType || "Unknown Type");
+
+        // Container for these items
+        const depTypeContainer = dependenciesWrapper
+            .append("div")
+            .attr("class", "dependency-nodes-container");
+
+        // Sort them by Dependency_Name
+        depItems.sort((a, b) => a.Dependency_Name.localeCompare(b.Dependency_Name));
+
+        // Render each dependency
+        depItems.forEach(item => {
+            const nodeContainer = depTypeContainer
+                .append("div")
+                .attr("class", "dependency-node-container");
+
+            nodeContainer
+                .append("p")
+                .attr("class", "dependency-node")
+                .style("cursor", "pointer")
+                .text(item.Dependency_Name)
+                .on("click", () => handleNodeClicked({ name: item.Dependency_Name }));
+
+            nodeContainer
+                .append("div")
+                .attr("class", "tool-tip")
+                .html(
+                    item.Dependency_Descrip
+                        ? item.Dependency_Descrip.replace(/\n/g, "<br>")
+                        : "No description available"
+                );
+        });
+    });
+}
+
+    /**
+     * A helper function for displaying each child node in the "Dependencies" section.
+     */
     function createNodeElement(parentContainer, node) {
+        // Outer wrapper
         const nodeContainer = parentContainer.append("div")
             .attr("class", "dependency-node-container");
 
+        // The clickable node name
         nodeContainer
             .append("p")
             .attr("class", "dependency-node")
@@ -1394,15 +1453,16 @@ $(document).ready(function() {
             .html(node.name)
             .on("click", () => handleNodeClicked(node));
 
+        // Tool tip or description
         nodeContainer
             .append("div")
             .attr("class", "tool-tip")
-            .html(node.description
-                ? node.description.replace(/\n/g, '<br>')
-                : 'No description available'
+            .html(
+                node.description
+                    ? node.description.replace(/\n/g, "<br>")
+                    : "No description available"
             );
     }
-
 
     function showGroupToggles() {
         var dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
@@ -1454,5 +1514,7 @@ $(document).ready(function() {
     }
 
     // Kick it off (initial load)
+        // Call it once on page load
+    fetchAllDependencies();  
     fetchAndRenderGraph();
 });
