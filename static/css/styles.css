@@ -311,10 +311,9 @@ title {
 }
 
 .search-container:hover, .group-asset-toggle-container:hover, 
-.switches-container:hover, #depthSlider:hover, .tool-tip, .see-all-assets:hover, .close-all-assets:hover {
+.switches-container:hover, .tool-tip, .see-all-assets:hover, .close-all-assets:hover {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
-
 
 #depthSlider:hover {
     border-radius: 10px;
@@ -733,16 +732,6 @@ input:checked + .slider .checkmark {
     overflow: auto;   
 }
 
-
-.right-pane {
-    display: flex;
-    flex-direction: column;
-    width: 17vw;
-    height: 100vh;    /* Fill viewport height */
-    overflow: hidden; /* Hide internal scroll for the pane itself */
-    /* background-color, etc. as needed */
-}
-
   /* 1) Keep the top section pinned to the top */
 .top-section {
     position: sticky;
@@ -758,16 +747,12 @@ input:checked + .slider .checkmark {
     flex: 1;           /* if .right-pane is display: flex */
     min-height: 0;     /* prevents the child from pushing the parent indefinitely */
     overflow-y: auto;  
-
-    /* add some padding or border so margin-bottom on the children won’t collapse */
-    padding: 1rem 0;   
-    /* border: 1px solid transparent; */ /* Or a real border if you prefer */
 }
 
 /* 3) If you still want each group to have its own “limited” scroll,
      you can add the 5-line limit inside each group container. */
 .dependency-nodes-container {
-    max-height: 6em; 
+    max-height: 7em; 
     overflow-y: auto;
     line-height: 1.2; 
     /* Instead of margin-bottom, use padding: */
@@ -779,30 +764,80 @@ input:checked + .slider .checkmark {
     background-color: var(--svg-bg-clr);
 }
 
-#autocompleteSuggestions::-webkit-scrollbar, .dependency-nodes-container::-webkit-scrollbar {
-    width: 5px;
+#autocompleteSuggestions::-webkit-scrollbar {
+    width: 10px;
     background-color: var(--pane-bg-clr);
 }
+
+.dependency-nodes-container::-webkit-scrollbar {
+    width: 11px;
+    background-color: var(--pane-bg-clr);
+}
+
+.dependencies-wrapper::-webkit-scrollbar {
+    width: 12px;
+    background-color: var(--pane-bg-clr);
+} 
 
 ::-webkit-scrollbar {
     max-height: 10px; 
     width: 10px;
-    background-color: var(--pane-bg-clr);
+    transition: 0.5s ease-in-out;
 }
 
 ::-webkit-scrollbar-thumb {
     background: var(--scrollbar-clr);
     cursor: pointer;
     min-height: 20px;
-    border: none;
-}
-
-::-webkit-scrollbar-track {
-    background-color: var(--svg-bg-clr);
-    margin: 0px 2px; 
+    border: 2px solid var(--svg-bg-clr);
+    border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-hvr-clr);
+}
+
+::-webkit-scrollbar-track {
+    background-color: var(--svg-bg-clr);
+} 
+
+/* Fix for removing gray spacing while maintaining scroll */
+.dependencies-header {
+    margin-bottom: 0;
+    border-bottom: none; /* Remove the border that might be creating space */
+}
+
+.dependencies-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-top: 0; /* Remove top padding */
+    border-top: none;
+    margin-top: 0;
+}
+
+/* Ensure the dependency type headers connect directly to the dependencies header */
+.dependency-type-header:first-of-type {
+    margin-top: 0;
+    border-top: none;
+}
+
+/* Remove any default margins that might be creating space */
+.right-pane h3 {
+    margin-bottom: 0;
+}
+
+/* Ensure the right container properly uses flex layout */
+.right-pane {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Hide overflow at container level */
+    padding-bottom: 0;
+}
+
+/* Make sure the top section doesn't have extra bottom margin */
+.top-section {
+    margin-bottom: 0;
+    flex-shrink: 0; /* Prevent top section from shrinking */
 }
 

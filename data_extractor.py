@@ -519,29 +519,33 @@ def get_grouped_assets(excel_file='data/network_diagram.xlsx'):
 
 def get_all_dependencies(excel_file='data/network_diagram.xlsx'):
     """
-    Reads the Excel file and returns a list of distinct dependency objects.
-    Each object will contain "Dependency_Type", "Dependency_Name", and "Dependency_Descrip".
+    Reads the Excel file and returns a distinct list of dependency objects.
+    Each object contains "Dependency_Type", "Dependency_Name", and "Dependency_Descrip".
+    Uniqueness is determined by Dependency_Name (case-insensitive).
     """
     data, _ = fetch_graph_data(excel_file)
     if data is None:
         return []
 
-    # Make sure columns are treated as strings and strip whitespace
+    # Ensure columns are strings and remove extra whitespace
     data['Dependency_Name'] = data['Dependency_Name'].astype(str).str.strip()
     data['Dependency_Type'] = data['Dependency_Type'].astype(str).str.strip()
-    # For descriptions, fill NaN with empty string and strip
     data['Dependency_Descrip'] = data['Dependency_Descrip'].fillna('').astype(str).str.strip()
 
-    # Drop duplicates so each (Dependency_Name, Dependency_Type, Dependency_Descrip) is unique
-    distinct_dependencies = data[['Dependency_Type', 'Dependency_Name', 'Dependency_Descrip']].drop_duplicates()
-
-    # Convert each row to a dictionary for convenient handling: {type, name, description}
+    seen_names = set()
     results = []
-    for _, row in distinct_dependencies.iterrows():
+
+    for _, row in data.iterrows():
+        name_lower = row['Dependency_Name'].lower()
+        if name_lower in seen_names:
+            continue  # Skip this row because we've already processed this dependency
+        seen_names.add(name_lower)
         results.append({
             "Dependency_Type": row['Dependency_Type'],
             "Dependency_Name": row['Dependency_Name'],
             "Dependency_Descrip": row['Dependency_Descrip']
         })
-    
+
     return results
+
+
