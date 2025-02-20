@@ -841,3 +841,6 @@ input:checked + .slider .checkmark {
     flex-shrink: 0; /* Prevent top section from shrinking */
 }
 
+.ctive-dependency {
+    background-color: lime;
+}
