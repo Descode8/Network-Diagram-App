@@ -841,6 +841,10 @@ input:checked + .slider .checkmark {
     flex-shrink: 0; /* Prevent top section from shrinking */
 }
 
-.ctive-dependency {
-    background-color: lime;
+.dependency-node.active-dependency {
+    color: var(--active-nde-depnd-clr);
+}
+
+.dependency-node.inactive-dependency {
+    color: var(--inactive-nde-depnd-clr);
 }

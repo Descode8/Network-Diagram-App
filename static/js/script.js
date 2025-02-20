@@ -1383,6 +1383,26 @@ $(document).ready(function() {
             return;
         }
     
+        // Get all children names of the active node
+        const getChildrenNames = (node) => {
+            const names = new Set();
+            const traverse = (n) => {
+                if (n.children) {
+                    n.children.forEach(child => {
+                        names.add(child.name);
+                        traverse(child);
+                    });
+                }
+            };
+            traverse(node);
+            return names;
+        };
+    
+        // Get the set of active node's children names
+        const activeNodeChildren = getChildrenNames(activeNodeData);
+        // Add the active node's name to the set
+        activeNodeChildren.add(activeNodeData.name);
+    
         // Group by Dependency_Type
         const depsByType = d3.group(allDependencies, d => d.Dependency_Type);
     
@@ -1399,35 +1419,53 @@ $(document).ready(function() {
                 .append("div")
                 .attr("class", "dependency-nodes-container");
     
-            // Custom sorting function to prioritize active node's dependencies
-            const sortDependencies = (a, b) => {
-                const aIsActive = a.Dependency_Name === activeNodeData.name;
-                const bIsActive = b.Dependency_Name === activeNodeData.name;
-                
-                // If one is active and the other isn't, active comes first
-                if (aIsActive && !bIsActive) return -1;
-                if (!aIsActive && bIsActive) return 1;
-                
-                // If neither is active or both are active, sort alphabetically
-                return a.Dependency_Name.localeCompare(b.Dependency_Name);
-            };
+            // Separate active and non-active dependencies
+            const activeDeps = depItems.filter(item => activeNodeChildren.has(item.Dependency_Name));
+            const nonActiveDeps = depItems.filter(item => !activeNodeChildren.has(item.Dependency_Name));
     
-            // Sort them using the custom sorting function
-            depItems.sort(sortDependencies);
+            // Sort both groups alphabetically
+            activeDeps.sort((a, b) => a.Dependency_Name.localeCompare(b.Dependency_Name));
+            nonActiveDeps.sort((a, b) => a.Dependency_Name.localeCompare(b.Dependency_Name));
     
-            // Render each dependency
-            depItems.forEach(item => {
+            // Create active dependencies section if there are any active dependencies
+            if (activeDeps.length > 0) {
+                const activeContainer = depTypeContainer
+                    .append("div")
+                    .attr("class", "active-dependencies");
+    
+                // Render active dependencies
+                activeDeps.forEach(item => {
+                    const nodeContainer = activeContainer
+                        .append("div")
+                        .attr("class", "dependency-node-container");
+    
+                    nodeContainer
+                        .append("p")
+                        .attr("class", "dependency-node active-dependency")
+                        .style("cursor", "pointer")
+                        .text(item.Dependency_Name)
+                        .on("click", () => handleNodeClicked({ name: item.Dependency_Name }));
+    
+                    nodeContainer
+                        .append("div")
+                        .attr("class", "tool-tip")
+                        .html(
+                            item.Dependency_Descrip
+                                ? item.Dependency_Descrip.replace(/\n/g, "<br>")
+                                : "No description available"
+                        );
+                });
+            }
+    
+            // Render non-active dependencies
+            nonActiveDeps.forEach(item => {
                 const nodeContainer = depTypeContainer
                     .append("div")
                     .attr("class", "dependency-node-container");
     
-                // Add an additional class if this is the active node's dependency
-                const isActiveNode = item.Dependency_Name === activeNodeData.name;
-                const nodeClass = `dependency-node${isActiveNode ? ' active-dependency' : ''}`;
-    
                 nodeContainer
                     .append("p")
-                    .attr("class", nodeClass)
+                    .attr("class", "dependency-node inactive-dependency")
                     .style("cursor", "pointer")
                     .text(item.Dependency_Name)
                     .on("click", () => handleNodeClicked({ name: item.Dependency_Name }));
