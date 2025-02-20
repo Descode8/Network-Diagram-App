@@ -65,10 +65,6 @@ body, html {
     gap: 0px; 
 }
 
-/* .left-pane {
-    width: 17vw; 
-} */
-
 .expand-collapse-right, .expand-collapse-left {
     position: relative;
 }
@@ -132,7 +128,8 @@ body, html {
 }
 
 .left-pane h2 {
-    background: linear-gradient(to bottom, var(--scrollbar-clr), var(--pane-ttle-bg-clr), var(--pane-ttle-bg-clr), var(--pane-ttle-bg-clr));
+    background: linear-gradient(to right, var(--pane-ttle-bg-clr), var(--scrollbar-clr), var(--scrollbar-hvr-clr));
+
 }
 
 .right-pane p {
@@ -146,7 +143,7 @@ body, html {
 hr {
     height: 2.5px; 
     width: 95%; 
-    background: linear-gradient(to right, var(--pane-ttle-bg-clr), var(--scrollbar-clr));
+    background: linear-gradient(to right, var(--pane-ttle-bg-clr), var(--scrollbar-clr), var(--scrollbar-hvr-clr));
     border: none;
     border-radius: 10px;
     margin: -7px auto;
@@ -335,7 +332,7 @@ title {
 }
 
 .autocomplete-suggestions:hover {
-    background: linear-gradient(to right, var(--pane-ttle-bg-clr), var(--scrollbar-clr));
+    background: linear-gradient(to right, var(--pane-ttle-bg-clr), var(--scrollbar-clr), var(--scrollbar-hvr-clr));
     color: white;
 }
 
@@ -540,7 +537,8 @@ input + .slider {
     width: 100%;
     height: 10px;
     border-radius: 5px;
-    background: linear-gradient(to right, var(--pane-ttle-bg-clr) 0%, var(--scrollbar-clr) var(--value), var(--svg-bg-clr) var(--value), var(--svg-bg-clr) 100%);
+    /* background: linear-gradient(to right, var(--pane-ttle-bg-clr) 0%, var(--scrollbar-clr) var(--value), var(--svg-bg-clr) var(--value), var(--svg-bg-clr) 100%); */
+    background: linear-gradient(to right, var(--pane-ttle-bg-clr) 0%, var(--scrollbar-clr) var(--value), var(--scrollbar-hvr-clr) 100%);
 }
 
 .custom-slider input[type="range"]::-moz-range-track {
@@ -752,7 +750,7 @@ input:checked + .slider .checkmark {
 /* 3) If you still want each group to have its own “limited” scroll,
      you can add the 5-line limit inside each group container. */
 .dependency-nodes-container {
-    max-height: 7em; 
+    max-height: 15vh; 
     overflow-y: auto;
     line-height: 1.2; 
     /* Instead of margin-bottom, use padding: */
@@ -790,7 +788,7 @@ input:checked + .slider .checkmark {
     cursor: pointer;
     min-height: 20px;
     border: 2px solid var(--svg-bg-clr);
-    border-radius: 3px;
+    border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -828,12 +826,7 @@ input:checked + .slider .checkmark {
 }
 
 /* Ensure the right container properly uses flex layout */
-.right-pane {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* Hide overflow at container level */
-    padding-bottom: 0;
-}
+
 
 /* Make sure the top section doesn't have extra bottom margin */
 .top-section {
