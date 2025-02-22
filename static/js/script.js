@@ -1115,7 +1115,7 @@ $(document).ready(function() {
         if (!clickedName) return;
         if (clickedName === currentActiveNodeName) return;
 
-        // searchInput.value = clickedName;
+        searchInput.value = clickedName;
         fetchAndRenderGraph(depthSlider.value, clickedName);
     }
 
