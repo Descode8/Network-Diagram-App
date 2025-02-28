@@ -241,14 +241,15 @@ $(document).ready(function() {
         }
     }
 
-    function fetchAllDependencies() {
-        fetch('/all-dependencies', { headers: { 'Accept': 'application/json' } })
-            .then(response => response.json())
-            .then(data => {
-                allDependencies = data;  // Store them for later usage
-            })
-            .catch(err => console.error('Error fetching all dependencies:', err));
-    }
+    async function fetchAllDependencies() {
+        try {
+            const response = await fetch('/all-dependencies', { headers: { 'Accept': 'application/json' } });
+            const data = await response.json();
+            allDependencies = data; 
+        } catch (error) {
+            console.error('Error fetching all dependencies:', error);
+        }
+    }    
 
     // -----------------------------------------------------
     // Search and Clear Buttons
@@ -1556,6 +1557,8 @@ $(document).ready(function() {
     }
 
     // Kick it off
-    fetchAllDependencies();
-    fetchAndRenderGraph();
+    (async function init() {
+        await fetchAllDependencies();
+        fetchAndRenderGraph();
+    })();
 });
