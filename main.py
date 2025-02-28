@@ -3,6 +3,7 @@ from data_extractor import build_hierarchy
 from data_extractor import fetch_graph_data
 from data_extractor import get_grouped_assets
 from data_extractor import get_all_dependencies
+import os
 
 
 app = Flask(__name__)
@@ -50,4 +51,5 @@ def all_assets():
     return jsonify(groups)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.getenv("PORT", 5000))  # Default to 5000 if PORT is not set
+    app.run(host="0.0.0.0", port=port, debug=True)

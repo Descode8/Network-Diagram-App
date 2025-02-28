@@ -1317,6 +1317,32 @@ $(document).ready(function() {
     // 2) The "See All Assets" button also matches the old naming.
     ////////////////////////////////////////////////////////////////
     
+    function initializeTooltips() {
+        // Add event listeners to dependencies wrapper for scroll adjustment
+        const dependenciesWrapper = document.querySelector('.dependencies-wrapper');
+        if (dependenciesWrapper) {
+            dependenciesWrapper.addEventListener('scroll', function() {
+                // Hide any visible tooltips when scrolling
+                const visibleTooltips = document.querySelectorAll('.tool-tip:hover');
+                visibleTooltips.forEach(tooltip => {
+                    tooltip.style.opacity = '0';
+                    tooltip.style.visibility = 'hidden';
+                });
+            });
+        }
+        
+        // Add resize listener to adjust tooltip positions
+        window.addEventListener('resize', function() {
+            // Force recalculation of tooltip positions
+            const containers = document.querySelectorAll('.dependency-node-container');
+            containers.forEach(container => {
+                container.classList.remove('hover-effect');
+                void container.offsetWidth; // Force reflow
+                container.classList.add('hover-effect');
+            });
+        });
+    }
+
     function updateRightContainer(activeNodeData) {
         // 1) Clear the right pane
         rightContainer.html("");
@@ -1433,20 +1459,20 @@ $(document).ready(function() {
                     .append("div")
                     .attr("class", "active-dependencies");
     
-                // Render active dependencies
                 activeDeps.forEach(item => {
                     const nodeContainer = activeContainer
                         .append("div")
                         .attr("class", "dependency-node-container");
-    
+                
                     nodeContainer
                         .append("p")
                         .attr("class", "dependency-node active-dependency")
                         .style("cursor", "pointer")
                         .text(item.Dependency_Name)
                         .on("click", () => handleNodeClicked({ name: item.Dependency_Name }));
-    
-                    nodeContainer
+                
+                    // Create tooltip with improved positioning
+                    const tooltip = nodeContainer
                         .append("div")
                         .attr("class", "tool-tip")
                         .html(
@@ -1457,20 +1483,21 @@ $(document).ready(function() {
                 });
             }
     
-            // Render non-active dependencies
+            // And similarly for non-active dependencies
             nonActiveDeps.forEach(item => {
                 const nodeContainer = depTypeContainer
                     .append("div")
                     .attr("class", "dependency-node-container");
-    
+
                 nodeContainer
                     .append("p")
                     .attr("class", "dependency-node inactive-dependency")
                     .style("cursor", "pointer")
                     .text(item.Dependency_Name)
                     .on("click", () => handleNodeClicked({ name: item.Dependency_Name }));
-    
-                nodeContainer
+
+                // Create tooltip with improved positioning
+                const tooltip = nodeContainer
                     .append("div")
                     .attr("class", "tool-tip")
                     .html(
@@ -1561,4 +1588,5 @@ $(document).ready(function() {
         // Call it once on page load
     fetchAllDependencies();  
     fetchAndRenderGraph();
+    initializeTooltips();
 });

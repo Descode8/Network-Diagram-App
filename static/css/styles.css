@@ -420,47 +420,42 @@ label, .depthSlider {
 }
 
 .tool-tip {
+    /* Position it with enough offset to appear over the SVG */
+    position: absolute;
+    right: -5px; /* Move it slightly into the SVG area instead of right: 100% */
+    top: 50%;
+    transform: translate(-100%, -50%); /* Move it fully to the left and center vertically */
+    margin-right: 15px; /* Add space between tooltip and the element */
+    
+    /* Keep other properties */
     opacity: 0;
     visibility: hidden;
-    position: absolute;
-    /* transform: translate(-73%, -135%);  */
-    transform: translate(-73%, calc(-135% + var(--scroll-offset)));
     background-color: var(--tooltip-bg-clr);
     padding: 5px;
     border-radius: 5px;
-    z-index: 100;
+    z-index: 100; /* Make sure z-index is high enough to appear over SVG */
     min-width: 50px;
-    max-width: 550px;
+    max-width: 250px;
     word-wrap: break-word;
     white-space: normal;
     font-size: 0.75rem;
-    transition: opacity 0.5s ease, visibility 0.5s ease; /* Smooth transition */
-    display: sticky;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    pointer-events: none; /* Ensure it doesn't interfere with clicks */
 }
 
 .tool-tip::after {
-    z-index: 1;
     content: "";
     position: absolute;
-    top: 100%; /* Position the arrow at the bottom of the tool-tip */
-    left: 85%;
-    transform: translateX(-50%);
-    border-width: 7.8px; /* Outer triangle size */
+    top: 50%;
+    left: 100%; /* Position at right edge of tooltip */
+    transform: translateY(-50%);
+    border-width: 8px;
     border-style: solid;
-    border-color: var(--bdr-clr) transparent transparent transparent; /* Outer border color (black) */
+    border-color: transparent transparent transparent var(--tooltip-bg-clr);
 }
 
-.tool-tip::before {
-    z-index: 2;
-    content: "";
-    position: absolute;
-    top: 99%; /* Slightly lower than ::after for proper layering */
-    left: 85%;
-    transform: translateX(-50%);
-    border-width: 8px; /* Inner triangle size */
-    border-style: solid;
-    border-color: var(--tooltip-bg-clr) transparent transparent transparent; /* Matches tool-tip background */
-}
+
 
 .dependency-node-container:hover .tool-tip {
     opacity: 1;
@@ -841,3 +836,7 @@ input:checked + .slider .checkmark {
     color: var(--inactive-nde-depnd-clr);
 }
 
+.dependency-node-container {
+    position: relative; /* Create positioning context for tooltip */
+    display: block;
+}
