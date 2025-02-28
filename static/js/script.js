@@ -1276,7 +1276,8 @@ $(document).ready(function() {
     });
 
     function updateRightContainer(activeNodeData) {
-        let tooltipLocked = false; // flag to disable tooltip repositioning after click
+        // Flag to disable tooltip repositioning & display after click
+        let tooltipLocked = false;
     
         // ---------------------------------------------------
         // 1) Create (or select) a tooltip <div>
@@ -1290,8 +1291,8 @@ $(document).ready(function() {
             .style("box-shadow", "var(--bdr-clr) 0px 2px 8px 0px")
             .style("padding", "6px 8px")
             .style("border", ".75px solid #333")
-            .style("border-radius", "4px")
-            .style("font-size", "0.75rem")
+            .style("border-radius", "5px")
+            .style("font-size", "0.65rem")
             .style("pointer-events", "none")
             .style("display", "none")
             .style("z-index", "999");
@@ -1326,8 +1327,7 @@ $(document).ready(function() {
             .html("Description");
     
         // Description text
-        const description = (activeNodeData.description || "No description available")
-            .replace(/\n/g, "<br>");
+        const description = (activeNodeData.description || "No description available").replace(/\n/g, "<br>");
         topSection
             .append("p")
             .style("text-align", "left")
@@ -1400,8 +1400,7 @@ $(document).ready(function() {
                 .append("div")
                 .attr("class", "dependency-nodes-container");
     
-            // Separate items that belong to this active node (activeDeps)
-            // vs. those that do not (nonActiveDeps)
+            // Separate items that belong to this active node vs. those that do not
             const activeDeps = depItems.filter(item => activeNodeChildren.has(item.Dependency_Name));
             const nonActiveDeps = depItems.filter(item => !activeNodeChildren.has(item.Dependency_Name));
     
@@ -1425,36 +1424,37 @@ $(document).ready(function() {
                         .attr("class", "dependency-node active-dependency")
                         .style("cursor", "pointer")
                         .text(item.Dependency_Name)
+                        // --- EVENTS ---
                         .on("click", function(event) {
-                            tooltipLocked = true;
+                            tooltipLocked = true; // lock the tooltip
                             handleNodeClicked({ name: item.Dependency_Name });
-                            tooltip.style("display", "none");
+                            tooltip.style("display", "none"); // hide on click
                         })
-                        // ▼▼▼ TOOLTIP EVENTS ▼▼▼
                         .on("mouseover", function(event) {
-                            // reset the lock when hovering again
-                            tooltipLocked = false;
-                            tooltip
-                                .html(
-                                    item.Dependency_Descrip
-                                        ? item.Dependency_Descrip.replace(/\n/g, "<br>")
-                                        : "No description available"
-                                )
-                                .style("display", "block");
+                            // Show the tooltip ONLY if not locked
+                            if (!tooltipLocked) {
+                                tooltip
+                                    .html(
+                                        item.Dependency_Descrip
+                                            ? item.Dependency_Descrip.replace(/\n/g, "<br>")
+                                            : "No description available"
+                                    )
+                                    .style("display", "block");
+                            }
                         })
                         .on("mousemove", function(event) {
+                            // Reposition ONLY if not locked
                             if (tooltipLocked) return;
                             const tooltipNode = tooltip.node();
                             const tooltipRect = tooltipNode.getBoundingClientRect();
-    
-                            // Center tooltip above the cursor
                             const tooltipX = event.pageX - tooltipRect.width / 2;
                             const tooltipY = event.pageY - tooltipRect.height - 10;
-    
-                            tooltip.style("left", `${tooltipX}px`)
-                                    .style("top", `${tooltipY}px`);
+                            tooltip
+                                .style("left", `${tooltipX}px`)
+                                .style("top", `${tooltipY}px`);
                         })
                         .on("mouseleave", function() {
+                            tooltipLocked = false; // reset lock
                             tooltip.style("display", "none");
                         });
                 });
@@ -1471,41 +1471,41 @@ $(document).ready(function() {
                     .attr("class", "dependency-node inactive-dependency")
                     .style("cursor", "pointer")
                     .text(item.Dependency_Name)
+                    // --- EVENTS ---
                     .on("click", function(event) {
-                        tooltipLocked = true;
+                        tooltipLocked = true; 
                         handleNodeClicked({ name: item.Dependency_Name });
                         tooltip.style("display", "none");
                     })
                     .on("mouseover", function(event) {
-                        tooltipLocked = false;
-                        tooltip
-                            .html(
-                                item.Dependency_Descrip
-                                    ? item.Dependency_Descrip.replace(/\n/g, "<br>")
-                                    : "No description available"
-                            )
-                            .style("display", "block");
+                        if (!tooltipLocked) {
+                            tooltip
+                                .html(
+                                    item.Dependency_Descrip
+                                        ? item.Dependency_Descrip.replace(/\n/g, "<br>")
+                                        : "No description available"
+                                )
+                                .style("display", "block");
+                        }
                     })
                     .on("mousemove", function(event) {
                         if (tooltipLocked) return;
                         const tooltipNode = tooltip.node();
                         const tooltipRect = tooltipNode.getBoundingClientRect();
-    
                         const tooltipX = event.pageX - tooltipRect.width / 2;
                         const tooltipY = event.pageY - tooltipRect.height - 10;
-    
-                        tooltip.style("left", `${tooltipX}px`)
-                                .style("top", `${tooltipY}px`);
+                        tooltip
+                            .style("left", `${tooltipX}px`)
+                            .style("top", `${tooltipY}px`);
                     })
                     .on("mouseleave", function() {
+                        tooltipLocked = false;
                         tooltip.style("display", "none");
                     });
             });
         });
     }
-    
-
-    
+        
     function showGroupToggles() {
         var dynamicTogglesContainer = switchesContainer.querySelector('.dynamic-group-toggles');
         if (dynamicTogglesContainer) {
