@@ -1275,163 +1275,209 @@ $(document).ready(function() {
         fitGraphToContainer();
     });
 
-function updateRightContainer(activeNodeData) {
-    // ---------------------------------------------------
-    // 1) Create (or select) a tooltip <div>
-    // ---------------------------------------------------
-    const tooltip = d3.select("body")
-        .append("div")
-        .attr("class", "dep-tooltip")
-        .style("position", "absolute")
-        .style("background-color", "var(--tooltip-bg-clr)")
-        .style("padding", "6px 8px")
-        .style("border", "1px solid #333")
-        .style("border-radius", "4px")
-        .style("font-size", "0.75rem")
-        .style("pointer-events", "none")
-        .style("display", "none");
-
-    // ---------------------------------------------------
-    // 2) Clear the right pane
-    // ---------------------------------------------------
-    rightContainer.html("");
-
-    // ---------------------------------------------------
-    // 3) Top Section (Active Node Info)
-    // ---------------------------------------------------
-    const topSection = rightContainer
-        .append("div")
-        .attr("class", "top-section");
-
-    // Active node name in an <h2>
-    topSection
-        .append("h2")
-        .style("background-color", nodeColor({ data: { type: activeNodeData.type } }))
-        .html(`${activeNodeData.name}`);
-
-    // Type line
-    topSection
-        .append("p")
-        .html(`<strong>Type: </strong>${activeNodeData.type || "Unknown"}`);
-
-    // Description header
-    topSection
-        .append("h3")
-        .attr("class", "description-header")
-        .html("Description");
-
-    // Description text
-    const description = (activeNodeData.description || "No description available")
-        .replace(/\n/g, "<br>");
-    topSection
-        .append("p")
-        .style("text-align", "left")
-        .html(description);
-
-    // Dependencies header
-    topSection
-        .append("h3")
-        .attr("class", "dependencies-header")
-        .html("Dependencies");
-
-    // ---------------------------------------------------
-    // 4) Dependencies Wrapper (Scroll Area)
-    // ---------------------------------------------------
-    const dependenciesWrapper = rightContainer
-        .append("div")
-        .attr("class", "dependencies-wrapper");
-
-    // If the root or children array doesn't exist, just show fallback
-    if (!rootNode || !rootNode.children || rootNode.children.length === 0) {
-        dependenciesWrapper
+    function updateRightContainer(activeNodeData) {
+        let tooltipLocked = false; // flag to disable tooltip repositioning after click
+    
+        // ---------------------------------------------------
+        // 1) Create (or select) a tooltip <div>
+        // ---------------------------------------------------
+        const tooltip = d3.select("body")
+            .append("div")
+            .attr("class", "dep-tooltip")
+            .style("position", "absolute")
+            .style("color", "white")
+            .style("background", "#212121")
+            .style("box-shadow", "var(--bdr-clr) 0px 2px 8px 0px")
+            .style("padding", "6px 8px")
+            .style("border", ".75px solid #333")
+            .style("border-radius", "4px")
+            .style("font-size", "0.75rem")
+            .style("pointer-events", "none")
+            .style("display", "none")
+            .style("z-index", "999");
+    
+        // ---------------------------------------------------
+        // 2) Clear the right pane
+        // ---------------------------------------------------
+        rightContainer.html("");
+    
+        // ---------------------------------------------------
+        // 3) Top Section (Active Node Info)
+        // ---------------------------------------------------
+        const topSection = rightContainer
+            .append("div")
+            .attr("class", "top-section");
+    
+        // Active node name in an <h2>
+        topSection
+            .append("h2")
+            .style("background-color", nodeColor({ data: { type: activeNodeData.type } }))
+            .html(`${activeNodeData.name}`);
+    
+        // Type line
+        topSection
             .append("p")
-            .attr("class", "no-dependencies")
-            .html("No dependencies available.");
-        return;
-    }
-
-    // If we haven't populated allDependencies, bail out
-    if (!allDependencies || !allDependencies.length) {
-        return;
-    }
-
-    // Helper to gather child names from the active node's nested children
-    const getChildrenNames = (node) => {
-        const names = new Set();
-        const traverse = (n) => {
-            if (n.children) {
-                n.children.forEach(child => {
-                    names.add(child.name);
-                    traverse(child);
+            .html(`<strong>Type: </strong>${activeNodeData.type || "Unknown"}`);
+    
+        // Description header
+        topSection
+            .append("h3")
+            .attr("class", "description-header")
+            .html("Description");
+    
+        // Description text
+        const description = (activeNodeData.description || "No description available")
+            .replace(/\n/g, "<br>");
+        topSection
+            .append("p")
+            .style("text-align", "left")
+            .html(description);
+    
+        // Dependencies header
+        topSection
+            .append("h3")
+            .attr("class", "dependencies-header")
+            .html("Dependencies");
+    
+        // ---------------------------------------------------
+        // 4) Dependencies Wrapper (Scroll Area)
+        // ---------------------------------------------------
+        const dependenciesWrapper = rightContainer
+            .append("div")
+            .attr("class", "dependencies-wrapper");
+    
+        if (!rootNode || !rootNode.children || rootNode.children.length === 0) {
+            dependenciesWrapper
+                .append("p")
+                .attr("class", "no-dependencies")
+                .html("No dependencies available.");
+            return;
+        }
+    
+        if (!allDependencies || !allDependencies.length) {
+            return;
+        }
+    
+        // Helper to gather child names from the active node's nested children
+        const getChildrenNames = (node) => {
+            const names = new Set();
+            const traverse = (n) => {
+                if (n.children) {
+                    n.children.forEach(child => {
+                        names.add(child.name);
+                        traverse(child);
+                    });
+                }
+            };
+            traverse(node);
+            return names;
+        };
+    
+        // All direct/indirect children plus the node's own name
+        const activeNodeChildren = getChildrenNames(activeNodeData);
+        activeNodeChildren.add(activeNodeData.name);
+    
+        // Group allDependencies by Dependency_Type
+        const depsByType = d3.group(allDependencies, d => d.Dependency_Type);
+    
+        depsByType.forEach((depItems, depType) => {
+            // ---------------------------------------------------------
+            // ADD A CLICK LISTENER TO THE TYPE HEADER
+            // ---------------------------------------------------------
+            dependenciesWrapper
+                .append("p")
+                .attr("class", "dependency-type-header")
+                .style("background-color", nodeColor({ data: { type: depType } }))
+                .style("cursor", "pointer")
+                .text(depType || "Unknown Type")
+                .on("click", () => {
+                    handleNodeClicked({ name: depType, groupType: depType });
+                    tooltip.style("display", "none");
+                });
+    
+            // Container for items of this type
+            const depTypeContainer = dependenciesWrapper
+                .append("div")
+                .attr("class", "dependency-nodes-container");
+    
+            // Separate items that belong to this active node (activeDeps)
+            // vs. those that do not (nonActiveDeps)
+            const activeDeps = depItems.filter(item => activeNodeChildren.has(item.Dependency_Name));
+            const nonActiveDeps = depItems.filter(item => !activeNodeChildren.has(item.Dependency_Name));
+    
+            // Sort both sets alphabetically
+            activeDeps.sort((a, b) => a.Dependency_Name.localeCompare(b.Dependency_Name));
+            nonActiveDeps.sort((a, b) => a.Dependency_Name.localeCompare(b.Dependency_Name));
+    
+            // ---------- Render active dependencies ----------
+            if (activeDeps.length > 0) {
+                const activeContainer = depTypeContainer
+                    .append("div")
+                    .attr("class", "active-dependencies");
+    
+                activeDeps.forEach(item => {
+                    const nodeContainer = activeContainer
+                        .append("div")
+                        .attr("class", "dependency-node-container");
+    
+                    nodeContainer
+                        .append("p")
+                        .attr("class", "dependency-node active-dependency")
+                        .style("cursor", "pointer")
+                        .text(item.Dependency_Name)
+                        .on("click", function(event) {
+                            tooltipLocked = true;
+                            handleNodeClicked({ name: item.Dependency_Name });
+                            tooltip.style("display", "none");
+                        })
+                        // ▼▼▼ TOOLTIP EVENTS ▼▼▼
+                        .on("mouseover", function(event) {
+                            // reset the lock when hovering again
+                            tooltipLocked = false;
+                            tooltip
+                                .html(
+                                    item.Dependency_Descrip
+                                        ? item.Dependency_Descrip.replace(/\n/g, "<br>")
+                                        : "No description available"
+                                )
+                                .style("display", "block");
+                        })
+                        .on("mousemove", function(event) {
+                            if (tooltipLocked) return;
+                            const tooltipNode = tooltip.node();
+                            const tooltipRect = tooltipNode.getBoundingClientRect();
+    
+                            // Center tooltip above the cursor
+                            const tooltipX = event.pageX - tooltipRect.width / 2;
+                            const tooltipY = event.pageY - tooltipRect.height - 10;
+    
+                            tooltip.style("left", `${tooltipX}px`)
+                                    .style("top", `${tooltipY}px`);
+                        })
+                        .on("mouseleave", function() {
+                            tooltip.style("display", "none");
+                        });
                 });
             }
-        };
-        traverse(node);
-        return names;
-    };
-
-    // All direct/indirect children plus the node's own name
-    const activeNodeChildren = getChildrenNames(activeNodeData);
-    activeNodeChildren.add(activeNodeData.name);
-
-    // Group allDependencies by Dependency_Type
-    const depsByType = d3.group(allDependencies, d => d.Dependency_Type);
-
-    // For each Dependency_Type, render active and non-active items
-    depsByType.forEach((depItems, depType) => {
-        // ---------------------------------------------------------
-        // ADD A CLICK LISTENER TO THE TYPE HEADER
-        // ---------------------------------------------------------
-        dependenciesWrapper
-            .append("p")
-            .attr("class", "dependency-type-header")
-            .style("background-color", nodeColor({ data: { type: depType } }))
-            .style("cursor", "pointer") // <--- make it show a pointer
-            .text(depType || "Unknown Type")
-            // ADDED CLICK LISTENER HERE:
-            .on("click", () => {
-                // This calls the same function used for node clicks:
-                handleNodeClicked({ name: depType, groupType: depType });
-                tooltip.style("display", "none");
-            });
-
-        // Container for items of this type
-        const depTypeContainer = dependenciesWrapper
-            .append("div")
-            .attr("class", "dependency-nodes-container");
-
-        // Separate items that belong to this active node (activeDeps)
-        // vs. those that do not (nonActiveDeps)
-        const activeDeps = depItems.filter(item => activeNodeChildren.has(item.Dependency_Name));
-        const nonActiveDeps = depItems.filter(item => !activeNodeChildren.has(item.Dependency_Name));
-
-        // Sort both sets alphabetically
-        activeDeps.sort((a, b) => a.Dependency_Name.localeCompare(b.Dependency_Name));
-        nonActiveDeps.sort((a, b) => a.Dependency_Name.localeCompare(b.Dependency_Name));
-
-        // ---------- Render active dependencies ----------
-        if (activeDeps.length > 0) {
-            const activeContainer = depTypeContainer
-                .append("div")
-                .attr("class", "active-dependencies");
-
-            activeDeps.forEach(item => {
-                const nodeContainer = activeContainer
+    
+            // ---------- Render non-active dependencies ----------
+            nonActiveDeps.forEach(item => {
+                const nodeContainer = depTypeContainer
                     .append("div")
                     .attr("class", "dependency-node-container");
-
-                // The clickable node
+    
                 nodeContainer
                     .append("p")
-                    .attr("class", "dependency-node active-dependency")
+                    .attr("class", "dependency-node inactive-dependency")
                     .style("cursor", "pointer")
                     .text(item.Dependency_Name)
-                    .on("click", () => {
+                    .on("click", function(event) {
+                        tooltipLocked = true;
                         handleNodeClicked({ name: item.Dependency_Name });
                         tooltip.style("display", "none");
                     })
-                    // ▼▼▼ TOOLTIP EVENTS ▼▼▼
-                    .on("mouseover", (event) => {
+                    .on("mouseover", function(event) {
+                        tooltipLocked = false;
                         tooltip
                             .html(
                                 item.Dependency_Descrip
@@ -1440,54 +1486,24 @@ function updateRightContainer(activeNodeData) {
                             )
                             .style("display", "block");
                     })
-                    .on("mousemove", (event) => {
-                        tooltip
-                            .style("left", `${event.pageX + 10}px`)
-                            .style("top",  `${event.pageY + 10}px`);
+                    .on("mousemove", function(event) {
+                        if (tooltipLocked) return;
+                        const tooltipNode = tooltip.node();
+                        const tooltipRect = tooltipNode.getBoundingClientRect();
+    
+                        const tooltipX = event.pageX - tooltipRect.width / 2;
+                        const tooltipY = event.pageY - tooltipRect.height - 10;
+    
+                        tooltip.style("left", `${tooltipX}px`)
+                                .style("top", `${tooltipY}px`);
                     })
-                    .on("mouseleave", () => {
+                    .on("mouseleave", function() {
                         tooltip.style("display", "none");
                     });
             });
-        }
-
-        // ---------- Render non-active dependencies ----------
-        nonActiveDeps.forEach(item => {
-            const nodeContainer = depTypeContainer
-                .append("div")
-                .attr("class", "dependency-node-container");
-
-            // The clickable node
-            nodeContainer
-                .append("p")
-                .attr("class", "dependency-node inactive-dependency")
-                .style("cursor", "pointer")
-                .text(item.Dependency_Name)
-                .on("click", () => {
-                    handleNodeClicked({ name: item.Dependency_Name });
-                    tooltip.style("display", "none");
-                })
-                // ▼▼▼ TOOLTIP EVENTS ▼▼▼
-                .on("mouseover", (event) => {
-                    tooltip
-                        .html(
-                            item.Dependency_Descrip
-                                ? item.Dependency_Descrip.replace(/\n/g, "<br>")
-                                : "No description available"
-                        )
-                        .style("display", "block");
-                })
-                .on("mousemove", (event) => {
-                    tooltip
-                        .style("left", `${event.pageX + 10}px`)
-                        .style("top",  `${event.pageY + 10}px`);
-                })
-                .on("mouseleave", () => {
-                    tooltip.style("display", "none");
-                });
         });
-    });
-}
+    }
+    
 
     
     function showGroupToggles() {
