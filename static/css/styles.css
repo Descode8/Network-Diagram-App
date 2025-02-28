@@ -293,22 +293,18 @@ title {
 }
 
 .search-container, .group-asset-toggle-container, .switches-container, 
-#depthSlider, .groupSwitch span, .assetSwitch span, .indirectRelationshipSwitch span .tool-tip,
+#depthSlider, .groupSwitch span, .assetSwitch span, .indirectRelationshipSwitch span,
 .see-all-assets, .close-all-assets   {
     transition: 0.5s ease-in-out; 
 }
 
-.tool-tip {
-    transition: 3s ease-in-out;
-}
-
-.search-container:active, .search-container:focus-within, .tool-tip {
+.search-container:active, .search-container:focus-within {
     border: .75px solid var(--pane-ttle-bg-clr); 
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
 .search-container:hover, .group-asset-toggle-container:hover, 
-.switches-container:hover, .tool-tip, .see-all-assets:hover, .close-all-assets:hover {
+.switches-container:hover, .see-all-assets:hover, .close-all-assets:hover {
     box-shadow: var(--bdr-clr) 0px 2px 8px 0px; 
 }
 
@@ -417,55 +413,6 @@ label, .depthSlider {
 
 .dependency-type-header:hover, .dependency-node:hover {
     text-decoration: underline;
-}
-
-.tool-tip {
-    /* Position it with enough offset to appear over the SVG */
-    position: absolute;
-    right: -5px; /* Move it slightly into the SVG area instead of right: 100% */
-    top: 50%;
-    transform: translate(-100%, -50%); /* Move it fully to the left and center vertically */
-    margin-right: 15px; /* Add space between tooltip and the element */
-    
-    /* Keep other properties */
-    opacity: 0;
-    visibility: hidden;
-    background-color: var(--tooltip-bg-clr);
-    padding: 5px;
-    border-radius: 5px;
-    z-index: 100; /* Make sure z-index is high enough to appear over SVG */
-    min-width: 50px;
-    max-width: 250px;
-    word-wrap: break-word;
-    white-space: normal;
-    font-size: 0.75rem;
-    transition: opacity 0.5s ease, visibility 0.5s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    pointer-events: none; /* Ensure it doesn't interfere with clicks */
-}
-
-.tool-tip::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 100%; /* Position at right edge of tooltip */
-    transform: translateY(-50%);
-    border-width: 8px;
-    border-style: solid;
-    border-color: transparent transparent transparent var(--tooltip-bg-clr);
-}
-
-
-
-.dependency-node-container:hover .tool-tip {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto; /* Enable interaction when visible */
-    transition: .5s ease-in-out;
-}
-
-.dependency-node:hover + .tool-tip {
-    display: block; 
 }
 
 .dynamic-group-toggles {
@@ -836,7 +783,3 @@ input:checked + .slider .checkmark {
     color: var(--inactive-nde-depnd-clr);
 }
 
-.dependency-node-container {
-    position: relative; /* Create positioning context for tooltip */
-    display: block;
-}
