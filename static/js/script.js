@@ -308,19 +308,25 @@ $(document).ready(function() {
 
     function searchNode() {
         var input = searchInput.value.trim().toLowerCase();
+        var dropdown = document.getElementById('autocompleteSuggestions');
+    
         if (input) {
             var matchingNode = allNodes.find(node =>
                 typeof node === 'string' && node.toLowerCase() === input
             );
             if (matchingNode) {
                 fetchAndRenderGraph(depthSlider.value, matchingNode);
+                searchInput.value = '';  // Clear input after search
+                clearButton.style.display = 'none'; // Hide clear button
+                dropdown.style.display = 'none'; // Hide dropdown
+                dropdown.innerHTML = ''; // Clear dropdown content
             } else {
                 showInvalidSearchMessage(searchInput.value);
             }
         } else {
             showInvalidSearchMessage(searchInput.value);
         }
-    }
+    }    
 
     searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
@@ -332,8 +338,9 @@ $(document).ready(function() {
 
     searchButton.addEventListener('click', () => {
         searchNode();
-        dropdown.innerHTML = '';
-    });
+        searchInput.value = ''; // Clear input after search
+        clearButton.style.display = 'none'; // Hide clear button
+    });    
 
     // -----------------------------------------------------
     // Autocomplete
@@ -1119,10 +1126,11 @@ $(document).ready(function() {
         var clickedName = nodeData.name || nodeData.groupType;
         if (!clickedName) return;
         if (clickedName === currentActiveNodeName) return;
-
-        searchInput.value = clickedName;
+    
         fetchAndRenderGraph(depthSlider.value, clickedName);
-    }
+        searchInput.value = ''; // Clear input when clicking a node
+        clearButton.style.display = 'none'; // Hide clear button
+    }    
 
     const drag = simulation => {
         function dragstarted(event, d) {
