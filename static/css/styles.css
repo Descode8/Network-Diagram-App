@@ -673,11 +673,6 @@ input:checked + .slider .checkmark {
     padding: 2px;
 }
 
-/* Container around all dependency nodes for a specific group */
-.dependency-nodes-container {
-    overflow: auto;   
-}
-
   /* 1) Keep the top section pinned to the top */
 .top-section {
     position: sticky;
@@ -698,9 +693,9 @@ input:checked + .slider .checkmark {
 /* 3) If you still want each group to have its own “limited” scroll,
      you can add the 5-line limit inside each group container. */
 .dependency-nodes-container {
-    max-height: 15vh; 
-    overflow-y: auto;
-    line-height: 1.2; 
+    max-height: 6em;   /* or ~7em depending on your actual line-height */
+    line-height: 1;  /* ensure uniform line spacing */
+    overflow-y: auto;  /* adds the scrollbar if there’s overflow */ 
 }
 
 #autocompleteSuggestions {
