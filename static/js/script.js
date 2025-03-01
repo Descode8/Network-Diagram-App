@@ -52,20 +52,6 @@ $(document).ready(function() {
     searchInput.parentNode.appendChild(dropdown);
 
     let allNodes = []; // Holds all node names and group types
-
-    // Create a single tooltip <div> shared by all dependency nodes
-    const tooltip = d3.select("body")
-    .append("div")
-    .attr("class", "dep-tooltip")
-    .style("position", "absolute")
-    .style("background-color", "var(--tooltip-bg-clr)")
-    .style("padding", "6px 8px")
-    .style("border", "1px solid #333")
-    .style("border-radius", "4px")
-    .style("font-size", "0.75rem")
-    .style("pointer-events", "none")  // so the tooltip doesn't block mouse
-    .style("display", "none");       // start hidden
-
     // -----------------------------------------------------
     // Fetch all assets for autocomplete from /all-assets
     // -----------------------------------------------------
@@ -181,28 +167,21 @@ $(document).ready(function() {
     function populateAllAssetsPane(groupedData) {
         const container = $('#allAssetsContainer');
         container.empty(); // Clear old data, if any
-
-        // groupedData example:
-        // {
-        //   "Applications": ["Help Desk...", "IT Service..."],
-        //   "Data": [...],
-        //   ...
-        // }
-
+        
         Object.entries(groupedData).forEach(([groupName, assetList]) => {
             // Make a group wrapper
             const groupDiv = $('<div>').addClass('asset-group');
-
+    
             // Group header
             const groupHeader = $('<h3>')
                 .text(groupName)
                 .addClass('asset-group-header')
                 .css('background-color', getGroupColor(groupName));
             groupDiv.append(groupHeader);
-
+    
             // Create a container for the items
             const itemsContainer = $('<div>').addClass('asset-items-container');
-
+    
             // Loop through each asset and append to itemsContainer
             assetList.forEach(assetName => {
                 const assetItem = $('<p>')
@@ -213,17 +192,21 @@ $(document).ready(function() {
                         handleNodeClicked({ name: assetName });
                         $('.all-assets-overlay').removeClass('show');
                     });
-
+    
                 itemsContainer.append(assetItem);
             });
-
+    
             // Append itemsContainer to the main groupDiv
             groupDiv.append(itemsContainer);
-
+    
             // Then append groupDiv to your main overlay container
             container.append(groupDiv);
         });
-    }
+    
+        setTimeout(() => {
+            limitToFiveItems(".asset-items-container");  // Corrected selector
+        }, 10);
+    }    
 
     // Maps group name to color
     function getGroupColor(groupName) {
@@ -327,6 +310,30 @@ $(document).ready(function() {
             showInvalidSearchMessage(searchInput.value);
         }
     }    
+
+    function limitToFiveItems(containerSelector) {
+        $(containerSelector).each(function () {
+            const container = $(this);
+            const items = container.children(".dependency-node");
+    
+            if (items.length <= 5) {
+                // If 5 or fewer items, remove scrolling and allow natural height
+                container.css({ "max-height": "unset", "overflow-y": "hidden" });
+            } else {
+                // Calculate total height based on first 5 items
+                let totalHeight = 0;
+                items.slice(0, 5).each(function () {
+                    totalHeight += $(this).outerHeight(true); // Includes margins/padding
+                });
+    
+                // Apply calculated height with a buffer to prevent cutting text
+                container.css({
+                    "max-height": `${totalHeight}px`,  // Small buffer
+                    "overflow-y": "auto"
+                });
+            }
+        });
+    }       
 
     searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
